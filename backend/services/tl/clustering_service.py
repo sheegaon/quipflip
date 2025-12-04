@@ -22,6 +22,50 @@ def _is_sqlite(db: AsyncSession) -> bool:
     return db.bind.dialect.name == 'sqlite'
 
 
+async def _is_vector_column(db: AsyncSession, table: str, column: str) -> bool:
+    """Check if a column is pgvector type (vs JSON).
+
+    Args:
+        db: Database session
+        table: Table name
+        column: Column name
+
+    Returns:
+        True if column is vector type, False if JSON or other
+    """
+    if _is_sqlite(db):
+        return False  # SQLite doesn't have pgvector
+
+    try:
+        # Query information_schema - check public schema by default
+        result = await db.execute(
+            text("""
+                SELECT data_type, udt_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = :table
+                  AND column_name = :column
+            """),
+            {"table": table, "column": column}
+        )
+        row = result.fetchone()
+        if row:
+            data_type, udt_name = row
+            # pgvector uses USER-DEFINED type with udt_name 'vector'
+            is_vector = udt_name == 'vector' or (data_type == 'USER-DEFINED' and 'vector' in str(udt_name).lower())
+            logger.info(f"🔍 Column {table}.{column}: data_type={data_type}, udt_name={udt_name}, is_vector={is_vector}")
+            return is_vector
+        logger.warning(f"⚠️ Column {table}.{column} not found in information_schema")
+        return False
+    except Exception as e:
+        logger.warning(f"⚠️ Could not detect column type for {table}.{column}: {e}")
+        return False
+
+
+# Cache for column type detection (avoid repeated queries)
+_column_type_cache: dict[str, bool] = {}
+
+
 async def _update_centroid(cluster: TLCluster, new_embedding: List[float]) -> None:
     """Update cluster centroid using running mean (legacy ORM method).
 
@@ -146,14 +190,17 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
         old_size: Current cluster size
         new_embedding: New answer embedding
     """
-    try:
-        # First get the old centroid via raw SQL - database-specific syntax
-        if _is_sqlite(db):
-            select_query = "SELECT centroid_embedding FROM tl_cluster WHERE cluster_id = :cluster_id"
-        else:
-            # PostgreSQL - treat as JSON, not pgvector
-            select_query = "SELECT centroid_embedding FROM tl_cluster WHERE cluster_id = :cluster_id"
+    import json
 
+    try:
+        # Check column type (cached after first call)
+        cache_key = "tl_cluster.centroid_embedding"
+        if cache_key not in _column_type_cache:
+            _column_type_cache[cache_key] = await _is_vector_column(db, "tl_cluster", "centroid_embedding")
+        is_vector = _column_type_cache[cache_key]
+
+        # First get the old centroid via raw SQL
+        select_query = "SELECT centroid_embedding FROM tl_cluster WHERE cluster_id = :cluster_id"
         result = await db.execute(
             text(select_query),
             {"cluster_id": cluster_id}
@@ -163,21 +210,20 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
             logger.error(f"❌ Cluster {cluster_id} not found for centroid update")
             return
 
-        # Parse centroid - could be JSON array or pgvector text format
+        # Parse centroid - could be JSON array, pgvector text format, or list
         old_centroid_raw = row[0]
         if isinstance(old_centroid_raw, str):
             # If string, parse as pgvector text format or JSON
             if old_centroid_raw.startswith('[') and old_centroid_raw.endswith(']'):
                 old_centroid = _parse_vector_text(old_centroid_raw)
             else:
-                import json
                 old_centroid = json.loads(old_centroid_raw)
         elif isinstance(old_centroid_raw, list):
             # Already a list (JSON column)
             old_centroid = old_centroid_raw
         else:
-            # Could be pgvector type - convert to list
-            old_centroid = list(old_centroid_raw)
+            # Could be pgvector type or numpy array - convert to list
+            old_centroid = list(old_centroid_raw) if hasattr(old_centroid_raw, '__iter__') else [old_centroid_raw]
 
         # Calculate new centroid using running mean
         new_centroid = [
@@ -185,7 +231,7 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
             for old, new in zip(old_centroid, new_embedding)
         ]
 
-        # Update via raw SQL - store as JSON, not pgvector
+        # Update via raw SQL - use proper type for each database
         if _is_sqlite(db):
             update_query = """
                 UPDATE tl_cluster
@@ -195,18 +241,28 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
                 WHERE cluster_id = :cluster_id
             """
             # SQLite expects JSON array
-            import json
             centroid_value = json.dumps(new_centroid)
-        else:
+        elif is_vector:
+            # PostgreSQL with pgvector column
             update_query = """
                 UPDATE tl_cluster
-                SET centroid_embedding = :centroid::json,
+                SET centroid_embedding = :centroid::vector,
                     size = :new_size,
                     updated_at = NOW()
                 WHERE cluster_id = :cluster_id
             """
-            # PostgreSQL - store as JSON array, not pgvector
-            import json
+            # pgvector expects text in format [0.1,0.2,...]
+            centroid_value = '[' + ','.join(str(x) for x in new_centroid) + ']'
+        else:
+            # PostgreSQL with JSON column
+            update_query = """
+                UPDATE tl_cluster
+                SET centroid_embedding = :centroid::jsonb,
+                    size = :new_size,
+                    updated_at = NOW()
+                WHERE cluster_id = :cluster_id
+            """
+            # JSON expects JSON array string
             centroid_value = json.dumps(new_centroid)
 
         await db.execute(
@@ -217,9 +273,75 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
                 "cluster_id": cluster_id
             }
         )
-        logger.debug(f"🔄 Updated centroid for cluster {cluster_id}, size={old_size + 1}")
+        logger.debug(f"🔄 Updated centroid for cluster {cluster_id}, size={old_size + 1} (vector_col={is_vector})")
     except Exception as e:
         logger.error(f"❌ Centroid update failed: {e}")
+        raise
+
+
+async def _create_cluster_raw(
+    db: AsyncSession,
+    prompt_id: str,
+    centroid_embedding: List[float],
+    example_answer_id: str
+) -> str:
+    """Create a new cluster using raw SQL (handles JSON vs Vector columns).
+
+    Args:
+        db: Database session
+        prompt_id: Prompt ID
+        centroid_embedding: Initial centroid (answer embedding)
+        example_answer_id: Answer ID that seeded this cluster
+
+    Returns:
+        New cluster ID
+    """
+    import json
+    import uuid
+
+    try:
+        cluster_id = str(uuid.uuid4())
+
+        # Check column type (cached after first call)
+        cache_key = "tl_cluster.centroid_embedding"
+        if cache_key not in _column_type_cache:
+            _column_type_cache[cache_key] = await _is_vector_column(db, "tl_cluster", "centroid_embedding")
+        is_vector = _column_type_cache[cache_key]
+
+        if _is_sqlite(db):
+            insert_query = """
+                INSERT INTO tl_cluster (cluster_id, prompt_id, centroid_embedding, size, example_answer_id, created_at, updated_at)
+                VALUES (:cluster_id, :prompt_id, :centroid, 1, :example_answer_id, datetime('now'), datetime('now'))
+            """
+            centroid_value = json.dumps(centroid_embedding)
+        elif is_vector:
+            # PostgreSQL with pgvector column
+            insert_query = """
+                INSERT INTO tl_cluster (cluster_id, prompt_id, centroid_embedding, size, example_answer_id, created_at, updated_at)
+                VALUES (:cluster_id::uuid, :prompt_id::uuid, :centroid::vector, 1, :example_answer_id::uuid, NOW(), NOW())
+            """
+            centroid_value = '[' + ','.join(str(x) for x in centroid_embedding) + ']'
+        else:
+            # PostgreSQL with JSON column
+            insert_query = """
+                INSERT INTO tl_cluster (cluster_id, prompt_id, centroid_embedding, size, example_answer_id, created_at, updated_at)
+                VALUES (:cluster_id::uuid, :prompt_id::uuid, :centroid::jsonb, 1, :example_answer_id::uuid, NOW(), NOW())
+            """
+            centroid_value = json.dumps(centroid_embedding)
+
+        await db.execute(
+            text(insert_query),
+            {
+                "cluster_id": cluster_id,
+                "prompt_id": prompt_id,
+                "centroid": centroid_value,
+                "example_answer_id": example_answer_id,
+            }
+        )
+        logger.info(f"✅ Created cluster {cluster_id} via raw SQL (vector_col={is_vector})")
+        return cluster_id
+    except Exception as e:
+        logger.error(f"❌ Cluster creation failed: {e}")
         raise
 
 
@@ -367,18 +489,10 @@ class TLClusteringService:
             rows = result.fetchall()
 
             if not rows:
-                # Create new cluster
+                # Create new cluster using raw SQL to handle JSON vs Vector columns
                 logger.info(f"📝 Creating new cluster for prompt {prompt_id}")
-                new_cluster = TLCluster(
-                    prompt_id=prompt_id,
-                    centroid_embedding=answer_embedding,
-                    size=1,
-                    example_answer_id=answer_id,
-                )
-                db.add(new_cluster)
-                await db.flush()
-                logger.info(f"✅ Created cluster {new_cluster.cluster_id}")
-                return str(new_cluster.cluster_id)
+                cluster_id = await _create_cluster_raw(db, prompt_id, answer_embedding, answer_id)
+                return cluster_id
 
             # Find best matching cluster
             best_cluster_id: str | None = None
@@ -424,20 +538,12 @@ class TLClusteringService:
                 )
                 return best_cluster_id
             else:
-                # Create new cluster
+                # Create new cluster using raw SQL to handle JSON vs Vector columns
                 logger.debug(
                     f"📝 Creating new cluster (best_sim={best_similarity:.3f} < threshold)"
                 )
-                new_cluster = TLCluster(
-                    prompt_id=prompt_id,
-                    centroid_embedding=answer_embedding,
-                    size=1,
-                    example_answer_id=answer_id,
-                )
-                db.add(new_cluster)
-                await db.flush()
-                logger.debug(f"✅ Created cluster {new_cluster.cluster_id}")
-                return str(new_cluster.cluster_id)
+                cluster_id = await _create_cluster_raw(db, prompt_id, answer_embedding, answer_id)
+                return cluster_id
         except Exception as e:
             logger.error(f"❌ Cluster assignment failed: {e}")
             raise
