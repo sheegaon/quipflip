@@ -70,9 +70,7 @@ jobs:
         python -m pytest tests/test_username_service.py -v
         python -m pytest tests/test_variable_prize_pool.py -v
         python -m pytest tests/test_vote_service.py -v
-        python -m pytest tests/test_tl_matching_service.py -v
-        python -m pytest tests/test_tl_clustering_service.py -v
-        python -m pytest tests/test_tl_scoring_service.py -v
+        python -m pytest tests/test_tl_* -v
 
   qf-frontend-lint:
     name: Quipflip Frontend Lint Check
@@ -126,10 +124,36 @@ jobs:
       working-directory: ./frontend/mm
       run: npm run build
 
+  tl-frontend-lint:
+    name: ThinkLink Frontend Lint Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/tl/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend/tl
+      run: npm install
+
+    - name: Run linter
+      working-directory: ./frontend/tl
+      run: npm run lint
+
+    - name: Build frontend
+      working-directory: ./frontend/tl
+      run: npm run build
+
   notify-success:
     name: Notify Success
     runs-on: ubuntu-latest
-    needs: [backend-tests, qf-frontend-lint, mm-frontend-lint]
+    needs: [backend-tests, qf-frontend-lint, mm-frontend-lint, tl-frontend-lint]
     if: success()
 
     steps:
