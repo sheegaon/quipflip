@@ -18,14 +18,14 @@ export const StrikeIndicator: React.FC<StrikeIndicatorProps> = ({
   const strikeIndices = Array.from({ length: maxStrikes }, (_, i) => i);
 
   return (
-    <div className="tile-card p-6">
-      <div className="flex justify-center items-center gap-4">
+    <div className="tile-card p-4 sm:p-6 h-full flex flex-col justify-center">
+      <div className="flex justify-center items-center gap-3 sm:gap-4">
         {strikeIndices.map((index) => (
           <div
             key={index}
             className={`
-              w-12 h-12 rounded-full flex items-center justify-center
-              font-display font-bold text-lg transition-all
+              w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center
+              font-display font-bold text-base sm:text-lg transition-all
               ${
                 index < normalizedStrikes
                   ? `bg-red-500 text-white ring-2 ring-red-700 ${animated ? 'animate-pulse' : ''}`
@@ -39,7 +39,7 @@ export const StrikeIndicator: React.FC<StrikeIndicatorProps> = ({
       </div>
 
       {showLabel && (
-        <p className="text-center text-ccl-teal mt-4 text-sm">
+        <p className="text-center text-ccl-teal mt-3 sm:mt-4 text-xs sm:text-sm">
           {normalizedStrikes}/{maxStrikes} strikes · {maxStrikes - normalizedStrikes} remaining
         </p>
       )}

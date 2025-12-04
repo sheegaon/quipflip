@@ -104,7 +104,6 @@ export const RoundPlay: React.FC = () => {
   const [isAbandoning, setIsAbandoning] = useState(false);
   const [roundEnded, setRoundEnded] = useState(false);
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
-  const wordCount = getWords(guessText).length;
 
   // Check if round should end (3 strikes)
   useEffect(() => {
@@ -311,16 +310,16 @@ export const RoundPlay: React.FC = () => {
             </Tooltip>
 
             {/* Strike Indicator */}
-            <div className="flex flex-col sm:flex-row md:flex-row gap-4 md:w-[380px]">
+            <div className="flex flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 md:w-[380px] items-stretch">
               <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
-                <div className="flex-1">
+                <div className="flex-1 min-w-[160px]">
                   <StrikeIndicator strikes={strikes} />
                 </div>
               </Tooltip>
 
-              <div className="tile-card p-6 flex-1 flex flex-col justify-center items-center text-center">
-                <p className="text-ccl-teal" id="guess-count-label">Guesses</p>
-                <p className="text-3xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
+              <div className="tile-card p-4 sm:p-5 flex-1 min-w-[140px] flex flex-col justify-center items-center text-center">
+                <p className="text-ccl-teal text-sm" id="guess-count-label">Guesses</p>
+                <p className="text-2xl sm:text-3xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
                   {guesses.length}
                 </p>
               </div>
@@ -340,9 +339,6 @@ export const RoundPlay: React.FC = () => {
               error={error}
               autoFocus={true}
             />
-            <p className="text-xs text-ccl-navy/80" aria-live="polite">
-              {`${wordCount || 0} word${wordCount === 1 ? '' : 's'} out of 2-5 words total`}
-            </p>
           </div>
 
           {/* Abandon Button */}
