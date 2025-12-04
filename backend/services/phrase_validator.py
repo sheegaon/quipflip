@@ -219,8 +219,12 @@ class PhraseValidator:
 
             # Check dictionary (accept both contracted and stripped forms)
             dict_candidates = {word_upper, cleaned_word.upper()}
+
             if not any(candidate in self.dictionary for candidate in dict_candidates):
-                return False, f"Word '{word}' not in dictionary"
+                # As a fallback, allow common inflections whose stem exists in the dictionary
+                stemmed = self._remove_common_endings(cleaned_word.upper())
+                if stemmed not in self.dictionary:
+                    return False, f"Word '{word}' not in dictionary"
 
             has_significant = True
 
