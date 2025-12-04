@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import type { TLStartRoundResponse } from '@crowdcraft/api/types.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { CurrencyDisplay } from '../components/CurrencyDisplay';
 import { GuessInput } from '../components/GuessInput';
 import { CoverageBar } from '../components/CoverageBar';
 import { StrikeIndicator } from '../components/StrikeIndicator';
@@ -92,8 +90,6 @@ const similarityScore = (a: string, b: string): number => {
 
 export const RoundPlay: React.FC = () => {
   const navigate = useNavigate();
-  const { state: gameState } = useGame();
-  const { player } = gameState;
   const locationState = (useLocation().state as RoundPlayLocationState) || {};
   const initialRound = locationState.round;
 
@@ -306,20 +302,29 @@ export const RoundPlay: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
         <div className="max-w-2xl w-full space-y-8">
-          <div className="flex flex-col md:flex-row gap-4 md:items-center">
+          <div className="flex flex-col md:flex-row gap-4 md:items-stretch">
             {/* Coverage Bar */}
             <Tooltip content="Coverage % shows how many of the crowd's answers you've matched. Higher coverage = bigger payout!">
-              <div className="flex-1">
+              <div className="flex-1 md:flex-[1.25]">
                 <CoverageBar coverage={coverage * 100} />
               </div>
             </Tooltip>
 
             {/* Strike Indicator */}
-            <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
-              <div className="md:w-56">
-                <StrikeIndicator strikes={strikes} />
+            <div className="flex flex-col sm:flex-row md:flex-row gap-4 md:w-[380px]">
+              <Tooltip content="Get 3 strikes and your round ends. Try common, obvious answers to avoid wrong guesses.">
+                <div className="flex-1">
+                  <StrikeIndicator strikes={strikes} />
+                </div>
+              </Tooltip>
+
+              <div className="tile-card p-6 flex-1 flex flex-col justify-center items-center text-center">
+                <p className="text-ccl-teal" id="guess-count-label">Guesses</p>
+                <p className="text-3xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
+                  {guesses.length}
+                </p>
               </div>
-            </Tooltip>
+            </div>
           </div>
 
           {/* Recent Guesses */}
@@ -339,28 +344,6 @@ export const RoundPlay: React.FC = () => {
               {`${wordCount || 0} word${wordCount === 1 ? '' : 's'} out of 2-5 words total`}
             </p>
           </div>
-
-          {/* Stats Footer */}
-          <section className="grid grid-cols-3 gap-4 text-center text-sm" aria-label="Game statistics">
-            <div className="tile-card p-4">
-              <p className="text-ccl-teal" id="guess-count-label">Guesses</p>
-              <p className="text-2xl font-display font-bold text-ccl-navy" aria-labelledby="guess-count-label">
-                {guesses.length}
-              </p>
-            </div>
-            <div className="tile-card p-4">
-              <p className="text-ccl-teal" id="wallet-label">Wallet</p>
-              <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="wallet-label">
-                <CurrencyDisplay amount={player?.wallet || 0} />
-              </p>
-            </div>
-            <div className="tile-card p-4">
-              <p className="text-ccl-teal" id="vault-label">Vault</p>
-              <p className="text-xl font-display font-bold text-ccl-navy" aria-labelledby="vault-label">
-                <CurrencyDisplay amount={player?.vault || 0} />
-              </p>
-            </div>
-          </section>
 
           {/* Abandon Button */}
           <button

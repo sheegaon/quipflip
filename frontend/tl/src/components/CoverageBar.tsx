@@ -38,8 +38,8 @@ export const CoverageBar: React.FC<CoverageBarProps> = ({
   return (
     <div className="tile-card p-6">
       {showLabel && (
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-semibold text-ccl-navy">{label}</span>
+        <div className="flex justify-between items-center gap-6 mb-2">
+          <span className="font-semibold text-ccl-navy whitespace-nowrap">{label}</span>
           <span className="text-2xl font-display font-bold text-ccl-orange">
             {Math.round(normalizedCoverage)}%
           </span>
