@@ -268,7 +268,7 @@ export const RoundPlay: React.FC = () => {
               {round.prompt_text}
             </h1>
             <p className="text-center text-ccl-cream text-sm" aria-label={`Round has ${round.snapshot_answer_count} answers with ${round.snapshot_total_weight.toFixed(0)} total weight`}>
-              {round.snapshot_answer_count} answers · {round.snapshot_total_weight.toFixed(0)} total weight
+              {round.snapshot_answer_count} previous answers available
             </p>
           </div>
         </div>
@@ -302,9 +302,6 @@ export const RoundPlay: React.FC = () => {
             </div>
           </div>
 
-          {/* Recent Guesses */}
-          <MatchFeedback guesses={guesses} />
-
           {/* Guess Input */}
           <div className="space-y-3">
             <GuessInput
@@ -316,6 +313,9 @@ export const RoundPlay: React.FC = () => {
               autoFocus={true}
             />
           </div>
+
+          {/* Recent Guesses */}
+          <MatchFeedback guesses={guesses} />
 
           {/* Abandon Button */}
           <button
