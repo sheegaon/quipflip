@@ -73,10 +73,7 @@ async def seed_prompts(db: AsyncSession):
 
         created_count = 0
         
-        prompts_to_create = []
-        for prompt_text in prompts_from_csv:
-            if prompt_text not in existing_prompts:
-                prompts_to_create.append(prompt_text)
+        prompts_to_create = [p for p in prompts_from_csv if p not in existing_prompts]
         
         skipped_count = len(prompts_from_csv) - len(prompts_to_create)
 
