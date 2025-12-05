@@ -56,12 +56,10 @@ router = APIRouter()
 settings = get_settings()
 
 
-async def detect_player_and_game(
-    request: Request,
-    authorization: str | None,
-    db: AsyncSession,
-) -> Tuple[Player, GameType]:
+async def detect_player_and_game(request: Request, authorization: str | None, db: AsyncSession
+                                 ) -> Tuple[Player, GameType]:
     """Detect the authenticated player and their game type from the request."""
+    last_error = None
     for game_type in GameType:
         try:
             player = await get_current_player(
@@ -70,10 +68,21 @@ async def detect_player_and_game(
                 authorization=authorization,
                 db=db,
             )
+            logger.debug(f"Authenticated player via game_type={game_type.value}: {player.player_id}")
             return player, game_type
-        except HTTPException:
+        except HTTPException as e:
+            last_error = e
+            logger.debug(f"Authentication failed for game_type={game_type.value}: {e.detail}")
             continue
 
+    # Log the final authentication failure with context
+    error_detail = last_error.detail if last_error else "unknown_error"
+    logger.warning(
+        f"Player authentication failed for /users/online endpoint. "
+        f"Authorization header present: {bool(authorization)}, "
+        f"Cookie present: {bool(request.cookies.get(settings.access_token_cookie_name))}, "
+        f"Last error: {error_detail}"
+    )
     raise HTTPException(status_code=401, detail="invalid_token")
 
 
@@ -318,24 +327,24 @@ async def get_online_users(db: AsyncSession, game_type: GameType) -> List[Online
     cutoff_time = datetime.now(UTC) - timedelta(minutes=30)
 
     try:
-        UserActivityModel = get_user_activity_model(game_type)
-        PlayerDataModel = get_player_data_model(game_type)
-        TransactionModel = get_transaction_model(game_type)
+        user_activity_model = get_user_activity_model(game_type)
+        player_data_model = get_player_data_model(game_type)
+        transaction_model = get_transaction_model(game_type)
     except ValueError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
 
     result = await db.execute(
         select(
-            UserActivityModel,
-            PlayerDataModel.wallet,
+            user_activity_model,
+            player_data_model.wallet,
             Player.created_at,
             Player.is_guest,
             Player.player_id,
         )
-        .join(Player, UserActivityModel.player_id == Player.player_id)
-        .outerjoin(PlayerDataModel, PlayerDataModel.player_id == Player.player_id)
-        .where(UserActivityModel.last_activity >= cutoff_time)
-        .order_by(UserActivityModel.last_activity.desc())
+        .join(Player, user_activity_model.player_id == Player.player_id)
+        .outerjoin(player_data_model, player_data_model.player_id == Player.player_id)
+        .where(user_activity_model.last_activity >= cutoff_time)
+        .order_by(user_activity_model.last_activity.desc())
     )
     rows = result.all()
 
@@ -348,7 +357,7 @@ async def get_online_users(db: AsyncSession, game_type: GameType) -> List[Online
     # If there are guests, check which ones have activity
     guests_with_activity = set()
     if guest_ids:
-        activity_queries = _get_guest_activity_queries(game_type, guest_ids, TransactionModel)
+        activity_queries = _get_guest_activity_queries(game_type, guest_ids, transaction_model)
 
         for query in activity_queries:
             result = await db.execute(query)
@@ -400,10 +409,7 @@ async def get_online_users_endpoint(
 
     online_users = await get_online_users(db, game_type)
 
-    return OnlineUsersResponse(
-        users=online_users,
-        total_count=len(online_users),
-    )
+    return OnlineUsersResponse(users=online_users, total_count=len(online_users))
 
 
 @router.post("/online/ping", response_model=PingUserResponse)
@@ -460,9 +466,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Accept authenticated connection
     await manager.connect(websocket, game_type)
-    logger.info(
-        f"WebSocket authenticated for player: {player.username} (game={game_type.value})"
-    )
+    logger.info(f"WebSocket authenticated for player: {player.username} (game={game_type.value})")
 
     try:
         # Keep connection alive and listen for client disconnects
@@ -481,6 +485,4 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket error for player {player.username}: {e}")
     finally:
         manager.disconnect(websocket)
-        logger.info(
-            f"WebSocket disconnected for player: {player.username} (game={game_type.value})"
-        )
+        logger.info(f"WebSocket disconnected for player: {player.username} (game={game_type.value})")

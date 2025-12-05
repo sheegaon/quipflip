@@ -129,11 +129,20 @@ export const createNotificationContext = () => {
         setTotalCount(data.total_count);
         setLoadingOnlineUsers(false);
         setOnlineUsersError((prev) => (prev && prev.includes('WebSocket unavailable') ? null : prev));
-      } catch (err) {
+      } catch (err: unknown) {
+        const error = err as { response?: { status?: number } };
         console.error('Failed to fetch online users:', err);
-        setOnlineUsersError((prev) => prev ?? 'Failed to load online users');
+        
+        // Handle authentication errors specifically
+        if (error.response?.status === 401) {
+          // Stop polling on auth errors - token is invalid
+          setOnlineUsersError('Authentication expired. Please log in again.');
+          stopPollingOnlineUsers();
+        } else {
+          setOnlineUsersError((prev) => prev ?? 'Failed to load online users');
+        }
       }
-    }, [isAuthenticated, onlineUsersEnabled]);
+    }, [isAuthenticated, onlineUsersEnabled, stopPollingOnlineUsers]);
 
     const startPollingOnlineUsers = useCallback(() => {
       if (pollingIntervalRef.current || !onlineUsersEnabled) return;
