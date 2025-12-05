@@ -80,7 +80,7 @@ jobs:
     - name: Set up Node
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '22'
 
     - name: Install crowdcraft dependencies
       working-directory: ./frontend/crowdcraft
@@ -108,7 +108,7 @@ jobs:
     - name: Set up Node
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: frontend/mm/package-lock.json
 
@@ -138,7 +138,7 @@ jobs:
     - name: Set up Node
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: frontend/tl/package-lock.json
 
