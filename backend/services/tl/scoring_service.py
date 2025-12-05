@@ -6,8 +6,9 @@ import logging
 import math
 from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.sql import func
+
 from backend.models.tl import TLRound, TLAnswer, TLCluster
 from backend.config import get_settings
 
@@ -171,31 +172,6 @@ class TLScoringService:
             if not tl_round.snapshot_answer_ids or not tl_round.matched_clusters:
                 return
 
-            # Get all snapshot answers (excluding embedding to avoid pgvector processing issue)
-            result = await db.execute(
-                select(
-                    TLAnswer.answer_id,
-                    TLAnswer.cluster_id,
-                    TLAnswer.shows,
-                    TLAnswer.contributed_matches
-                ).where(
-                    TLAnswer.answer_id.in_(tl_round.snapshot_answer_ids)
-                )
-            )
-            all_answers = {row.answer_id: row for row in result.fetchall()}
-
-            # Update shows for all snapshot answers - need to fetch full objects for updates
-            answer_ids_to_update = list(all_answers.keys())
-            result = await db.execute(
-                select(TLAnswer).where(
-                    TLAnswer.answer_id.in_(answer_ids_to_update)
-                ).with_for_update()
-            )
-
-            # This will still have the embedding issue, so we need a different approach
-            # Update directly via SQL to avoid loading the embedding field
-            from sqlalchemy import update
-
             # Increment shows for all snapshot answers
             await db.execute(
                 update(TLAnswer)
@@ -216,7 +192,7 @@ class TLScoringService:
 
             await db.flush()
             logger.info(
-                f"✅ Updated stats: shows +1 for {len(all_answers)} answers, "
+                f"✅ Updated stats: shows +1 for {len(tl_round.snapshot_answer_ids)} answers, "
                 f"contributed_matches +1 for matched answers in {len(tl_round.matched_clusters)} clusters"
             )
         except Exception as e:
