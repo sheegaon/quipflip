@@ -465,6 +465,10 @@ async def lifespan(app_instance: FastAPI):
     # except Exception as e:
     #     logger.error(f"Failed to start IR backup cycle: {e}")
 
+    logger.info("============================================================")
+    logger.info("Crowdcraft Labs API Started")
+    logger.info("============================================================")
+
     try:
         yield
     finally:

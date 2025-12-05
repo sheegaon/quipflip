@@ -78,6 +78,65 @@ async def seed_answers(db: AsyncSession, force: bool = False):
             logger.warning("No completions loaded from CSV")
             return
 
+        # Quick check: Get counts to see if we're likely up to date
+        prompt_count = await db.scalar(select(func.count(TLPrompt.prompt_id)))
+        answer_count = await db.scalar(select(func.count(TLAnswer.answer_id)))
+
+        # Rough estimate: each prompt should have ~5-10 answers on average
+        expected_answers = sum(len(completions) for completions in completions_map.values())
+
+        logger.info(f"DB has {prompt_count} prompts, {answer_count} answers. CSV expects ~{expected_answers} answers.")
+
+        # If we have roughly the expected number of answers and not forcing, do a quick sample check
+        if not force and answer_count >= expected_answers * 0.9:  # 90% threshold
+            logger.info("Answer count looks good, doing quick verification...")
+
+            # Sample check: verify a few random prompts are seeded
+            sample_prompts = list(completions_map.keys())[:5]  # Check first 5
+            all_seeded = True
+
+            for prompt_text in sample_prompts:
+                result = await db.execute(
+                    select(TLPrompt.prompt_id)
+                    .where(TLPrompt.text == prompt_text)
+                )
+                prompt_row = result.scalars().first()
+
+                if prompt_row:
+                    answer_count_for_prompt = await db.scalar(
+                        select(func.count(TLAnswer.answer_id))
+                        .where(TLAnswer.prompt_id == str(prompt_row))  # prompt_row is already the UUID
+                    )
+                    expected_for_prompt = len(completions_map[prompt_text])
+
+                    if answer_count_for_prompt < expected_for_prompt:
+                        all_seeded = False
+                        break
+                else:
+                    all_seeded = False
+                    break
+
+            if all_seeded:
+                logger.info("Sample verification passed - answers appear to be up to date")
+                return
+
+        # If we get here, we need to do full seeding
+        logger.info("Full seeding required...")
+
+        # Get all existing prompt_id -> text mappings in one query
+        prompt_result = await db.execute(
+            select(TLPrompt.prompt_id, TLPrompt.text)
+            .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
+        )
+        prompts_by_text = {row.text: str(row.prompt_id) for row in prompt_result}
+
+        # Get all existing (prompt_id, text) pairs for answers in one query
+        answer_result = await db.execute(
+            select(TLAnswer.prompt_id, TLAnswer.text)
+            .options(load_only(TLAnswer.prompt_id, TLAnswer.text))
+        )
+        existing_answers = {(row.prompt_id, row.text) for row in answer_result}
+
         # Initialize services
         matching_service = TLMatchingService()
         clustering_service = TLClusteringService(matching_service)
@@ -87,40 +146,24 @@ async def seed_answers(db: AsyncSession, force: bool = False):
         failed = 0
 
         for prompt_text, completions in completions_map.items():
-            # Find the prompt in database (use load_only to avoid pgvector deserialization issue)
-            result = await db.execute(
-                select(TLPrompt)
-                .options(load_only(TLPrompt.prompt_id, TLPrompt.text))
-                .where(TLPrompt.text == prompt_text)
-            )
-            prompt = result.scalars().first()
+            prompt_id = prompts_by_text.get(prompt_text)
 
-            if not prompt:
+            if not prompt_id:
                 logger.debug(f"Prompt not found: '{prompt_text[:50]}...', skipping completions")
                 skipped += len(completions)
                 continue
 
-            prompt_id = str(prompt.prompt_id)
-
             for completion_text in completions:
+                # Quick check against our in-memory set
+                if not force and (prompt_id, completion_text) in existing_answers:
+                    skipped += 1
+                    continue
+
                 # Use a savepoint to isolate each answer processing
                 savepoint = await db.begin_nested()
                 try:
-                    # Check if answer already exists
-                    result = await db.execute(
-                        select(func.count(TLAnswer.answer_id)).where(
-                            TLAnswer.prompt_id == prompt_id,
-                            TLAnswer.text == completion_text
-                        )
-                    )
-                    answer_in_db = (result.scalar() or 0) > 0
-                    if not force and answer_in_db:
-                        skipped += 1
-                        await savepoint.rollback()
-                        continue
-
                     # Drop existing answer if it exists (force mode)
-                    if answer_in_db:
+                    if force and (prompt_id, completion_text) in existing_answers:
                         await db.execute(
                             delete(TLAnswer).where(
                                 TLAnswer.prompt_id == prompt_id,
@@ -167,7 +210,7 @@ async def seed_answers(db: AsyncSession, force: bool = False):
         # Final commit for any remaining answers
         await db.commit()
         if created > 0:
-            logger.info(f"ThinkLink answer seeding complete: {created} new answers created, {skipped} already existed, {failed} failed")
+            logger.info(f"ThinkLink answer seeding complete: {created=}, {skipped=}, {failed=}.")
         else:
             logger.info(f"ThinkLink answers already up to date ({skipped} answers exist, {failed} failed)")
 
