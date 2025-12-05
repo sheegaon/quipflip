@@ -5,7 +5,7 @@ import re
 import math
 import logging
 from difflib import SequenceMatcher
-from typing import Set
+from typing import Set, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,13 +61,20 @@ class PhraseValidator:
     def __init__(self):
         self.settings = get_settings()
 
-        # Root embedding service that always checks DB cache before hitting OpenAI
-        self.matching = TLMatchingService()
+        # Lazy-loaded matching service - only initialized when needed
+        self._matching: Optional[TLMatchingService] = None
 
         self.dictionary: Set[str] = _load_dictionary()
         logger.info(f"Loaded dictionary with {len(self.dictionary)} words")
 
         logger.info(f"Using OpenAI embedding model: {self.settings.embedding_model}")
+
+    @property
+    def matching(self) -> TLMatchingService:
+        """Lazy-load the TLMatchingService only when embeddings are needed."""
+        if self._matching is None:
+            self._matching = TLMatchingService()
+        return self._matching
 
     def common_words(self) -> Set[str]:
         """Get set of common words allowed to be reused."""
@@ -132,8 +139,7 @@ class PhraseValidator:
 
             if embedding is None:
                 logger.info(
-                    f"Requesting embedding via matching service for '{phrase=}' using model {self.settings.embedding_model}"
-                )
+                    f"Requesting embedding via matching service for '{phrase=}' using {self.settings.embedding_model=}")
                 embedding = await self.matching.generate_embedding(phrase, db=session)
 
             return embedding
