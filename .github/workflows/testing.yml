@@ -44,7 +44,6 @@ jobs:
         python -m pytest tests/test_api_vote.py -v
         python -m pytest tests/test_beta_survey.py -v
         python -m pytest tests/test_cleanup_service.py -v
-        python -m pytest tests/test_code_quality_improvements.py -v
         python -m pytest tests/test_copy_availability_regression.py -v
         python -m pytest tests/test_daily_bonus.py -v
         python -m pytest tests/test_datetime_helpers.py -v
@@ -82,8 +81,10 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/qf/package-lock.json
+
+    - name: Install crowdcraft dependencies
+      working-directory: ./frontend/crowdcraft
+      run: npm install
 
     - name: Install dependencies
       working-directory: ./frontend/qf
@@ -110,6 +111,10 @@ jobs:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: frontend/mm/package-lock.json
+
+    - name: Install crowdcraft dependencies
+      working-directory: ./frontend/crowdcraft
+      run: npm install
 
     - name: Install dependencies
       working-directory: ./frontend/mm

@@ -198,11 +198,22 @@ class TLPromptService:
             limit: Maximum answers to return (corpus cap)
 
         Returns:
-            List of TLAnswer objects
+            List of TLAnswer objects (without embeddings to avoid pgvector deserialization issues)
         """
+        from sqlalchemy.orm import load_only
+
         try:
+            # Use load_only to avoid loading embedding column (pgvector deserialization issue)
+            # The embedding will be loaded later in _build_snapshot_answers when needed
             result = await db.execute(
                 select(TLAnswer)
+                .options(load_only(
+                    TLAnswer.answer_id,
+                    TLAnswer.prompt_id,
+                    TLAnswer.text,
+                    TLAnswer.cluster_id,
+                    TLAnswer.is_active,
+                ))
                 .where(
                     TLAnswer.prompt_id == prompt_id,
                     TLAnswer.is_active == True

@@ -50,65 +50,61 @@ def load_prompts_from_csv() -> list[str]:
 
 
 async def seed_prompts(db: AsyncSession):
-    """Seed ThinkLink prompts from CSV data."""
+    """Seed ThinkLink prompts from CSV data, adding any new prompts."""
 
-    # Check if prompts already exist (check count to avoid pgvector deserialization issues)
-    from sqlalchemy import func
-    stmt = select(func.count(TLPrompt.prompt_id))
-    result = await db.execute(stmt)
-    count = result.scalar() or 0
-
-    if count > 0:
-        logger.info(f"Prompts already exist in database ({count} prompts), skipping seed")
-        return
-
-    logger.info("No existing prompts found, seeding from CSV...")
+    logger.info("Checking for new prompts to seed from CSV...")
 
     try:
-        # Load prompts from CSV
-        prompts = load_prompts_from_csv()
+        # Load unique prompts from CSV
+        prompts_from_csv = load_prompts_from_csv()
 
-        if not prompts:
-            logger.warning("No prompts loaded from CSV")
+        if not prompts_from_csv:
+            logger.warning("No prompts to process from CSV file.")
             return
+
+        # Fetch all existing prompt texts from the database
+        stmt = select(TLPrompt.text)
+        result = await db.execute(stmt)
+        existing_prompts = {row[0] for row in result}
+        logger.info(f"Found {len(existing_prompts)} existing prompts in the database.")
 
         # Initialize matching service for embeddings
         matching_service = TLMatchingService()
 
-        created = 0
-        skipped = 0
+        created_count = 0
+        
+        prompts_to_create = [p for p in prompts_from_csv if p not in existing_prompts]
+        
+        skipped_count = len(prompts_from_csv) - len(prompts_to_create)
 
-        for prompt_text in prompts:
+        if not prompts_to_create:
+            logger.info("No new prompts found in CSV. Database is up to date.")
+            return
+            
+        logger.info(f"Found {len(prompts_to_create)} new prompts to add.")
+
+        for prompt_text in prompts_to_create:
             try:
-                # Check if prompt already exists by text (avoids embedding deserialization)
-                stmt = select(func.count(TLPrompt.prompt_id)).where(TLPrompt.text == prompt_text.strip())
-                result = await db.execute(stmt)
-                if (result.scalar() or 0) > 0:
-                    skipped += 1
-                    continue
-
-                # Generate embedding
                 embedding = await matching_service.generate_embedding(prompt_text)
-
-                # Create prompt
                 prompt = TLPrompt(
-                    text=prompt_text.strip(),
+                    text=prompt_text,
                     embedding=embedding,
                     is_active=True,
                     ai_seeded=False,  # User-seeded from CSV
                 )
                 db.add(prompt)
-                created += 1
+                created_count += 1
 
-                if created % 50 == 0:
-                    logger.info(f"Created {created} prompts so far...")
+                if created_count > 0 and created_count % 50 == 0:
+                    logger.info(f"Prepared {created_count} new prompts for insertion...")
 
             except Exception as e:
-                logger.warning(f"Failed to seed prompt '{prompt_text[:50]}...': {e}")
-                skipped += 1
+                logger.warning(f"Failed to create embedding for prompt '{prompt_text[:50]}...': {e}")
+                # We will skip this prompt and continue with others
 
         await db.commit()
-        logger.info(f"✅ Seeding complete: {created} prompts created, {skipped} skipped")
+        logger.info(
+            f"✅ Seeding complete: {created_count} new prompts created. {skipped_count} prompts from CSV existed.")
 
     except Exception as e:
         await db.rollback()
