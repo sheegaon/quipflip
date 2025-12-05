@@ -166,7 +166,7 @@ async def get_corpus_stats(
         # Calculate total weight (single efficient query instead of N+1)
         cluster_ids = [str(c.cluster_id) for c in clusters]
         scoring_service = TLScoringService()
-        total_weight = await scoring_service._calculate_total_weight(db, cluster_ids)
+        total_weight = await scoring_service.calculate_total_weight(db, cluster_ids)
 
         logger.info(
             f"📊 Corpus stats for {prompt_id}: "
@@ -212,9 +212,7 @@ async def prune_corpus(
         clustering_service = TLClusteringService(matching_service)
 
         # Prune corpus
-        removed_count, current_count = await service_prune_corpus(
-            db, str(prompt_id), keep_count=keep_count
-        )
+        removed_count, current_count = await service_prune_corpus(db, str(prompt_id), keep_count=keep_count)
 
         # Commit changes
         await db.commit()

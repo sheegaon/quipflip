@@ -14,7 +14,7 @@ from backend.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-async def update_answer_stats(db: AsyncSession, round: TLRound) -> None:
+async def update_answer_stats(db: AsyncSession, tl_round: TLRound) -> None:
     """Update answer stats after round completion.
 
     For all snapshot answers: increment shows
@@ -22,16 +22,16 @@ async def update_answer_stats(db: AsyncSession, round: TLRound) -> None:
 
     Args:
         db: Database session
-        round: Completed TLRound
+        tl_round: Completed TLRound
     """
     try:
-        if not round.snapshot_answer_ids or not round.matched_clusters:
+        if not tl_round.snapshot_answer_ids or not tl_round.matched_clusters:
             return
 
         # Get all snapshot answers
         result = await db.execute(
             select(TLAnswer).where(
-                TLAnswer.answer_id.in_(round.snapshot_answer_ids)
+                TLAnswer.answer_id.in_(tl_round.snapshot_answer_ids)
             )
         )
         all_answers = {a.answer_id: a for a in result.scalars().all()}
@@ -41,11 +41,11 @@ async def update_answer_stats(db: AsyncSession, round: TLRound) -> None:
             answer.shows = (answer.shows or 0) + 1
 
         # Increment contributed_matches for matched answers
-        if round.matched_clusters:
+        if tl_round.matched_clusters:
             result = await db.execute(
                 select(TLAnswer).where(
-                    TLAnswer.cluster_id.in_(round.matched_clusters),
-                    TLAnswer.answer_id.in_(round.snapshot_answer_ids)
+                    TLAnswer.cluster_id.in_(tl_round.matched_clusters),
+                    TLAnswer.answer_id.in_(tl_round.snapshot_answer_ids)
                 )
             )
             matched_answers = result.scalars().all()
@@ -63,7 +63,7 @@ async def update_answer_stats(db: AsyncSession, round: TLRound) -> None:
 
 async def finalize_round(
         db: AsyncSession,
-        round: TLRound,
+        tl_round: TLRound,
         wallet_award: int,
         vault_award: int,
         gross_payout: int,
@@ -73,24 +73,24 @@ async def finalize_round(
 
     Args:
         db: Database session
-        round: TLRound to finalize
+        tl_round: TLRound to finalize
         wallet_award: Amount to add to wallet
         vault_award: Amount to add to vault
         gross_payout: Gross payout amount
         coverage: Final coverage (0-1)
     """
     try:
-        round.status = 'completed'
-        round.final_coverage = coverage
-        round.gross_payout = gross_payout
-        round.ended_at = func.now()  # Server timestamp
+        tl_round.status = 'completed'
+        tl_round.final_coverage = coverage
+        tl_round.gross_payout = gross_payout
+        tl_round.ended_at = func.now()  # Server timestamp
 
         # Update answer stats
-        await update_answer_stats(db, round)
+        await update_answer_stats(db, tl_round)
 
         await db.flush()
         logger.info(
-            f"✅ Finalized round {round.round_id}: "
+            f"✅ Finalized round {tl_round.round_id}: "
             f"coverage={coverage:.1%}, gross={gross_payout}, "
             f"wallet={wallet_award}, vault={vault_award}"
         )
@@ -115,7 +115,6 @@ class TLScoringService:
         db: AsyncSession,
         matched_cluster_ids: List[str],
         snapshot_cluster_ids: List[str],
-        prompt_id: str,
     ) -> float:
         """Calculate weighted coverage percentage.
 
@@ -125,7 +124,6 @@ class TLScoringService:
             db: Database session
             matched_cluster_ids: List of cluster IDs matched during round
             snapshot_cluster_ids: List of all cluster IDs in snapshot
-            prompt_id: Prompt ID (for context/logging)
 
         Returns:
             Coverage percentage (0-1)
@@ -136,14 +134,14 @@ class TLScoringService:
                 return 0.0
 
             # Calculate total weight of snapshot
-            total_weight = await self._calculate_total_weight(db, snapshot_cluster_ids)
+            total_weight = await self.calculate_total_weight(db, snapshot_cluster_ids)
 
             if total_weight == 0:
                 logger.info("🎯 Total weight = 0 - coverage = 0%")
                 return 0.0
 
             # Calculate weight of matched clusters
-            matched_weight = await self._calculate_total_weight(db, matched_cluster_ids)
+            matched_weight = await self.calculate_total_weight(db, matched_cluster_ids)
 
             coverage = float(matched_weight) / float(total_weight)
             coverage = max(0.0, min(1.0, coverage))  # Clamp to [0, 1]
@@ -157,11 +155,8 @@ class TLScoringService:
             logger.error(f"❌ Coverage calculation failed: {e}")
             return 0.0
 
-    async def _calculate_total_weight(
-        self,
-        db: AsyncSession,
-        cluster_ids: List[str],
-    ) -> float:
+    @staticmethod
+    async def calculate_total_weight(db: AsyncSession, cluster_ids: List[str]) -> float:
         """Calculate total weight for a set of clusters.
 
         Fetches all answers for all clusters in a single query to avoid N+1.
