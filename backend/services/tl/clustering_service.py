@@ -9,12 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from backend.models.tl import TLCluster, TLAnswer
 from backend.services.tl.matching_service import TLMatchingService
+from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
-
-# Configuration
-CLUSTER_JOIN_THRESHOLD = 0.75
-CLUSTER_DUPLICATE_THRESHOLD = 0.90
 
 
 def _is_sqlite(db: AsyncSession) -> bool:
@@ -114,9 +111,12 @@ async def calculate_cluster_weight(db: AsyncSession, cluster_id: str) -> float:
         Cluster weight
     """
     try:
-        # Get all answers in cluster
+        # Get all active answers in cluster
         result = await db.execute(
-            select(TLAnswer).where(TLAnswer.cluster_id == cluster_id)
+            select(TLAnswer).where(
+                TLAnswer.cluster_id == cluster_id,
+                TLAnswer.is_active == True,
+            )
         )
         answers = result.scalars().all()
 
@@ -365,7 +365,7 @@ async def prune_corpus(db: AsyncSession, prompt_id: str, keep_count: int = 1000)
         (removed_count, current_active_count)
     """
     try:
-        logger.debug(f"🧹 Pruning corpus for prompt {prompt_id}, target={keep_count}")
+        logger.debug(f"?? Pruning corpus for prompt {prompt_id}, target={keep_count}")
 
         # Get all active answers
         result = await db.execute(
@@ -377,7 +377,7 @@ async def prune_corpus(db: AsyncSession, prompt_id: str, keep_count: int = 1000)
         active_answers = result.scalars().all()
 
         if len(active_answers) <= keep_count:
-            logger.debug(f"✅ Corpus within cap ({len(active_answers)} <= {keep_count})")
+            logger.debug(f"? Corpus within cap ({len(active_answers)} <= {keep_count})")
             return 0, len(active_answers)
 
         # Group answers by cluster to preserve diversity
@@ -385,27 +385,27 @@ async def prune_corpus(db: AsyncSession, prompt_id: str, keep_count: int = 1000)
         unclustered = []
         for answer in active_answers:
             if answer.cluster_id:
-                if answer.cluster_id not in clusters_map:
-                    clusters_map[answer.cluster_id] = []
-                clusters_map[answer.cluster_id].append(answer)
+                clusters_map.setdefault(answer.cluster_id, []).append(answer)
             else:
                 unclustered.append(answer)
 
-        # Score each answer by usefulness (lower = better candidate for removal)
+        # Score each answer by usefulness and weight (lower = better candidate for removal)
         scored_answers = []
         for answer in active_answers:
             usefulness = await calculate_usefulness(answer)
-            scored_answers.append((answer, usefulness))
+            capped_count = min(answer.answer_players_count or 0, 20)
+            answer_weight = 1.0 + math.log(1.0 + float(capped_count))
+            scored_answers.append((answer, usefulness, answer_weight))
 
-        # Sort by score (ascending - remove lowest usefulness first)
-        scored_answers.sort(key=lambda x: x[1])
+        # Sort by score (ascending - remove lowest usefulness first, then lowest weight)
+        scored_answers.sort(key=lambda x: (x[1], x[2]))
 
         # Mark lowest-scoring answers as inactive, preserving cluster diversity
         to_remove_count = len(active_answers) - keep_count
         removed = 0
         marked_for_removal = set()
 
-        for answer, score in scored_answers:
+        for answer, usefulness, answer_weight in scored_answers:
             if removed >= to_remove_count:
                 break
 
@@ -423,15 +423,15 @@ async def prune_corpus(db: AsyncSession, prompt_id: str, keep_count: int = 1000)
             marked_for_removal.add(answer.answer_id)
             removed += 1
             logger.debug(
-                f"🗑️  Marked answer {answer.answer_id} inactive "
-                f"(usefulness={score:.3f})"
+                f"???  Marked answer {answer.answer_id} inactive "
+                f"(usefulness={usefulness:.3f}, weight={answer_weight:.3f})"
             )
 
         await db.flush()
-        logger.debug(f"✅ Pruned {removed} answers, remaining={len(active_answers) - removed}")
+        logger.debug(f"? Pruned {removed} answers, remaining={len(active_answers) - removed}")
         return removed, len(active_answers) - removed
     except Exception as e:
-        logger.error(f"❌ Corpus pruning failed: {e}")
+        logger.error(f"? Corpus pruning failed: {e}")
         return 0, 0
 
 
@@ -445,6 +445,9 @@ class TLClusteringService:
             matching_service: MatchingService instance for similarity calculations
         """
         self.matching = matching_service or TLMatchingService()
+        settings = get_settings()
+        self.cluster_join_threshold = settings.tl_cluster_join_threshold
+        self.cluster_duplicate_threshold = settings.tl_cluster_duplicate_threshold
 
     async def assign_cluster(
         self,
@@ -531,10 +534,13 @@ class TLClusteringService:
                     best_cluster_size = size
 
             # Decide action based on similarity threshold
-            if best_similarity >= CLUSTER_JOIN_THRESHOLD and best_cluster_id is not None:
+            if best_similarity >= self.cluster_join_threshold and best_cluster_id is not None:
                 # Join existing cluster - update via raw SQL to avoid pgvector issues
+                log_prefix = "?? Joining cluster"
+                if best_similarity >= self.cluster_duplicate_threshold:
+                    log_prefix = "?? Joining cluster (near-duplicate)"
                 logger.debug(
-                    f"🔗 Joining cluster {best_cluster_id} "
+                    f"{log_prefix} {best_cluster_id} "
                     f"(similarity={best_similarity:.3f})"
                 )
                 await _update_centroid_raw(
@@ -551,3 +557,6 @@ class TLClusteringService:
         except Exception as e:
             logger.error(f"❌ Cluster assignment failed: {e}")
             raise
+
+
+

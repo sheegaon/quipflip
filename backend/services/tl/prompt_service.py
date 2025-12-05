@@ -47,7 +47,7 @@ class TLPromptService:
                 select(TLPrompt, func.count(TLAnswer.answer_id).label('answer_count'))
                 .options(load_only(TLPrompt.prompt_id, TLPrompt.text, TLPrompt.is_active, TLPrompt.ai_seeded,
                                    TLPrompt.created_at))
-                .outerjoin(TLAnswer)
+                .outerjoin(TLAnswer, TLAnswer.is_active == True)
                 .where(TLPrompt.is_active == True)
                 .group_by(TLPrompt.prompt_id)
             )
