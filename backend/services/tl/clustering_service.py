@@ -244,9 +244,10 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
             centroid_value = json.dumps(new_centroid)
         elif is_vector:
             # PostgreSQL with pgvector column
+            # Use CAST() instead of :: to avoid asyncpg parameter syntax conflict
             update_query = """
                 UPDATE tl_cluster
-                SET centroid_embedding = :centroid::vector,
+                SET centroid_embedding = CAST(:centroid AS vector),
                     size = :new_size,
                     updated_at = NOW()
                 WHERE cluster_id = :cluster_id
@@ -255,9 +256,10 @@ async def _update_centroid_raw(db: AsyncSession, cluster_id: str, old_size: int,
             centroid_value = '[' + ','.join(str(x) for x in new_centroid) + ']'
         else:
             # PostgreSQL with JSON column
+            # Use CAST() instead of :: to avoid asyncpg parameter syntax conflict
             update_query = """
                 UPDATE tl_cluster
-                SET centroid_embedding = :centroid::jsonb,
+                SET centroid_embedding = CAST(:centroid AS jsonb),
                     size = :new_size,
                     updated_at = NOW()
                 WHERE cluster_id = :cluster_id
@@ -316,16 +318,18 @@ async def _create_cluster_raw(
             centroid_value = json.dumps(centroid_embedding)
         elif is_vector:
             # PostgreSQL with pgvector column
+            # Use CAST() instead of :: to avoid asyncpg parameter syntax conflict
             insert_query = """
                 INSERT INTO tl_cluster (cluster_id, prompt_id, centroid_embedding, size, example_answer_id, created_at, updated_at)
-                VALUES (:cluster_id::uuid, :prompt_id::uuid, :centroid::vector, 1, :example_answer_id::uuid, NOW(), NOW())
+                VALUES (CAST(:cluster_id AS uuid), CAST(:prompt_id AS uuid), CAST(:centroid AS vector), 1, CAST(:example_answer_id AS uuid), NOW(), NOW())
             """
             centroid_value = '[' + ','.join(str(x) for x in centroid_embedding) + ']'
         else:
             # PostgreSQL with JSON column
+            # Use CAST() instead of :: to avoid asyncpg parameter syntax conflict
             insert_query = """
                 INSERT INTO tl_cluster (cluster_id, prompt_id, centroid_embedding, size, example_answer_id, created_at, updated_at)
-                VALUES (:cluster_id::uuid, :prompt_id::uuid, :centroid::jsonb, 1, :example_answer_id::uuid, NOW(), NOW())
+                VALUES (CAST(:cluster_id AS uuid), CAST(:prompt_id AS uuid), CAST(:centroid AS jsonb), 1, CAST(:example_answer_id AS uuid), NOW(), NOW())
             """
             centroid_value = json.dumps(centroid_embedding)
 
