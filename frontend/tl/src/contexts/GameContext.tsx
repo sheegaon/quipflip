@@ -129,19 +129,17 @@ export const GameProvider: React.FC<{
               associateVisitorWithPlayer(result.visitorId, guestResponse.username);
             }
 
-            const playerData = await apiClient.tlGetBalance(controller.signal);
-            if (isMounted) {
-              const guestPlayer: TLPlayer = {
-                ...guestResponse.player,
-                username: guestResponse.username,
-                wallet: playerData.tl_wallet,
-                vault: playerData.tl_vault,
-                tl_wallet: playerData.tl_wallet,
-                tl_vault: playerData.tl_vault,
-              };
+            // Use wallet/vault from createGuest response directly (no extra API call)
+            const guestPlayer: TLPlayer = {
+              ...guestResponse.player,
+              username: guestResponse.username,
+              wallet: guestResponse.wallet,
+              vault: guestResponse.vault,
+              tl_wallet: guestResponse.wallet,
+              tl_vault: guestResponse.vault,
+            };
 
-              setPlayer(guestPlayer);
-            }
+            setPlayer(guestPlayer);
           } catch (guestErr) {
             if (controller.signal.aborted) return;
             gameContextLogger.error('❌ Failed to create ThinkLink guest account:', guestErr);

@@ -44,32 +44,45 @@ async def _get_prior_guesses(db: AsyncSession, round_id: str) -> List[str]:
 
 
 async def _build_snapshot_answers(db: AsyncSession, answer_ids: List[str]) -> List[Dict]:
-    """Build answer data for matching from snapshot IDs."""
+    """Build answer data for matching from snapshot IDs.
+
+    Uses raw SQL to avoid pgvector deserialization issues when embeddings are
+    stored as JSON arrays.
+    """
+    from sqlalchemy import text
+
     if not answer_ids:
+        logger.warning("No answer_ids sent, returning empty list")
         return []
 
-    result = await db.execute(
-        select(TLAnswer).where(TLAnswer.answer_id.in_(answer_ids))
-    )
-    answers = result.scalars().all()
+    # Use raw SQL to avoid pgvector type handler issues
+    # The database stores embeddings as JSON, so they'll deserialize as lists
+    query = text("""
+        SELECT answer_id, text, embedding, cluster_id
+        FROM tl_answer
+        WHERE answer_id = ANY(:answer_ids)
+    """)
 
-    # DEBUG: Log embedding types from pgvector to diagnose conversion issues
-    if answers:
-        first_embedding = answers[0].embedding
+    result = await db.execute(query, {"answer_ids": answer_ids})
+    rows = result.fetchall()
+
+    # DEBUG: Log embedding types to diagnose conversion issues
+    if rows:
+        first_embedding = rows[0][2]
         logger.info(
-            f"🔬 EMBEDDING DEBUG: pgvector returned type={type(first_embedding).__name__}, "
+            f"🔬 EMBEDDING DEBUG: returned type={type(first_embedding).__name__}, "
             f"len={len(first_embedding) if hasattr(first_embedding, '__len__') else 'N/A'}, "
-            f"sample_values={list(first_embedding)[:5] if hasattr(first_embedding, '__iter__') else 'N/A'}..."
+            f"sample_values={first_embedding[:5] if hasattr(first_embedding, '__getitem__') else 'N/A'}..."
         )
 
     return [
         {
-            "answer_id": str(a.answer_id),
-            "text": a.text,
-            "embedding": a.embedding,
-            "cluster_id": str(a.cluster_id) if a.cluster_id else None,
+            "answer_id": str(row[0]),
+            "text": row[1],
+            "embedding": row[2],  # Already a list from JSON deserialization
+            "cluster_id": str(row[3]) if row[3] else None,
         }
-        for a in answers
+        for row in rows
     ]
 
 
