@@ -161,7 +161,11 @@ class TLRoundService:
             snapshot_cluster_ids = list(set([str(a.cluster_id) for a in answers if a.cluster_id]))
 
             # Calculate total snapshot weight (sum of all cluster weights)
-            total_weight = await self.scoring_svc.calculate_total_weight(db, snapshot_cluster_ids)
+            total_weight = await self.scoring_svc.calculate_total_weight(
+                db,
+                snapshot_cluster_ids,
+                snapshot_answer_ids=snapshot_answer_ids,
+            )
 
             # Create round
             round = TLRound(
@@ -349,12 +353,8 @@ class TLRoundService:
             db.add(guess)
             await db.flush()
 
-            # Calculate current coverage
-            current_coverage = await self.scoring_svc.calculate_coverage(
-                db,
-                round.matched_clusters or [],
-                round.snapshot_cluster_ids,
-            )
+            # Calculate current coverage using frozen snapshot data
+            current_coverage = await self.scoring_svc.calculate_coverage(db, round)
 
             # Check for round completion conditions and finalize if needed
             should_finalize = False
@@ -400,37 +400,7 @@ class TLRoundService:
             # Calculate payouts
             wallet_award, vault_award, gross_payout = self.scoring_svc.calculate_payout(coverage)
 
-            # Get player
-            player = await db.get(Player, player_id)
-            if not player or not player.tl_player_data:
-                logger.error(f"❌ Player or TL data not found for finalization: {player_id}")
-                return
-
-            # Apply wallet award
-            if wallet_award > 0:
-                player.tl_player_data.wallet += wallet_award
-                wallet_transaction = TLTransaction(
-                    player_id=player_id,
-                    amount=wallet_award,
-                    transaction_type='round_payout_wallet',
-                    round_id=str(round.round_id),
-                    description=f'Round payout - wallet ({coverage:.1%} coverage)',
-                )
-                db.add(wallet_transaction)
-
-            # Apply vault award
-            if vault_award > 0:
-                player.tl_player_data.vault += vault_award
-                vault_transaction = TLTransaction(
-                    player_id=player_id,
-                    amount=vault_award,
-                    transaction_type='round_payout_vault',
-                    round_id=str(round.round_id),
-                    description=f'Round payout - vault ({coverage:.1%} coverage)',
-                )
-                db.add(vault_transaction)
-
-            # Finalize the round using the standalone function
+            # Finalize the round using the scoring service (handles wallet/vault via transactions)
             await self.scoring_svc.finalize_round(
                 db, round, wallet_award, vault_award, gross_payout, coverage
             )
