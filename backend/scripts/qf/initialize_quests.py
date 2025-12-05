@@ -78,7 +78,6 @@ async def initialize_quests_for_all_players():
                     )
                     continue
 
-                logger.info(f"Player {username} ({player_id}) already has all starter quests, skipping")
                 skipped_count += 1
 
             await db.commit()

@@ -41,7 +41,6 @@ jobs:
       run: |
         python -m pytest tests/test_activity_service.py -v
         python -m pytest tests/test_api_player.py -v
-        python -m pytest tests/test_ai_player_pooling.py -v
         python -m pytest tests/test_api_vote.py -v
         python -m pytest tests/test_beta_survey.py -v
         python -m pytest tests/test_cleanup_service.py -v

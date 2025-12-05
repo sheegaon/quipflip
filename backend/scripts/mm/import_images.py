@@ -32,7 +32,7 @@ settings = get_settings()
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
 # Paths
-IMAGES_DIR = Path(__file__).parent / 'mm_images'
+IMAGES_DIR = Path(__file__).parent.parent.parent / 'data' / 'mm_images'
 SEED_CAPTIONS = [
     "This seemed like a good idea in the planning phase.",
     "I’m not saying it’s wrong—I’m saying it’s impressive you committed.",
