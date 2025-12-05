@@ -145,23 +145,30 @@ async def sync_prompts_with_database():
             # Show current statistics
             result = await db.execute(
                 select(
-                    Prompt.category, 
+                    Prompt.category,
                     func.count(Prompt.prompt_id).label('total'),
                     func.sum(case((Prompt.enabled == True, 1), else_=0)).label('enabled')
                 )
                 .group_by(Prompt.category)
                 .order_by(Prompt.category)
             )
-            
-            logger.info("Current prompt library status:")
+
+            category_details = []
             total_prompts = 0
             total_enabled = 0
-            for category, total, enabled in result:
-                enabled = enabled or 0  # Handle None case
-                total_prompts += total
-                total_enabled += enabled
-                logger.info(f"  {category}: {enabled}/{total} enabled")
-            logger.info(f"Sync summary: {total_enabled}/{total_prompts} prompts enabled")
+            
+            rows = result.all()
+            if rows:
+                for category, total, enabled in rows:
+                    enabled = enabled or 0
+                    total_prompts += total
+                    total_enabled += enabled
+                    category_details.append(f"{category}: {enabled}/{total}")
+                
+                category_summary_str = ", ".join(category_details)
+                logger.info(f"Prompt library status: {total_enabled}/{total_prompts} enabled. Breakdown: [{category_summary_str}]")
+            else:
+                logger.info("Prompt library is empty.")
 
     except Exception as e:
         logger.error(f"Failed to sync prompts: {e}")
