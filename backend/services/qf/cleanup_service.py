@@ -155,8 +155,6 @@ class QFCleanupService:
         deleted_count = self._normalize_rowcount(result.rowcount)
         if deleted_count > 0:
             logger.warning(f"Cleaned up {deleted_count} orphaned refresh tokens")
-        else:
-            logger.info("No orphaned refresh tokens found")
 
         return deleted_count
 
@@ -179,8 +177,6 @@ class QFCleanupService:
         deleted_count = self._normalize_rowcount(result.rowcount)
         if deleted_count > 0:
             logger.info(f"Cleaned up {deleted_count} expired/revoked refresh tokens")
-        else:
-            logger.info("No expired refresh tokens found")
 
         return deleted_count
 
@@ -466,7 +462,6 @@ class QFCleanupService:
         test_players = await self.get_test_players()
 
         if not test_players:
-            logger.info("No test players found")
             return {}
 
         logger.info(f"Found {len(test_players)} test player(s)")
@@ -566,7 +561,6 @@ class QFCleanupService:
         inactive_guest_ids = [guest_id for guest_id in guest_ids if guest_id not in guests_with_activity]
 
         if not inactive_guest_ids:
-            logger.info(f"Found {len(all_old_guests)} guest(s) but all have activity")
             return 0
 
         logger.info(f"Found {len(inactive_guest_ids)} inactive guest player(s) to clean up")
@@ -619,7 +613,6 @@ class QFCleanupService:
         ]
 
         if not candidates:
-            logger.info("No guest usernames to recycle")
             return 0
 
         processed_candidates: list[tuple[QFPlayer, str]] = []
@@ -643,7 +636,6 @@ class QFCleanupService:
             conflict_prefixes.add(first_canonical.rstrip("0123456789"))
 
         if not processed_candidates:
-            logger.info("No guest usernames to recycle")
             return 0
 
         conflict_conditions = [
@@ -696,7 +688,6 @@ class QFCleanupService:
                     f"Unable to recycle username for guest {guest.player_id} after exhausting suffix attempts")
 
         if not updates:
-            logger.info("No guest usernames to recycle")
             return 0
 
         logger.info(f"Prepared guest username updates: {updates}")
@@ -765,10 +756,9 @@ class QFCleanupService:
         results["party_inactive_participants_removed"] = party_cleanup["participants_removed"]
         results["party_sessions_deleted"] = party_cleanup["sessions_deleted"]
         logger.info(
-            "Party cleanup stats: %s sessions checked, %s participants removed, %s sessions deleted",
-            party_cleanup["sessions_checked"],
-            party_cleanup["participants_removed"],
-            party_cleanup["sessions_deleted"],
+            f"Party cleanup stats: {party_cleanup['sessions_checked']} sessions checked, "
+            f"{party_cleanup['participants_removed']} participants removed, "
+            f"{party_cleanup['sessions_deleted']} sessions deleted",
         )
 
         test_player_results = await self.cleanup_test_players()

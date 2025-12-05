@@ -289,7 +289,7 @@ async def cleanup_cycle():
     from backend.services.qf.cleanup_service import QFCleanupService
 
     # Initial startup delay
-    startup_delay = 120
+    startup_delay = 30
     logger.info(f"Cleanup cycle starting in {startup_delay}s")
     await asyncio.sleep(startup_delay)
 
@@ -323,7 +323,7 @@ async def party_maintenance_cycle():
     from backend.tasks.party_maintenance import run_party_maintenance
 
     # Initial startup delay to let other services initialize
-    startup_delay = 90
+    startup_delay = 60
     logger.info(f"Party maintenance cycle starting in {startup_delay}s")
     await asyncio.sleep(startup_delay)
 
@@ -464,6 +464,10 @@ async def lifespan(app_instance: FastAPI):
     #     logger.info(f"IR backup cycle task started (runs every {settings.ir_ai_backup_delay_minutes} minutes)")
     # except Exception as e:
     #     logger.error(f"Failed to start IR backup cycle: {e}")
+
+    logger.info("============================================================")
+    logger.info("Crowdcraft Labs API Started")
+    logger.info("============================================================")
 
     try:
         yield

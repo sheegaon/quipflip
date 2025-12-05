@@ -1,15 +1,19 @@
 {
-  "name": "quipflip-monorepo",
+  "name": "crowdcraft-monorepo",
   "private": true,
   "workspaces": [
     "frontend/crowdcraft",
     "frontend/qf",
     "frontend/mm",
-    "frontend/ir"
+    "frontend/ir",
+    "frontend/tl"
   ],
   "scripts": {
     "build:crowdcraft": "cd frontend/crowdcraft && npm run build",
     "build:qf": "cd frontend/qf && npm run build",
+    "build:mm": "cd frontend/mm && npm run build",
+    "build:ir": "cd frontend/ir && npm run build",
+    "build:tl": "cd frontend/tl && npm run build",
     "install:all": "npm install --workspaces"
   },
   "devDependencies": {

@@ -695,22 +695,15 @@ class QFVoteService:
 
         # Track consecutive incorrect votes for guests
         if player.is_guest:
+            from backend.services.qf.player_service import QFPlayerService
+            player_service = QFPlayerService(self.db)
+            
             if correct:
                 # Reset consecutive incorrect votes on correct vote
-                player.consecutive_incorrect_votes = 0
+                await player_service.reset_incorrect_vote_count(player)
             else:
-                # Increment consecutive incorrect votes
-                player.consecutive_incorrect_votes += 1
-
-                # Lock out guest after configurable number of incorrect votes
-                if player.consecutive_incorrect_votes >= settings.guest_vote_lockout_threshold:
-                    lockout_duration = timedelta(hours=settings.guest_vote_lockout_hours)
-                    player.vote_lockout_until = datetime.now(UTC) + lockout_duration
-                    logger.warning(
-                        "Guest player "
-                        f"{player.player_id} locked out from voting for {settings.guest_vote_lockout_hours} hour(s) "
-                        f"due to {player.consecutive_incorrect_votes} consecutive incorrect votes"
-                    )
+                # Track incorrect vote (handles lockout if threshold reached)
+                await player_service.track_incorrect_vote(player)
 
         # Update round
         round.status = "submitted"

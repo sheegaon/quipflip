@@ -69,7 +69,8 @@ class TLMatchingService:
 
         # Checkpoint DB cache every 100 new embeddings
         self._generated_count += 1
-        await self._maybe_checkpoint_cache(db)
+        if self._generated_count % 100 == 0:
+            logger.info(f"💾 Embedding cache checkpoint reached: {self._generated_count} generated")
 
         logger.info(f"✅ Embedding generated (memory cache: {len(self.embedding_cache)})")
         return embedding
@@ -96,11 +97,7 @@ class TLMatchingService:
         """Root method that contacts OpenAI for embeddings."""
         try:
             logger.info(f"📞 Generating embedding for: {text[:50]}...")
-            response = await self.client.embeddings.create(
-                model=self.embedding_model,
-                input=text,
-                dimensions=1536,
-            )
+            response = await self.client.embeddings.create(model=self.embedding_model, input=text, dimensions=1536)
             return response.data[0].embedding
         except Exception as e:
             logger.error(f"❌ Failed to generate embedding: {e}")
@@ -108,8 +105,8 @@ class TLMatchingService:
 
     async def _get_cached_embedding(self, text: str, db: Optional[AsyncSession] = None) -> Optional[List[float]]:
         """Check DB for cached embedding."""
-        async def _query(session: AsyncSession) -> Optional[List[float]]:
-            result = await session.execute(
+        async def _query(as_session: AsyncSession) -> Optional[List[float]]:
+            result = await as_session.execute(
                 select(PhraseEmbedding).where(
                     PhraseEmbedding.phrase == text,
                     PhraseEmbedding.model == self.embedding_model,
@@ -131,20 +128,20 @@ class TLMatchingService:
         db: Optional[AsyncSession] = None
     ) -> None:
         """Store embedding in DB cache."""
-        async def _store(session: AsyncSession, commit: bool = True) -> None:
-            record = PhraseEmbedding(
+        async def _store(as_session: AsyncSession, commit: bool = True) -> None:
+            embedding_record = PhraseEmbedding(
                 phrase=text,
                 model=self.embedding_model,
                 provider="openai",
                 embedding=embedding,
             )
-            session.add(record)
+            as_session.add(embedding_record)
             if commit:
                 try:
-                    await session.commit()
+                    await as_session.commit()
                 except IntegrityError:
                     # Already exists (race condition)
-                    await session.rollback()
+                    await as_session.rollback()
 
         if db:
             # External session - don't commit (caller controls transaction)
@@ -163,22 +160,6 @@ class TLMatchingService:
         else:
             async with AsyncSessionLocal() as session:
                 await _store(session, commit=True)
-
-    async def _maybe_checkpoint_cache(self, db: Optional[AsyncSession]) -> None:
-        """Log embedding cache progress every 100 new generations.
-
-        Note: We do NOT commit here when an external session is passed.
-        The caller is responsible for transaction management.
-        """
-
-        if self._generated_count % 100 != 0:
-            return
-
-        logger.info(f"💾 Embedding cache checkpoint reached: {self._generated_count} generated")
-
-        # Don't commit external sessions - caller controls the transaction
-        # This prevents "transaction is closed" errors when the caller has
-        # nested savepoints or other transaction management logic
 
     @staticmethod
     def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:

@@ -137,9 +137,7 @@ class TLRoundService:
             logger.info(f"🎮 Starting round for player {player_id}...")
 
             # Get player
-            result = await db.execute(
-                select(Player).where(Player.player_id == player_id)
-            )
+            result = await db.execute(select(Player).where(Player.player_id == player_id))
             player = result.scalars().first()
             if not player:
                 return None, None, "Player not found"
@@ -165,7 +163,7 @@ class TLRoundService:
             snapshot_cluster_ids = list(set([str(a.cluster_id) for a in answers if a.cluster_id]))
 
             # Calculate total snapshot weight (sum of all cluster weights)
-            total_weight = await self.scoring._calculate_total_weight(db, snapshot_cluster_ids)
+            total_weight = await self.scoring.calculate_total_weight(db, snapshot_cluster_ids)
 
             # Create round
             round = TLRound(
@@ -358,12 +356,11 @@ class TLRoundService:
                 db,
                 round.matched_clusters or [],
                 round.snapshot_cluster_ids,
-                str(round.prompt_id),
             )
 
             # Check for round completion conditions and finalize if needed
             should_finalize = False
-            
+
             if round.strikes >= self.max_strike_count:
                 # Round ended due to strikes
                 round.status = 'completed'  # Change from 'abandoned' to 'completed'
@@ -394,7 +391,7 @@ class TLRoundService:
 
     async def _finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> None:
         """Finalize a completed round with payouts and statistics.
-        
+
         Args:
             db: Database session
             round: The round to finalize
@@ -404,16 +401,16 @@ class TLRoundService:
         try:
             # Import the standalone function
             from backend.services.tl.scoring_service import finalize_round
-            
+
             # Calculate payouts
             wallet_award, vault_award, gross_payout = self.scoring.calculate_payout(coverage)
-            
+
             # Get player
             player = await db.get(Player, player_id)
             if not player or not player.tl_player_data:
                 logger.error(f"❌ Player or TL data not found for finalization: {player_id}")
                 return
-                
+
             # Apply wallet award
             if wallet_award > 0:
                 player.tl_player_data.wallet += wallet_award
@@ -425,7 +422,7 @@ class TLRoundService:
                     description=f'Round payout - wallet ({coverage:.1%} coverage)',
                 )
                 db.add(wallet_transaction)
-                
+
             # Apply vault award
             if vault_award > 0:
                 player.tl_player_data.vault += vault_award
@@ -437,17 +434,17 @@ class TLRoundService:
                     description=f'Round payout - vault ({coverage:.1%} coverage)',
                 )
                 db.add(vault_transaction)
-            
+
             # Finalize the round using the standalone function
             await finalize_round(
                 db, round, wallet_award, vault_award, gross_payout, coverage
             )
-            
+
             logger.info(
                 f"✅ Round finalized: {round.round_id} | coverage={coverage:.1%} | "
                 f"wallet_award={wallet_award} | vault_award={vault_award} | gross={gross_payout}"
             )
-            
+
         except Exception as e:
             logger.error(f"❌ Round finalization failed: {e}")
             raise

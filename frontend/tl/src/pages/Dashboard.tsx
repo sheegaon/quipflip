@@ -59,6 +59,8 @@ export const Dashboard: React.FC = () => {
     setIsStartingRound(true);
     setError(null);
 
+    console.log('🚀 Starting round request...');
+
     try {
       const round = await apiClient.tlStartRound();
       navigate('/play', { state: { round } });

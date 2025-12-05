@@ -292,7 +292,10 @@ class QFPlayerService(PlayerServiceBase):
     ) -> tuple[bool, str]:
         """Check if player can start vote round."""
         from backend.services.qf.queue_service import QFQueueService
-        from datetime import datetime, UTC
+
+        # Refresh vote lockout state for guests (clears expired lockouts)
+        if player.is_guest:
+            await self.refresh_vote_lockout_state(player)
 
         # Load game-specific player data for wallet, active_round_id, and vote_lockout_until
         result = await self.db.execute(
@@ -331,3 +334,90 @@ class QFPlayerService(PlayerServiceBase):
                 return False, "no_phrasesets_available"
 
         return True, ""
+
+    async def refresh_vote_lockout_state(self, player: Player) -> bool:
+        """
+        Refresh vote lockout state for guest players.
+        
+        Clears expired lockouts and resets consecutive incorrect votes.
+        Only applies to guest players.
+        
+        Returns:
+            bool: True if lockout was cleared, False if no change
+        """
+        if not player.is_guest:
+            return False
+
+        # Load player data
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+        
+        if not player_data or not player_data.vote_lockout_until:
+            return False
+
+        # Check if lockout has expired
+        if datetime.now(UTC) >= player_data.vote_lockout_until:
+            # Clear expired lockout
+            player_data.vote_lockout_until = None
+            player_data.consecutive_incorrect_votes = 0
+            await self.db.commit()
+            logger.info(f"Cleared expired vote lockout for guest player {player.player_id}")
+            return True
+
+        return False
+
+    async def track_incorrect_vote(self, player: Player) -> None:
+        """
+        Track an incorrect vote for a guest player.
+        
+        Increments consecutive incorrect votes and applies lockout if threshold is reached.
+        Only applies to guest players.
+        """
+        if not player.is_guest:
+            return
+
+        # Load or create player data
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+        
+        if not player_data:
+            player_data = QFPlayerData(player_id=player.player_id)
+            self.db.add(player_data)
+
+        # Increment consecutive incorrect votes
+        player_data.consecutive_incorrect_votes = (player_data.consecutive_incorrect_votes or 0) + 1
+
+        # Apply lockout if threshold reached
+        if player_data.consecutive_incorrect_votes >= settings.guest_vote_lockout_threshold:
+            from datetime import timedelta
+            player_data.vote_lockout_until = datetime.now(UTC) + timedelta(hours=settings.guest_vote_lockout_hours)
+            logger.info(f"Applied vote lockout to guest player {player.player_id} for {settings.guest_vote_lockout_hours} hours")
+
+        await self.db.commit()
+
+    async def reset_incorrect_vote_count(self, player: Player) -> None:
+        """
+        Reset consecutive incorrect vote count for a guest player.
+        
+        Called when a guest makes a correct vote.
+        Only applies to guest players.
+        """
+        if not player.is_guest:
+            return
+
+        # Load player data
+        result = await self.db.execute(
+            select(QFPlayerData).where(QFPlayerData.player_id == player.player_id)
+        )
+        player_data = result.scalar_one_or_none()
+        
+        if player_data and player_data.consecutive_incorrect_votes > 0:
+            player_data.consecutive_incorrect_votes = 0
+            # Also clear any active lockout since they got a correct vote
+            player_data.vote_lockout_until = None
+            await self.db.commit()
+            logger.info(f"Reset consecutive incorrect vote count for guest player {player.player_id}")

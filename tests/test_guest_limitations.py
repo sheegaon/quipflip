@@ -108,10 +108,16 @@ class TestGuestVoteLockout:
             )
             player = result.scalar_one()
 
+            # Ensure QF player data exists
+            if not player.qf_player_data:
+                from backend.models.qf.player_data import QFPlayerData
+                player.qf_player_data = QFPlayerData(player_id=player.player_id)
+                db_session.add(player.qf_player_data)
+
             # Simulate active lockout (future timestamp)
-            player.consecutive_incorrect_votes = settings.guest_vote_lockout_threshold
+            player.qf_player_data.consecutive_incorrect_votes = settings.guest_vote_lockout_threshold
             lockout_time = datetime.now(UTC) + timedelta(hours=settings.guest_vote_lockout_hours)
-            player.vote_lockout_until = lockout_time
+            player.qf_player_data.vote_lockout_until = lockout_time
             await db_session.commit()
 
             # Get fresh player instance to avoid stale state
@@ -121,8 +127,8 @@ class TestGuestVoteLockout:
             player = result.scalar_one()
 
             # Verify the lockout fields are set
-            assert player.vote_lockout_until is not None
-            assert player.vote_lockout_until > datetime.now(UTC)
+            assert player.qf_player_data.vote_lockout_until is not None
+            assert player.qf_player_data.vote_lockout_until > datetime.now(UTC)
 
             # Verify player cannot start a vote round
             player_service = QFPlayerService(db_session)
@@ -145,12 +151,18 @@ class TestGuestVoteLockout:
             )
             player = result.scalar_one()
 
+            # Ensure QF player data exists
+            if not player.qf_player_data:
+                from backend.models.qf.player_data import QFPlayerData
+                player.qf_player_data = QFPlayerData(player_id=player.player_id)
+                db_session.add(player.qf_player_data)
+
             # Simulate expired lockout (set lockout_until to 1 hour ago)
-            player.consecutive_incorrect_votes = settings.guest_vote_lockout_threshold
+            player.qf_player_data.consecutive_incorrect_votes = settings.guest_vote_lockout_threshold
             expired_lockout_time = datetime.now(UTC) - timedelta(
                 hours=settings.guest_vote_lockout_hours + 1
             )
-            player.vote_lockout_until = expired_lockout_time
+            player.qf_player_data.vote_lockout_until = expired_lockout_time
             await db_session.commit()
 
             # Get fresh player instance
@@ -160,7 +172,7 @@ class TestGuestVoteLockout:
             player = result.scalar_one()
 
             # Verify lockout is in the past
-            assert player.vote_lockout_until < datetime.now(UTC)
+            assert player.qf_player_data.vote_lockout_until < datetime.now(UTC)
 
             # Refresh lockout state and ensure it was cleared
             player_service = QFPlayerService(db_session)
@@ -173,8 +185,8 @@ class TestGuestVoteLockout:
                 select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
-            assert player.vote_lockout_until is None
-            assert player.consecutive_incorrect_votes == 0
+            assert player.qf_player_data.vote_lockout_until is None
+            assert player.qf_player_data.consecutive_incorrect_votes == 0
 
             # Should be able to start (or fail for other reasons like balance/no phrasesets)
             assert can_start or error in ["insufficient_balance", "no_phrasesets_available"]
@@ -201,9 +213,15 @@ class TestGuestVoteLockout:
             player = result.scalar_one()
             assert not player.is_guest
 
+            # Ensure QF player data exists
+            if not player.qf_player_data:
+                from backend.models.qf.player_data import QFPlayerData
+                player.qf_player_data = QFPlayerData(player_id=player.player_id)
+                db_session.add(player.qf_player_data)
+
             # Even if we set lockout fields, regular players shouldn't be affected
-            player.consecutive_incorrect_votes = 5
-            player.vote_lockout_until = datetime.now(UTC) + timedelta(hours=24)
+            player.qf_player_data.consecutive_incorrect_votes = 5
+            player.qf_player_data.vote_lockout_until = datetime.now(UTC) + timedelta(hours=24)
             await db_session.commit()
             await db_session.refresh(player)
 
@@ -229,6 +247,12 @@ class TestGuestVoteLockout:
                 select(QFPlayer).where(QFPlayer.player_id == player_id)
             )
             player = result.scalar_one()
+
+            # Ensure QF player data exists
+            if not player.qf_player_data:
+                from backend.models.qf.player_data import QFPlayerData
+                player.qf_player_data = QFPlayerData(player_id=player.player_id)
+                db_session.add(player.qf_player_data)
 
             # Simulate vote context to exercise VoteService logic
             unique_id = uuid.uuid4().hex[:8]
@@ -330,7 +354,7 @@ class TestGuestVoteLockout:
             db_session.add(vote_round)
 
             prior_incorrect = max(1, settings.guest_vote_lockout_threshold - 1)
-            player.consecutive_incorrect_votes = prior_incorrect
+            player.qf_player_data.consecutive_incorrect_votes = prior_incorrect
             await db_session.commit()
 
             # Reload entities to avoid stale state before invoking the service
@@ -355,5 +379,5 @@ class TestGuestVoteLockout:
                 select(QFPlayer).where(QFPlayer.player_id == player_id)
             )).scalar_one()
 
-            assert refreshed_player.consecutive_incorrect_votes == 0
-            assert refreshed_player.vote_lockout_until is None
+            assert refreshed_player.qf_player_data.consecutive_incorrect_votes == 0
+            assert refreshed_player.qf_player_data.vote_lockout_until is None
