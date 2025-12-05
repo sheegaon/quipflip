@@ -59,11 +59,31 @@ export const Dashboard: React.FC = () => {
     setIsStartingRound(true);
     setError(null);
 
+    console.log('🚀 Starting round request...');
+    const startTime = Date.now();
+
     try {
       const round = await apiClient.tlStartRound();
+      console.log(`✅ Round started in ${Date.now() - startTime}ms:`, round);
       navigate('/play', { state: { round } });
-    } catch (err) {
-      setError(extractErrorMessage(err) || 'Unable to start a round right now.');
+    } catch (err: unknown) {
+      console.error(`❌ Round start failed after ${Date.now() - startTime}ms:`, err);
+      const errorMsg = extractErrorMessage(err);
+
+      // Check for timeout or connection issues
+      const isTimeout = (err instanceof Error && err.message?.includes('timeout')) ||
+                       (typeof err === 'object' && err !== null && (err as any).code === 'ECONNABORTED');
+
+      const isServerError = typeof err === 'object' && err !== null &&
+                           (err as any).response?.status === 503;
+
+      if (isTimeout) {
+        setError('The server is taking too long to respond. Please try again.');
+      } else if (isServerError) {
+        setError('The server is temporarily unavailable. Please try again in a moment.');
+      } else {
+        setError(errorMsg || 'Unable to start a round right now.');
+      }
     } finally {
       setIsStartingRound(false);
     }
