@@ -157,7 +157,7 @@ All configurable via `backend/config.py`:
 - `tl_cluster_join_threshold`: 0.75 - add to existing cluster
 - `tl_cluster_duplicate_threshold`: 0.90 - reject as duplicate
 - `tl_topic_threshold`: 0.40 - minimum similarity to prompt
-- `tl_self_similarity_threshold`: 0.80 - reject if too similar to own prior guess
+- `tl_self_similarity_threshold`: 0.90 - reject if too similar to own prior guess
 
 ### Corpus Management
 - `tl_active_corpus_cap`: 1000 - max active answers per prompt

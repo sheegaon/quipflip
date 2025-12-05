@@ -277,7 +277,7 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
   tl_cluster_join_threshold: float = 0.75
   tl_cluster_duplicate_threshold: float = 0.90
   tl_topic_threshold: float = 0.40
-  tl_self_similarity_threshold: float = 0.80
+  tl_self_similarity_threshold: float = 0.90
 
   # ThinkLink Corpus
   tl_active_corpus_cap: int = 1000
