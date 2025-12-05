@@ -104,10 +104,10 @@ class TLRoundService:
             scoring_service: For scoring calculations
             prompt_service: For prompt management
         """
-        self.matching = matching_service
-        self.clustering = clustering_service
-        self.scoring = scoring_service
-        self.prompt = prompt_service
+        self.matching_svc = matching_service
+        self.clustering_svc = clustering_service
+        self.scoring_svc = scoring_service
+        self.prompt_svc = prompt_service
 
         settings = get_settings()
         self.entry_cost = settings.tl_entry_cost
@@ -148,14 +148,12 @@ class TLRoundService:
                 return None, None, "insufficient_balance"
 
             # Select prompt
-            prompt = await self.prompt.get_random_active_prompt(db)
+            prompt = await self.prompt_svc.get_random_active_prompt(db)
             if not prompt:
                 return None, None, "no_prompts_available"
 
             # Get active answers for snapshot
-            answers = await self.prompt.get_active_answers_for_prompt(
-                db, str(prompt.prompt_id), limit=1000
-            )
+            answers = await self.prompt_svc.get_active_answers_for_prompt(db, str(prompt.prompt_id), limit=1000)
             logger.info(f"📊 Snapshot: {len(answers)} active answers")
 
             # Build snapshot data
@@ -163,7 +161,7 @@ class TLRoundService:
             snapshot_cluster_ids = list(set([str(a.cluster_id) for a in answers if a.cluster_id]))
 
             # Calculate total snapshot weight (sum of all cluster weights)
-            total_weight = await self.scoring.calculate_total_weight(db, snapshot_cluster_ids)
+            total_weight = await self.scoring_svc.calculate_total_weight(db, snapshot_cluster_ids)
 
             # Create round
             round = TLRound(
@@ -301,11 +299,11 @@ class TLRoundService:
                 return {}, "invalid_phrase", error_msg
 
             # Generate embedding for guess
-            guess_embedding = await self.matching.generate_embedding(guess_text)
+            guess_embedding = await self.matching_svc.generate_embedding(guess_text)
 
             # Check self-similarity
             prior_guesses = await _get_prior_guesses(db, round_id)
-            is_too_similar, max_sim = await self.matching.check_self_similarity(guess_text, prior_guesses)
+            is_too_similar, max_sim = await self.matching_svc.check_self_similarity(guess_text, prior_guesses)
             if is_too_similar:
                 logger.info(f"⏭️  Guess rejected: too similar to prior (similarity={max_sim:.3f})")
                 similarity_note = (
@@ -316,7 +314,7 @@ class TLRoundService:
 
             # Find matches in snapshot
             snapshot_answers = await _build_snapshot_answers(db, round.snapshot_answer_ids)
-            matches = await self.matching.find_matches(
+            matches = await self.matching_svc.find_matches(
                 guess_text,
                 guess_embedding,
                 snapshot_answers,
@@ -352,7 +350,7 @@ class TLRoundService:
             await db.flush()
 
             # Calculate current coverage
-            current_coverage = await self.scoring.calculate_coverage(
+            current_coverage = await self.scoring_svc.calculate_coverage(
                 db,
                 round.matched_clusters or [],
                 round.snapshot_cluster_ids,
@@ -374,7 +372,7 @@ class TLRoundService:
 
             # Finalize round if completion conditions are met
             if should_finalize:
-                await self._finalize_round(db, round, current_coverage, player_id)
+                await self.finalize_round(db, round, current_coverage, player_id)
 
             return {
                 "was_match": was_match,
@@ -389,7 +387,7 @@ class TLRoundService:
             logger.exception(f"❌ Submit guess failed: {e}")
             return {}, "submit_failed", None
 
-    async def _finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> None:
+    async def finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> None:
         """Finalize a completed round with payouts and statistics.
 
         Args:
@@ -399,11 +397,8 @@ class TLRoundService:
             player_id: Player ID for transactions
         """
         try:
-            # Import the standalone function
-            from backend.services.tl.scoring_service import finalize_round
-
             # Calculate payouts
-            wallet_award, vault_award, gross_payout = self.scoring.calculate_payout(coverage)
+            wallet_award, vault_award, gross_payout = self.scoring_svc.calculate_payout(coverage)
 
             # Get player
             player = await db.get(Player, player_id)
@@ -436,7 +431,7 @@ class TLRoundService:
                 db.add(vault_transaction)
 
             # Finalize the round using the standalone function
-            await finalize_round(
+            await self.scoring_svc.finalize_round(
                 db, round, wallet_award, vault_award, gross_payout, coverage
             )
 

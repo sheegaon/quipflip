@@ -7,6 +7,8 @@ import random
 from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import load_only
+
 from backend.models.tl import TLPrompt, TLAnswer
 from backend.services.tl.matching_service import TLMatchingService
 
@@ -24,10 +26,8 @@ class TLPromptService:
         """
         self.matching = matching_service or TLMatchingService()
 
-    async def get_random_active_prompt(
-        self,
-        db: AsyncSession,
-    ) -> Optional[TLPrompt]:
+    @staticmethod
+    async def get_random_active_prompt(db: AsyncSession) -> Optional[TLPrompt]:
         """Select a random active prompt (weighted by corpus size).
 
         Prefer prompts with fuller answer corpus for better semantic space.
@@ -38,8 +38,6 @@ class TLPromptService:
         Returns:
             TLPrompt or None if no active prompts available
         """
-        from sqlalchemy.orm import load_only
-
         try:
             logger.info("🎲 Selecting random active prompt...")
 
@@ -47,7 +45,8 @@ class TLPromptService:
             # Use load_only to avoid loading embedding column (pgvector deserialization issue)
             result = await db.execute(
                 select(TLPrompt, func.count(TLAnswer.answer_id).label('answer_count'))
-                .options(load_only(TLPrompt.prompt_id, TLPrompt.text, TLPrompt.is_active, TLPrompt.ai_seeded, TLPrompt.created_at))
+                .options(load_only(TLPrompt.prompt_id, TLPrompt.text, TLPrompt.is_active, TLPrompt.ai_seeded,
+                                   TLPrompt.created_at))
                 .outerjoin(TLAnswer)
                 .where(TLPrompt.is_active == True)
                 .group_by(TLPrompt.prompt_id)
@@ -67,20 +66,13 @@ class TLPromptService:
             # Ensure weights are positive (use 1 as minimum to allow selection)
             weights = [max(1, w) for w in weights]
             selected_prompt = random.choices(prompts, weights=weights, k=1)[0]
-            logger.info(
-                f"✅ Selected prompt: '{selected_prompt.text[:50]}...' "
-                f"(id={selected_prompt.prompt_id})"
-            )
+            logger.info(f"✅ Selected prompt: '{selected_prompt.text[:50]}...' (id={selected_prompt.prompt_id})")
             return selected_prompt
         except Exception as e:
             logger.error(f"❌ Prompt selection failed: {e}")
             return None
 
-    async def seed_prompts_from_list(
-        self,
-        db: AsyncSession,
-        prompt_texts: List[str],
-    ) -> Tuple[int, int]:
+    async def seed_prompts_from_list(self, db: AsyncSession, prompt_texts: List[str]) -> Tuple[int, int]:
         """Seed prompts from a list of text strings.
 
         Args:
@@ -99,13 +91,11 @@ class TLPromptService:
             for text in prompt_texts:
                 try:
                     # Check if prompt already exists
-                    result = await db.execute(
-                        select(TLPrompt).where(TLPrompt.text == text.strip())
-                    )
+                    result = await db.execute(select(TLPrompt).where(TLPrompt.text == text.strip()))
                     existing = result.scalars().first()
 
                     if existing:
-                        logger.debug(f"⏭️  Skipping existing prompt: '{text[:50]}...'")
+                        logger.info(f"⏭️  Skipping existing prompt: '{text[:50]}...'")
                         skipped += 1
                         continue
 
@@ -121,23 +111,21 @@ class TLPromptService:
                     )
                     db.add(prompt)
                     created += 1
-                    logger.debug(f"✅ Created prompt: '{text[:50]}...'")
+                    logger.info(f"✅ Created prompt: '{text[:50]}...'")
 
                 except Exception as e:
                     logger.warning(f"⚠️  Failed to seed prompt '{text[:50]}...': {e}")
                     skipped += 1
 
             await db.flush()
-            logger.debug(f"✅ Seeding complete: {created} created, {skipped} skipped")
+            logger.info(f"✅ Seeding complete: {created} created, {skipped} skipped")
             return created, skipped
         except Exception as e:
             logger.error(f"❌ Prompt seeding failed: {e}")
             return 0, len(prompt_texts)
 
-    async def count_active_prompts(
-        self,
-        db: AsyncSession,
-    ) -> int:
+    @staticmethod
+    async def count_active_prompts(db: AsyncSession) -> int:
         """Get count of active prompts.
 
         Args:
@@ -156,11 +144,8 @@ class TLPromptService:
             logger.error(f"❌ Count active prompts failed: {e}")
             return 0
 
-    async def get_prompt_by_id(
-        self,
-        db: AsyncSession,
-        prompt_id: str,
-    ) -> Optional[TLPrompt]:
+    @staticmethod
+    async def get_prompt_by_id(db: AsyncSession, prompt_id: str) -> Optional[TLPrompt]:
         """Get a prompt by ID.
 
         Args:
@@ -170,8 +155,6 @@ class TLPromptService:
         Returns:
             TLPrompt or None
         """
-        from sqlalchemy.orm import load_only
-
         try:
             # Use load_only to avoid loading embedding column (pgvector deserialization issue)
             result = await db.execute(
@@ -184,12 +167,8 @@ class TLPromptService:
             logger.error(f"❌ Get prompt failed: {e}")
             return None
 
-    async def get_active_answers_for_prompt(
-        self,
-        db: AsyncSession,
-        prompt_id: str,
-        limit: int = 1000,
-    ) -> List[TLAnswer]:
+    @staticmethod
+    async def get_active_answers_for_prompt(db: AsyncSession, prompt_id: str, limit: int = 1000) -> List[TLAnswer]:
         """Get active answers for a prompt (for snapshot building).
 
         Args:
@@ -200,8 +179,6 @@ class TLPromptService:
         Returns:
             List of TLAnswer objects (without embeddings to avoid pgvector deserialization issues)
         """
-        from sqlalchemy.orm import load_only
-
         try:
             # Use load_only to avoid loading embedding column (pgvector deserialization issue)
             # The embedding will be loaded later in _build_snapshot_answers when needed
@@ -221,9 +198,7 @@ class TLPromptService:
                 .limit(limit)
             )
             answers = result.scalars().all()
-            logger.debug(
-                f"📊 Retrieved {len(answers)} active answers for prompt {prompt_id}"
-            )
+            logger.info(f"📊 Retrieved {len(answers)} active answers for prompt {prompt_id}")
             return answers
         except Exception as e:
             logger.error(f"❌ Get active answers failed: {e}")
