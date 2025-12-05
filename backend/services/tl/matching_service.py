@@ -165,23 +165,20 @@ class TLMatchingService:
                 await _store(session, commit=True)
 
     async def _maybe_checkpoint_cache(self, db: Optional[AsyncSession]) -> None:
-        """Commit embedding cache progress every 100 new generations."""
+        """Log embedding cache progress every 100 new generations.
+
+        Note: We do NOT commit here when an external session is passed.
+        The caller is responsible for transaction management.
+        """
 
         if self._generated_count % 100 != 0:
             return
 
         logger.info(f"💾 Embedding cache checkpoint reached: {self._generated_count} generated")
 
-        if not db:
-            # Each embedding is individually committed when using internal sessions
-            return
-
-        try:
-            await db.commit()
-            logger.info("✅ Cached embeddings committed (checkpoint)")
-        except Exception as e:
-            await db.rollback()
-            logger.warning(f"⚠️ Failed to commit embedding cache checkpoint: {e}")
+        # Don't commit external sessions - caller controls the transaction
+        # This prevents "transaction is closed" errors when the caller has
+        # nested savepoints or other transaction management logic
 
     @staticmethod
     def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
