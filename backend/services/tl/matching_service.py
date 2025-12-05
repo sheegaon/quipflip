@@ -27,6 +27,7 @@ class TLMatchingService:
 
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         self.embedding_model = settings.embedding_model
+        self.match_threshold = settings.tl_match_threshold
         # In-memory cache for session performance (supplements DB cache)
         self.embedding_cache: Dict[str, List[float]] = {}
         # Track how many embeddings we've generated to checkpoint DB cache
@@ -286,7 +287,7 @@ class TLMatchingService:
         guess_text: str,
         guess_embedding: List[float],
         snapshot_answers: List[Dict],
-        threshold: float = 0.55
+        threshold: float | None = None
     ) -> List[Dict]:
         """Find matching snapshot answers for a guess.
 
@@ -300,6 +301,15 @@ class TLMatchingService:
             List of matched answers with {answer_id, text, similarity, cluster_id}
         """
         try:
+            base_threshold = threshold if threshold is not None else self.match_threshold
+            answer_count = len(snapshot_answers or [])
+            # Dynamically lower threshold for sparse corpora to keep playability
+            if answer_count < 50:
+                threshold = min(base_threshold, 0.45)
+            elif answer_count < 100:
+                threshold = min(base_threshold, 0.50)
+            else:
+                threshold = base_threshold
             if not snapshot_answers:
                 logger.info("🎯 No snapshot answers to match against")
                 return []

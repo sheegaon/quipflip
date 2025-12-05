@@ -410,6 +410,10 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
   - `update_answer_stats(round: TLRound)`:
     - For all snapshot answers: increment shows
     - For matched answers: increment contributed_matches
+  - Matching threshold adjustments for sparse corpora:
+    - If snapshot has fewer than 50 answers, lower match threshold to 0.45
+    - If snapshot has fewer than 100 answers, lower match threshold to 0.50
+    - Otherwise use configured default (0.55)
 
 ### Phase 3: API Endpoints (Week 2-3)
 
