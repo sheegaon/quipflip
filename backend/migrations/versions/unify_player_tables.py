@@ -444,7 +444,7 @@ def upgrade() -> None:
     if 'mm_vote_rounds' in table_names:
         op.execute("""DELETE FROM mm_vote_rounds WHERE player_id NOT IN (SELECT player_id FROM players)""")
     if 'mm_captions' in table_names:
-        op.execute("""DELETE FROM mm_captions WHERE player_id NOT IN (SELECT player_id FROM players) AND 
+        op.execute("""DELETE FROM mm_captions WHERE author_player_id NOT IN (SELECT player_id FROM players) AND 
         author_player_id IS NOT NULL""")
     if 'mm_caption_submissions' in table_names:
         op.execute("""DELETE FROM mm_caption_submissions WHERE player_id NOT IN (SELECT player_id FROM players)""")
