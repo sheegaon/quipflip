@@ -38,7 +38,7 @@ jobs:
           set -o pipefail
           python scripts/verify.py backend 2>&1 | tee artifacts/backend.log
       - if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: backend-verification-log
           path: artifacts/backend.log
@@ -63,7 +63,7 @@ jobs:
           set -o pipefail
           python scripts/verify.py sqlite-integration 2>&1 | tee artifacts/sqlite-integration.log
       - if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sqlite-integration-log
           path: artifacts/sqlite-integration.log
@@ -89,7 +89,7 @@ jobs:
           set -o pipefail
           npm run frontend:verify 2>&1 | tee artifacts/frontend.log
       - if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: frontend-verification-log
           path: artifacts/frontend.log
