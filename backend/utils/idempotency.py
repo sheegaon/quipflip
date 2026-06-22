@@ -26,6 +26,11 @@ def _normalize_value(value):
         return None
     if isinstance(value, UUID):
         return value.hex
+    if isinstance(value, str):
+        try:
+            return UUID(value).hex
+        except ValueError:
+            pass
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, date):
@@ -37,7 +42,9 @@ def _normalize_value(value):
             str(key): _normalize_value(item)
             for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
         }
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, (set, frozenset)):
+        return sorted([_normalize_value(item) for item in value], key=lambda item: str(item))
+    if isinstance(value, (list, tuple)):
         return [_normalize_value(item) for item in value]
     return value
 
