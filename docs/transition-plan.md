@@ -194,7 +194,12 @@ a wrapper. Secrets do not live in the repository, plist, command line, or logs.
 
 ## Workstreams
 
-### A. Trustworthy verification
+Detailed checklists live in the
+[transition workstream plan index](transition/README.md). The roadmap summaries
+below define cross-workstream scope and exit criteria; the linked plans define
+phases and implementation evidence.
+
+### [A. Trustworthy verification](transition/workstream-a-trustworthy-verification.md)
 
 - **A1 — Define test tiers.** Add pytest markers and configuration so the default
   deterministic gate excludes `*_localhost*` and stress suites. A test that needs a
@@ -220,7 +225,7 @@ Exit: a clean checkout can run one documented deterministic command; production-
 configured SQLite integration and smoke are separate named gates; failures are
 reproducible.
 
-### B. Lifecycle inventory and database invariants
+### [B. Lifecycle inventory and database invariants](transition/workstream-b-lifecycle-invariants.md)
 
 - **B1 — State-machine inventory.** For QF solo, QF Party, MM, IR, and TL, document
   states, commands, actors, deadlines, money movements, forbidden disclosures, and
@@ -242,7 +247,7 @@ reproducible.
 Exit: invalid ownership, duplicate payout, and double-claim states are rejected by
 the database even if coordination is bypassed.
 
-### C. QuipFlip solo hardening
+### [C. QuipFlip solo hardening](transition/workstream-c-quipflip-solo.md)
 
 - Regression-first coverage for concurrent prompt/copy/vote claims, one active
   assignment per player, queue restart, duplicate submission, timeout refund,
@@ -260,7 +265,7 @@ the database even if coordination is bypassed.
 Exit: the complete QF solo smoke passes on a built server and production-configured
 SQLite; repeated or concurrent commands cannot corrupt ownership or money.
 
-### D. QuipFlip Party Mode
+### [D. QuipFlip Party Mode](transition/workstream-d-quipflip-party.md)
 
 - Reconcile the intent of remote branches `party-refactor` and
   `refactor-round-names`; do not merge them blindly.
@@ -276,7 +281,7 @@ SQLite; repeated or concurrent commands cannot corrupt ownership or money.
 Exit: a multi-client Party smoke completes through results, including reconnect and
 a stale phase command.
 
-### E. MemeMint, Initial Reaction, and ThinkLink
+### [E. MemeMint, Initial Reaction, and ThinkLink](transition/workstream-e-remaining-games.md)
 
 Apply the B/C guarantees game by game, prioritizing money and lifecycle risk:
 
@@ -288,7 +293,7 @@ Apply the B/C guarantees game by game, prioritizing money and lifecycle risk:
 Each game gets a state-machine page, pure-rule tests, SQLite lifecycle tests,
 private-projection tests, and one built-server smoke loop before cutover.
 
-### F. Mac + Cloudflare deployment
+### [F. Mac + Cloudflare deployment](transition/workstream-f-mac-cloudflare-deployment.md)
 
 - **F1 — Production prerequisites.** Decide data retention before schema work.
   Inventory Heroku data, take and verify a backup, rehearse conversion/restore into

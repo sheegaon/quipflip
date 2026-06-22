@@ -30,6 +30,9 @@ Use this page to find the authoritative document for a task. The root
   target runbook; it is not active until the cutover exit criteria pass.
 - [Transition plan](transition-plan.md) — migration sequence, gates, rollback, and
   dated baseline evidence.
+- [Transition workstream plans](transition/README.md) — phased implementation
+  checklists for verification, lifecycle invariants, each game group, and
+  deployment.
 
 ## Current implementation references
 
