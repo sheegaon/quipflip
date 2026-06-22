@@ -32,7 +32,7 @@ Start each non-trivial document with a short block:
 
 Mark plans and migration-target docs clearly so they are not mistaken for the
 current live state (for example, the startup-services runbook is **Target** until
-the Mac+Cloudflare cutover; `DEPLOYMENT.md` is the **current** state until then).
+the Mac+Cloudflare cutover; the transition plan tracks the remaining gap).
 
 ## Authority order
 

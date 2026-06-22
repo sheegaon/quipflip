@@ -48,6 +48,10 @@ class TLPlayerService(PlayerServiceBase):
         """Get the initial balance for new ThinkLink players."""
         return settings.tl_starting_balance
 
+    def get_guest_domain(self) -> str:
+        """Get the domain for TL guest email addresses."""
+        return "thinklink.crowdcraftlabs.com"
+
     async def create_player(self, *, username: str, email: str, password_hash: str) -> Player:
         """Create new ThinkLink player with configured starting balance."""
         return await super().create_player(

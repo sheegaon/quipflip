@@ -6,7 +6,7 @@ Accepted target; implemented by the deployment workstream.
 
 ## Context
 
-The current deployment splits Vercel frontends from a Heroku backend, proxies REST,
+The current deployment splits frontends from a separate backend host, proxies REST,
 and special-cases WebSockets. Pixel Plagiarist demonstrates the desired Mac,
 launchd, and Cloudflare operating model.
 
@@ -24,15 +24,15 @@ secrets in plist files, command lines, repository files, or logs.
 
 ## Consequences
 
-REST and WebSockets are same-origin without Vercel rewrites or a hardcoded Heroku
-host. An absent production API override selects the current origin; an empty value
-is not relied on because the current client uses `||` fallbacks. Uptime is tied to
-the Mac, local database, and network, so backup, monitoring, rollback, and a soak
+REST and WebSockets are same-origin without rewrites or a hardcoded backend host.
+An absent production API override selects the current origin; an empty value is not
+relied on because the current client uses `||` fallbacks. Uptime is tied to the
+Mac, local database, and network, so backup, monitoring, rollback, and a soak
 period are required.
 
 ## Rejected alternatives
 
-Retaining the Heroku/Vercel split; separate static servers per game; host dispatch
+Retaining the split deployment; separate static servers per game; host dispatch
 without an exact allowlist.
 
 ## Conditions for revisiting

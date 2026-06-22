@@ -71,7 +71,8 @@ import type {
   QFBetaSurveySubmissionResponse,
 } from './types.ts';
 
-const rawBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+const rawBaseUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).replace(/\/$/, '');
 // Ensure the root API base never includes a game-specific prefix so shared auth endpoints resolve.
 const rootApiBaseUrl = rawBaseUrl.replace(/\/(qf|mm|tl)(\/)?$/, '');
 const QF_API_BASE_URL = /\/qf($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/qf`;

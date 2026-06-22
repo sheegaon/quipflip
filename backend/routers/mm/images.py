@@ -20,7 +20,7 @@ IMAGES_DIR = Path(__file__).parent.parent.parent / "data" / "mm_images"
 async def get_image(filename: str):
     """Serve an image file from the mm_images directory or redirect to GitHub.
 
-    In production (Heroku), redirects to GitHub raw content URL.
+    In production, redirects to the GitHub raw content URL.
     In local development, serves files directly from disk.
 
     Args:

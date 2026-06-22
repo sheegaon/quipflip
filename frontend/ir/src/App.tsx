@@ -1,7 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AppProviders } from './contexts/AppProviders';
 import { useIRGame } from './contexts/IRGameContext';
 import NotificationDisplay from './components/NotificationDisplay';
@@ -15,21 +13,6 @@ import Voting from './pages/Voting';
 import Results from './pages/Results';
 import Settings from './pages/Settings';
 import './App.css';
-
-if (typeof window !== 'undefined') {
-  const originalConsoleLog = console.log;
-  console.log = (...args) => {
-    const message = args.join(' ');
-    if (
-      message.includes('[Vercel Web Analytics]') ||
-      message.includes('[Vercel Speed Insights]') ||
-      message.includes('va.vercel-scripts.com')
-    ) {
-      return;
-    }
-    originalConsoleLog.apply(console, args);
-  };
-}
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useIRGame();
@@ -116,8 +99,6 @@ const App: React.FC = () => {
         <NotificationDisplay />
         <ErrorNotification />
         <TutorialOverlay />
-        <Analytics />
-        <SpeedInsights />
       </AppProviders>
     </Router>
   );

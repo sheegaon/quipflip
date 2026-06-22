@@ -310,7 +310,7 @@ export const Landing: React.FC = () => {
               </button>
             </form>
             <p className="text-sm text-gray-600 mt-2">
-              Forgot your password? Email support@quipflip.xyz for assistance.
+              Forgot your password? Email support@crowdcraftlabs.com for assistance.
             </p>
           </div>
         </div>

@@ -38,7 +38,7 @@ The shared `Player` table contains unified authentication and account informatio
 
 **Authentication**: JWT access/refresh tokens (stored in the unified `refresh_tokens` table; legacy `qf_refresh_tokens` remains as an alias)
 **Registration**:
-- Guest accounts: Created via `POST /player/guest` with auto-generated credentials (email: `guest####@quipflip.xyz`, password: `QuipGuest`)
+- Guest accounts: Created via `POST /player/guest` with auto-generated credentials (email: `guest####@quipflip.crowdcraftlabs.com`, password: `QuipGuest`)
 - Full accounts: Created via `POST /player` with email and password; username is randomly generated and cannot be changed
 - Upgrade: Guest accounts can be upgraded to full accounts via `POST /player/upgrade`
 **Admin Access**: Controlled by `is_admin` field (boolean flag) combined with email-based authorization in admin endpoints

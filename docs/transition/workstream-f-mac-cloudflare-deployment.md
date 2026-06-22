@@ -9,14 +9,15 @@
 
 Deploy one FastAPI worker and four built SPAs on the target Mac behind one
 Cloudflare named tunnel, with same-origin clients, verified data migration,
-readiness gates, rollback, and a deliberate retirement of Heroku/Vercel.
+readiness gates, rollback, and a deliberate retirement of the legacy remote
+deployment.
 
 ## Starting point
 
-On 2026-06-22 the four target hostnames were not deployed, the Heroku backend
+On 2026-06-22 the four target hostnames were not deployed, the legacy backend
 returned maintenance-mode HTTP 503, and the existing client still contained
-localhost/Heroku origin fallbacks. `/health` was not a reliable readiness response,
-and startup performed mutation that should be explicit release work.
+localhost origin fallbacks. `/health` was not a reliable readiness response, and
+startup performed mutation that should be explicit release work.
 
 ## Dependencies and boundaries
 
@@ -37,25 +38,22 @@ and startup performed mutation that should be explicit release work.
 - **Exact same-origin fallbacks to remove (F3).**
   `frontend/crowdcraft/src/api/client.ts:74`
   (`import.meta.env.VITE_API_URL || 'http://localhost:8000'`);
-  `src/hooks/useWebSocket.ts:65` (`|| http://${window.location.hostname}:8000`); and
-  `useWebSocket.ts:68`, which hardcodes
-  `VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com'`. The same
-  file's `client.ts:76` prefix regex omits `ir` (see workstream E), so the
-  same-origin rewrite must cover all four game prefixes.
+  `src/hooks/useWebSocket.ts:65` (`|| http://${window.location.hostname}:8000`).
+  The same file's `client.ts:76` prefix regex omits `ir` (see workstream E), so
+  the same-origin rewrite must cover all four game prefixes.
 - **Startup mutation to relocate (F2).** `backend/main.py` starts hourly token/guest
   cleanup and Party maintenance on startup (see
   [`docs/CLEANUP_SCRIPTS.md`](../CLEANUP_SCRIPTS.md)); these are the destructive/slow
   startup mutations to move into explicit idempotent release commands.
-- **Backup tooling exists.** `scripts/backup_db.py` is present for F1b; current deploy
-  scripts are `scripts/deploy-{all,heroku,vercel}.sh`. The Heroku app is
-  `quipflip-c196034288cd`.
+- **Backup tooling exists.** `scripts/backup_db.py` is present for F1b; the
+  legacy deployment scripts have been removed.
 - Implements [ADR 0004](../decisions/0004-same-origin-cloudflare-deployment.md)
   (already linked) and [ADR 0005](../decisions/0005-sqlite-concurrency-boundary.md)
   (one worker).
 
 ## Phase F1a - Decisions, inventory, and rollback contract
 
-- [ ] Decide whether and how Heroku production data will be retained.
+- [ ] Decide whether and how legacy production data will be retained.
 - [ ] Inventory databases, static assets, environment variables, domains, cookies,
       scheduled jobs, and external providers.
 - [ ] Name production database, WAL, backup, staging-build, log, and release paths.
@@ -72,7 +70,7 @@ Gate:
 
 ## Phase F1b - Data migration and restore rehearsal
 
-- [ ] Take an authenticated Heroku data export without committing private data.
+- [ ] Take an authenticated legacy data export without committing private data.
 - [ ] Verify source backup integrity and record schema/version metadata.
 - [ ] Convert/import data into a local production-shaped SQLite database.
 - [ ] Run pre-migration validation and reconciliation queries.
@@ -109,7 +107,7 @@ Gate:
 
 - [ ] Make an absent API override resolve to `window.location.origin`.
 - [ ] Derive WebSocket origin from the current location.
-- [ ] Remove production localhost and Heroku fallback behavior.
+- [ ] Remove production localhost fallback behavior.
 - [ ] Add tests for override-present, override-absent, HTTP, HTTPS, and WebSocket
       origin derivation.
 - [ ] Validate exact trusted hosts before routing.
@@ -168,7 +166,7 @@ Gate:
 - [ ] Route the four exact hostnames to `http://127.0.0.1:8000`.
 - [ ] Reject unmatched hostnames at Cloudflare and application layers.
 - [ ] Verify TLS, forwarded headers, client IP handling, and WebSocket upgrades.
-- [ ] Keep Heroku/Vercel available during staging.
+- [ ] Keep the previous deployment available during staging.
 - [ ] Run the full host/API/static/WS matrix through target subdomains.
 - [ ] Verify deep links and cache behavior.
 - [ ] Verify registration, login, logout, and host-only cookies.
@@ -204,7 +202,7 @@ Gate:
 - [ ] Monitor SQLite disk use, busy errors, integrity checks, and backup success.
 - [ ] Record incidents and rollback decisions during the soak window.
 - [ ] Make and record an explicit accept/extend/rollback decision.
-- [ ] Retire Heroku/Vercel only after acceptance and rollback-window expiry.
+- [ ] Retire the previous deployment only after acceptance and rollback-window expiry.
 - [ ] Update current deployment references and mark target runbooks active.
 
 Gate:

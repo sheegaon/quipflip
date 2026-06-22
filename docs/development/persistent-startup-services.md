@@ -5,8 +5,8 @@
 > **Audience:** Maintainers
 
 The target deployment runs one FastAPI worker and one Cloudflare tunnel under
-launchd. Until cutover, [DEPLOYMENT.md](../DEPLOYMENT.md) describes the current
-Heroku/Vercel topology.
+launchd. Until cutover, the transition plan describes the remaining gap to the
+target topology.
 
 ## Topology and paths
 
@@ -88,8 +88,8 @@ The application still validates `Host`; tunnel ingress is not the only boundary.
 ## One-time preparation
 
 1. Complete the deterministic, production-SQLite, and smoke gates.
-2. Decide whether Heroku data is preserved. If yes, rehearse the export/conversion
-   and restore into a copy of the target SQLite database.
+2. Decide whether legacy deployment data is preserved. If yes, rehearse the
+   export/conversion and restore into a copy of the target SQLite database.
 3. Create application, backup, and log directories with owner-only permissions.
 4. Store runtime secrets in Keychain and install the Keychain-reading wrapper.
 5. Build all four frontends and verify static deep links locally with exact Host
@@ -148,10 +148,10 @@ smoke checks against it.
 Monitor readiness, disk space, backup age, SQLite busy/locked errors, WAL size,
 deadline lag, queue age, WebSocket reconnects, HTTP 5xx, and ledger reconciliation.
 
-During cutover, keep the Heroku/Vercel deployment available. If migration or smoke
-fails, stop the new service, restore the pre-migration SQLite backup or return DNS to
-the old deployment, and record the failed step. Do not attempt an ad-hoc reverse
-migration on the production file.
+During cutover, keep the previous deployment available. If migration or smoke
+fails, stop the new service, restore the pre-migration SQLite backup or return DNS
+to the previous deployment, and record the failed step. Do not attempt an ad-hoc
+reverse migration on the production file.
 
 ## Troubleshooting
 

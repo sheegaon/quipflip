@@ -16,9 +16,9 @@ games.
   prefix (`/qf`, `/mm`, …). Do not hardcode backend hosts. See
   `frontend/crowdcraft/src/api/client.ts` and `BaseApiClient.ts`.
 - **WebSocket URLs derive from `window.location`** (`wss://<same-host>/...`), not a
-  hardcoded Heroku URL. Update `frontend/crowdcraft/src/hooks/useWebSocket.ts` when
-  touching realtime. WS auth uses the short-lived `/<game>/auth/ws-token`; close and
-  do not retry on `1008`.
+  hardcoded backend URL. Update `frontend/crowdcraft/src/hooks/useWebSocket.ts`
+  when touching realtime. WS auth uses the short-lived `/<game>/auth/ws-token`;
+  close and do not retry on `1008`.
 - **Keep shared logic in `frontend/crowdcraft`.** Game apps add pages, assets, and
   thin API extensions; common components/contexts/hooks belong in the shared lib so
   all four games stay consistent.

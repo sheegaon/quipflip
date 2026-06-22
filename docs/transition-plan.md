@@ -51,10 +51,9 @@ smoke test.
 - `npm run build:qf` and `npm run build:mm`: passed.
 - `npm run build:ir`: failed TypeScript compilation; the chained build therefore
   did not reach ThinkLink. `npm run build:tl` was then run independently and passed.
-- `https://quipflip.xyz/`: returned HTTP 200 and rendered the landing page, but its
-  browser console recorded a failed guest-account request.
-- `https://quipflip-c196034288cd.herokuapp.com/health`: returned Heroku
-  maintenance-mode HTTP 503.
+- The legacy public frontend returned HTTP 200 and rendered the landing page, but
+  the browser console recorded a failed guest-account request.
+- The legacy backend health check returned HTTP 503.
 - No Crowdcraft service was listening on local port 8000, and the four target
   `crowdcraftlabs.com` hostnames were not yet deployed.
 
@@ -79,7 +78,7 @@ acceptance criteria.
   game routers plus shared auth, health, notifications, and online-user routes.
 - The shared frontend library is also real, with common components, hooks,
   contexts, and the base API client in `frontend/crowdcraft`, but the client still
-  carries legacy localhost/Heroku fallbacks that do not match the target same-origin
+  carries legacy localhost fallbacks that do not match the target same-origin
   deployment model.
 
 ### Code-level findings that change this plan
@@ -297,9 +296,9 @@ private-projection tests, and one built-server smoke loop before cutover.
 ### [F. Mac + Cloudflare deployment](transition/workstream-f-mac-cloudflare-deployment.md)
 
 - **F1 — Production prerequisites.** Decide data retention before schema work.
-  Inventory Heroku data, take and verify a backup, rehearse conversion/restore into
-  local SQLite, and document rollback. Production configuration must reject default
-  secrets and unsafe origins.
+  Inventory legacy deployment data, take and verify a backup, rehearse
+  conversion/restore into local SQLite, and document rollback. Production
+  configuration must reject default secrets and unsafe origins.
 - **F2 — Readiness.** Add `/livez` for process liveness and `/readyz` for database,
   migration revision, required static assets, and required runtime dependencies.
   Failures return real non-2xx responses. Move destructive/slow startup mutation to
@@ -319,10 +318,10 @@ private-projection tests, and one built-server smoke loop before cutover.
   the release and prints redacted diagnostics.
 - **F6 — Tunnel and DNS.** Route all four exact hostnames through one named tunnel
   to `http://127.0.0.1:8000`; reject unmatched hosts.
-- **F7 — Parallel cutover.** Keep Heroku/Vercel available during staging. Verify
-  registration/login, cookies, one game loop per app, QF WebSockets/Party reconnect,
-  static deep links, backup/restore, and restart recovery through the target
-  subdomains. Cut DNS only after the smoke matrix passes.
+- **F7 — Parallel cutover.** Keep the previous deployment available during staging.
+  Verify registration/login, cookies, one game loop per app, QF WebSockets/Party
+  reconnect, static deep links, backup/restore, and restart recovery through the
+  target subdomains. Cut DNS only after the smoke matrix passes.
 - **F8 — Soak and retire.** Monitor readiness, error rate, WebSocket reconnects,
   queue age, finalizer lag, and ledger reconciliation. Retire old services only
   after the rollback window and a recorded soak decision.
@@ -338,7 +337,7 @@ private-projection tests, and one built-server smoke loop before cutover.
 | 4. Remaining games | E | MM, IR, and TL each pass rules, lifecycle, privacy, and smoke gates |
 | 5. Staged deployment | F1–F6 | Restore rehearsal, release script, host dispatch, services, and tunnel pass locally |
 | 6. Cutover | F7 | Four target domains pass the browser/API/WS matrix with rollback ready |
-| 7. Soak and retirement | F8 | Monitoring window accepted; Heroku/Vercel retired deliberately |
+| 7. Soak and retirement | F8 | Monitoring window accepted; previous deployment retired deliberately |
 
 Phases describe merge gates, not a ban on parallel work. Deployment scripts and
 host dispatch can be developed after Phase 1, but public cutover waits for all four
@@ -348,7 +347,7 @@ game smoke loops and the restore rehearsal.
 
 | Risk or decision | Required resolution |
 | --- | --- |
-| Heroku data retention | Decide before schema migration; default recommendation is preserve and rehearse restore |
+| Legacy data retention | Decide before schema migration; default recommendation is preserve and rehearse restore |
 | SQLite ownership on the Mac | Name database/backup locations, retention, restore owner, integrity checks, and disk monitoring |
 | In-memory queues/locks | Rebuildable optimization only; never a required source of lifecycle truth |
 | AI providers unavailable | Define degraded behavior per game; readiness should not fail for an explicitly optional provider |
@@ -385,5 +384,4 @@ Host mapping:
 - Crowdcraft runtime: `backend/main.py`, `backend/database.py`,
   `backend/utils/{lock_client,queue_client}.py`, `backend/services/{qf,mm,ir,tl}`,
   `backend/models/`, `backend/migrations/`, and `frontend/crowdcraft/src`.
-- Current deployment: [DEPLOYMENT.md](DEPLOYMENT.md).
 - Target operations: [persistent startup services](development/persistent-startup-services.md).

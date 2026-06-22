@@ -22,8 +22,10 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # Application
-    qf_frontend_url: str = "https://quipflip.xyz"
-    mm_frontend_url: str = "https://meme-mint-game.vercel.app"
+    qf_frontend_url: str = "https://quipflip.crowdcraftlabs.com"
+    mm_frontend_url: str = "https://mememint.crowdcraftlabs.com"
+    ir_frontend_url: str = "https://initialreaction.crowdcraftlabs.com"
+    tl_frontend_url: str = "https://thinklink.crowdcraftlabs.com"
     github_images_base_url: str = "https://raw.githubusercontent.com/sheegaon/quipflip/main/backend/data"
     serve_images_from_github: bool = True  # Set to False for local development
     environment: str = "development"

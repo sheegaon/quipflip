@@ -49,7 +49,7 @@ class IRPlayerService(PlayerServiceBase):
 
     def get_guest_domain(self) -> str:
         """Get the domain for IR guest email addresses."""
-        return "initialreaction.xyz"
+        return "initialreaction.crowdcraftlabs.com"
 
     def _get_initial_balance(self) -> int:
         """Get the initial balance for new IR players."""

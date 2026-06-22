@@ -24,8 +24,6 @@ Use this page to find the authoritative document for a task. The root
 
 ## Deployment
 
-- [Current Heroku/Vercel deployment](DEPLOYMENT.md) — current hosting model only;
-  the backend was in maintenance mode during the 2026-06-22 review.
 - [Target Mac/Cloudflare operations](development/persistent-startup-services.md) —
   target runbook; it is not active until the cutover exit criteria pass.
 - [Transition plan](transition-plan.md) — migration sequence, gates, rollback, and
@@ -74,7 +72,6 @@ do not silently redefine the economy from current bugs.
 
 These files provide context and do not override active guidance or game rules:
 
-- [Heroku migration lessons](HEROKU_MIGRATION_LESSONS.md)
 - [Global player refactor plan](GLOBAL_PLAYER_REFACTOR_PLAN.md)
 - [QuipFlip claim-to-receive migration](quipflip/CLAIM_TO_RECEIVE_MIGRATION_GUIDE.md)
 - [Deleted-user display repair](quipflip/FIX_DELETED_USER_DISPLAY.md)

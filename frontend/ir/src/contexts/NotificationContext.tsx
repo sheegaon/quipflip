@@ -62,13 +62,8 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
       try {
         // Step 1: Construct API base URL preserving the path prefix
-        const apiBase =
-          import.meta.env.VITE_API_URL || `http://${window.location.hostname}:8000/ir`;
-
-        // Normalize base URL - ensure it's a full URL and remove trailing slash
-        const baseUrl = apiBase.startsWith('http')
-          ? apiBase.replace(/\/$/, '')
-          : `${window.location.origin}${apiBase}`.replace(/\/$/, '');
+        const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+        const baseUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).replace(/\/$/, '');
 
         // Step 2: Fetch short-lived WebSocket token via REST API
         // Construct URL by appending to base (no leading slash to preserve path)

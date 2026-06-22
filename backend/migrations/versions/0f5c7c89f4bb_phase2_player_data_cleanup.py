@@ -20,7 +20,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-# Dialect-aware helpers follow guidance from HEROKU_MIGRATION_LESSONS.
+# Dialect-aware helpers follow the migration guidance in the docs.
 def _column_exists(bind, table_name: str, column_name: str) -> bool:
     dialect = bind.dialect.name
 

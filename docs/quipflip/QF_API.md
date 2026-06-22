@@ -10,11 +10,11 @@ QuipFlip endpoints live under the `/qf` prefix and are implemented in `backend/r
 
 ```
 Development: http://localhost:8000/qf
-Production (Frontend): https://quipflip.xyz
-Production (API): https://quipflip.xyz/api (proxied to Heroku backend)
+Production (Frontend): https://quipflip.crowdcraftlabs.com
+Production (API): https://quipflip.crowdcraftlabs.com/qf
 ```
 
-**Note:** In production, the frontend uses Vercel's rewrite feature to proxy `/api/*` requests to the Heroku backend. This ensures same-origin requests for maximum browser compatibility (especially iOS Safari/Chrome).
+**Note:** In production, the frontend uses same-origin routing on the Cloudflare host.
 
 ## Authentication
 
@@ -26,7 +26,7 @@ All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) acce
 - Refresh tokens are stored in the configured `refresh_token_cookie_name` (default `quipflip_refresh_token`, 30-day lifetime)
 - Cookies are automatically sent with requests when using `withCredentials: true`
 - Provides XSS protection since JavaScript cannot access HTTP-only cookies
-- **iOS Compatible:** The Vercel proxy ensures cookies work on all iOS browsers (Safari, Chrome, etc.)
+- **iOS Compatible:** Same-origin cookies work on all iOS browsers (Safari, Chrome, etc.)
 
 **Authorization Header (Backward Compatibility):**
 ```
@@ -165,9 +165,9 @@ curl -X POST http://localhost:8000/qf/player/guest
   "expires_in": 7200,
   "wallet": 5000,
   "vault": 0,
-  "email": "guest1234@quipflip.xyz",
+  "email": "guest1234@quipflip.crowdcraftlabs.com",
   "password": "QuipGuest",
-  "message": "Guest account created! Your temporary credentials are:\nEmail: guest1234@quipflip.xyz\nPassword: QuipGuest\n\nYou can upgrade to a full account anytime to choose your own email and password.",
+  "message": "Guest account created! Your temporary credentials are:\nEmail: guest1234@quipflip.crowdcraftlabs.com\nPassword: QuipGuest\n\nYou can upgrade to a full account anytime to choose your own email and password.",
   "token_type": "bearer"
 }
 ```
@@ -319,12 +319,14 @@ Generate a short-lived token for WebSocket authentication.
 ```
 
 **Use Case:**
-This endpoint is called via REST API (through Vercel proxy) using HttpOnly cookies. Returns a short-lived token (60 seconds) that can be used for WebSocket connections to the Heroku backend, which cannot be proxied through Vercel.
+This endpoint is called via REST API using HttpOnly cookies. Returns a short-lived
+token (60 seconds) that can be used for WebSocket connections on the same-origin
+backend.
 
 **Token Exchange Pattern:**
-1. Frontend calls this endpoint with HttpOnly cookie (via Vercel `/api` proxy)
+1. Frontend calls this endpoint with an HttpOnly cookie
 2. Backend validates cookie and returns short-lived token
-3. Frontend uses token for direct WebSocket connection to Heroku
+3. Frontend uses token for the WebSocket connection
 4. Short lifetime limits security risk if token is exposed
 
 **Notes:**

@@ -50,6 +50,10 @@ class MMPlayerService(PlayerServiceBase):
         """Get the initial balance for new QF players."""
         return settings.mm_starting_wallet
 
+    def get_guest_domain(self) -> str:
+        """Get the domain for MM guest email addresses."""
+        return "mememint.crowdcraftlabs.com"
+
     async def create_player(self, *, username: str, email: str, password_hash: str) -> Player:
         """Create new Meme Mint player with configured starting balance."""
         return await super().create_player(

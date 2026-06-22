@@ -214,14 +214,14 @@ async def get_websocket_token(
 ) -> dict:
     """Generate a short-lived token for WebSocket authentication.
 
-    This endpoint is called via REST API (through Vercel proxy) using HttpOnly cookies.
-    Returns a short-lived token (60 seconds) that can be used for WebSocket connections
-    to the Heroku backend, which cannot be proxied through Vercel.
+    This endpoint uses HttpOnly cookies and returns a short-lived token
+    (60 seconds) that can be used for WebSocket authentication on the
+    same-origin backend.
 
     Token exchange pattern:
-    1. Frontend calls this endpoint with HttpOnly cookie (via Vercel /api proxy)
+    1. Frontend calls this endpoint with an HttpOnly cookie
     2. Backend validates cookie and returns short-lived token
-    3. Frontend uses token for direct WebSocket connection to Heroku
+    3. Frontend uses token for the WebSocket connection
     4. Short lifetime limits security risk if token is exposed
     """
     # Detect the authenticated player across all supported games

@@ -18,9 +18,9 @@ backend/data/
 
 ## Production vs Development
 
-### Production (Heroku)
+### Production
 - Images are **NOT** included in the Docker image (saves space)
-- API endpoint `/api/mm/images/{filename}` redirects to GitHub raw content
+- API endpoint `/mm/images/{filename}` redirects to GitHub raw content
 - Images served from: `https://raw.githubusercontent.com/sheegaon/quipflip/main/backend/data/mm_images/`
 - Configured via environment variables:
   ```
@@ -120,7 +120,7 @@ curl http://localhost:8000/api/mm/images/image001.png
 
 ### Environment Variables
 
-Set these in your `.env` file or Heroku config:
+Set these in your `.env` file:
 
 ```bash
 # Serve images from GitHub (production)

@@ -36,8 +36,8 @@ replacement round or resets state.
 
 ## Current and target origins
 
-Today the shared hook falls back to the Heroku WebSocket host when no explicit
-backend value is present. The Mac/Cloudflare target removes that fallback:
+Today the shared hook derives its WebSocket origin from the current location when
+no explicit backend value is present. The Mac/Cloudflare target keeps that rule:
 
 ```text
 https://quipflip.crowdcraftlabs.com → wss://quipflip.crowdcraftlabs.com

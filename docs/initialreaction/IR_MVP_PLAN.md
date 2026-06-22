@@ -181,12 +181,12 @@ Use the same async OpenAI/Gemini wrappers you already have; log in `ai_metrics` 
 
 ### **8. Deployment Checklist**
 
-* Add `/api/ir` proxy rule in Vercel config (same pattern as `/api/quipflip`).
+* Add same-origin routing for `/ir` on the Cloudflare host.
 * Add `IR_ENABLED=true` env var.
 * Add `AI_IR_MODEL=gpt-4o-mini` or equivalent.
 * Migrate schema (2 tables only).
-* Deploy backend (Heroku).
-* Deploy frontend branch `ir-mvp` (Vercel preview).
+* Deploy backend to the Mac host.
+* Deploy frontend branch `ir-mvp` behind the Cloudflare tunnel.
 * Smoke test: one human + AI complete round end-to-end.
 
 ---

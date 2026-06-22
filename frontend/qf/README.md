@@ -186,7 +186,7 @@ For production deployment:
 
 1. Update `VITE_API_URL` to production backend URL
 2. Build the app: `npm run build`
-3. Deploy `dist/` folder to static hosting (Vercel, Netlify, etc.)
+3. Deploy `dist/` alongside the backend on the same-origin Cloudflare host
 4. Ensure HTTPS for JWT token security
 5. Configure backend CORS for your frontend domain with credentials support
 6. Ensure cookie SameSite and Secure settings are properly configured for production

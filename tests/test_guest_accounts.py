@@ -28,7 +28,7 @@ class TestGuestAccountCreation:
 
             # Check guest email format
             assert data["email"].startswith("guest")
-            assert data["email"].endswith("@quipflip.xyz")
+            assert data["email"].endswith("@quipflip.crowdcraftlabs.com")
 
             # Check password
             assert data["password"] == get_settings().guest_password

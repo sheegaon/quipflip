@@ -727,8 +727,8 @@ CREATE INDEX idx_tl_transaction_player ON tl_transaction(player_id, created_at D
 
 **8.4 Frontend Deployment**
 - [ ] Build production bundle: `npm run build`
-- [ ] Deploy to Vercel (new subdomain: `thinklink.vercel.app`)
-- [ ] Configure Vercel proxy: `/api/tl/*` → Heroku backend `/tl/*`
+- [ ] Deploy to the Cloudflare host `thinklink.crowdcraftlabs.com`
+- [ ] Configure same-origin routing for `/tl/*` on the Mac backend
 - [ ] Set environment variables:
   - `VITE_API_URL` (backend URL)
   - `VITE_GAME_NAME=ThinkLink`

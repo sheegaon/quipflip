@@ -36,25 +36,27 @@ except Exception as e:
     logger.error(f"Failed to parse DATABASE_URL: {e}")
     logger.error(f"Raw URL (first 50 chars): {settings.database_url[:50]}...")
 
-# Determine if we need SSL (for Heroku or other cloud databases)
+is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
+
+# Determine if we need SSL for a remote non-SQLite database.
 connect_args = {}
 needs_ssl = (
-    "heroku" in settings.database_url or
-    "amazonaws" in settings.database_url or
-    settings.environment == "production"
+    not is_sqlite
+    and (
+        "amazonaws" in settings.database_url or
+        settings.environment == "production"
+    )
 )
 
 if needs_ssl:
     connect_args["ssl"] = "require"
     logger.debug("SSL connection enabled (ssl=require)")
 else:
-    logger.debug("SSL connection disabled (local development)")
+    logger.debug("SSL connection disabled")
 
 logger.debug(f"Connect args: {connect_args}")
 
-is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
-
-# Configure pool sizing to avoid exhausting limited database connections (e.g., on Heroku)
+# Configure pool sizing to avoid exhausting limited database connections.
 engine_kwargs = {
     "echo": settings.environment == "development",
     "future": True,

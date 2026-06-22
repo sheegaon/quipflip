@@ -578,7 +578,7 @@ class PlayerServiceBase(ABC):
 
     def get_guest_domain(self) -> str:
         """Get the domain for guest email addresses."""
-        return "quipflip.xyz"
+        return "quipflip.crowdcraftlabs.com"
 
     def get_guest_password(self) -> str:
         """Get the default guest password."""

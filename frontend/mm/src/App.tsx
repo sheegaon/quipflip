@@ -1,7 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useGame } from './contexts/GameContext';
 import { AppProviders } from './contexts/AppProviders';
 import ErrorNotification from './components/ErrorNotification';
@@ -15,24 +13,6 @@ import { ErrorBoundary } from '@crowdcraft/components/ErrorBoundary.tsx';
 import { AppErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 import OfflineBanner from './components/OfflineBanner';
 import NewUserWelcomeOverlay from './components/NewUserWelcomeOverlay';
-
-// Suppress some logging messages
-if (typeof window !== 'undefined') {
-  const originalConsoleLog = console.log;
-  console.log = (...args) => {
-    const message = args.join(' ');
-    // Vercel analytics warnings when blocked by ad blockers
-    if (
-      message.includes('[Vercel Web Analytics]') ||
-      message.includes('[Vercel Speed Insights]') ||
-      message.includes('va.vercel-scripts.com')
-    ) {
-      // Silently ignore Vercel analytics warnings
-      return;
-    }
-    originalConsoleLog.apply(console, args);
-  };
-}
 
 import { PageErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 
@@ -273,8 +253,6 @@ function App() {
       >
         <AppProviders>
           <AppRoutes />
-          <Analytics />
-          <SpeedInsights />
         </AppProviders>
       </Router>
     </ErrorBoundary>

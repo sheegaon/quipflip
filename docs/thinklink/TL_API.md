@@ -10,8 +10,8 @@ ThinkLink endpoints live under the `/tl` prefix and are implemented in `backend/
 
 ```
 Development: http://localhost:8000/tl
-Production (Frontend): https://thinklink.xyz
-Production (API): https://thinklink.xyz/api (proxied to Heroku backend)
+Production (Frontend): https://thinklink.crowdcraftlabs.com
+Production (API): https://thinklink.crowdcraftlabs.com/tl
 ```
 
 ## Authentication

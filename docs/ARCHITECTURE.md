@@ -46,7 +46,7 @@ Alembic migrations under `backend/migrations`.
 ## Persistence and concurrency
 
 The code supports Postgres through `asyncpg` and SQLite through `aiosqlite`. Local
-development/tests default to `crowdcraft.db`; the legacy Heroku deployment uses
+development/tests default to `crowdcraft.db`; the previous remote deployment used
 Postgres. The accepted Mac target is SQLite-only with exactly one Uvicorn worker.
 
 Current lifecycle correctness is incomplete:
@@ -78,10 +78,10 @@ WebSockets mint short-lived tokens through `/auth/ws-token` variants, then pass 
 token in the WebSocket query string. QF channels are documented in
 [WEBSOCKET.md](WEBSOCKET.md).
 
-The shared frontend client currently defaults to `http://localhost:8000` when
-`VITE_API_URL` is falsy, and the shared WebSocket hook falls back to the Heroku host.
-The same-origin target therefore requires code changes; setting an empty environment
-value is insufficient.
+The shared frontend client defaults to `http://localhost:8000` in development and
+`window.location.origin` in production, and the shared WebSocket hook derives its
+origin from the current location. The same-origin target therefore requires code
+changes; setting an empty environment value is insufficient.
 
 ## Game flows
 

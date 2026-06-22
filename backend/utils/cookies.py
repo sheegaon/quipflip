@@ -8,9 +8,9 @@ def set_refresh_cookie(response: Response, token: str, *, expires_days: int | No
                        cookie_name: str | None = None) -> None:
     """Set the refresh token cookie with secure defaults.
 
-    In production, REST API uses Vercel proxy (same-origin with SameSite=Lax), but WebSocket
-    requires SameSite=None since Vercel doesn't support WebSocket proxying. We use SameSite=Lax
-    for REST compatibility, and WebSocket authentication uses a token exchange pattern.
+    In production, the API and frontend share an origin, so SameSite=Lax works
+    for cookie-based REST authentication. WebSocket authentication uses a short-
+    lived token exchange pattern.
 
     In development, frontend (localhost:5173) and backend (localhost:8000) are on different
     ports but browsers treat localhost as same-origin, so SameSite=Lax works fine.
@@ -27,8 +27,8 @@ def set_refresh_cookie(response: Response, token: str, *, expires_days: int | No
     max_age = days * 24 * 60 * 60
     name = cookie_name or settings.refresh_token_cookie_name
 
-    # Use SameSite=Lax for both dev and production (REST API via Vercel proxy)
-    # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies
+    # Use SameSite=Lax for both dev and production.
+    # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies.
     samesite_value = "lax"
     # Secure flag: only disable for local development, enable for all other environments
     secure_value = settings.environment != "development"
@@ -61,8 +61,8 @@ def set_access_token_cookie(response: Response, token: str, *, cookie_name: str 
     max_age = settings.access_token_exp_minutes * 60
     name = cookie_name or settings.access_token_cookie_name
 
-    # Use SameSite=Lax for both dev and production (REST API via Vercel proxy)
-    # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies
+    # Use SameSite=Lax for both dev and production.
+    # WebSocket uses token exchange pattern (/auth/ws-token) instead of cookies.
     samesite_value = "lax"
     # Secure flag: only disable for local development, enable for all other environments
     secure_value = settings.environment != "development"

@@ -23,7 +23,8 @@ import type {
 import { clearStoredUsername } from '../services/sessionDetection';
 
 // Base URL - configure based on environment
-const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
+const baseUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).replace(/\/$/, '');
 const API_URL = /\/ir($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/ir`;
 
 // Create axios instance

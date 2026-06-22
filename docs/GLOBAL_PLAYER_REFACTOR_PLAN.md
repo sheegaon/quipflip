@@ -217,12 +217,12 @@ Reduce remaining implicit `GameType.QF` coupling in authentication/token handlin
 - **Documentation alignment:** Updated `docs/DATA_MODELS.md` to reflect the explicit per-game data access pattern and removal of implicit QuipFlip defaults.
 
 ## Migration expectations
-- The migration uses dialect-aware column checks (per `HEROKU_MIGRATION_LESSONS.md`) before dropping columns to stay compatible with environments that already removed the fields.
+- The migration uses dialect-aware column checks before dropping columns to stay compatible with environments that already removed the fields.
 - During `upgrade`, missing `qf_player_data` rows are created from legacy player columns when present. When the legacy columns are absent, safe defaults are used so the insert is idempotent.
 - During `downgrade`, the migration restores the dropped columns (with sensible defaults) and rehydrates them from `qf_player_data` when available.
 
 ## Operational guidance
-- Run `alembic upgrade head` before deploying Phase 3. If the migration chain reports multiple heads, resolve them or run `tests/test_migration_chain.py` locally to ensure a single head following Heroku migration guidance.
+- Run `alembic upgrade head` before deploying Phase 3. If the migration chain reports multiple heads, resolve them or run `tests/test_migration_chain.py` locally to ensure a single head following migration guidance.
 - After applying the migration, verify that `players` no longer contains wallet/tutorial/lockout columns and that `qf_player_data` has a row for every player.
 - Services must access per-game data explicitly (`player.get_game_data(game_type)` or service-level fetchers); do not assume `GameType.QF` defaults anywhere.
 
