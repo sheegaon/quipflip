@@ -11,6 +11,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from backend.models.qf.transaction import QFTransaction
 from backend.models.qf.party_session import PartySession
 from backend.services.transaction_service import TransactionService
+from backend.utils.idempotency import build_idempotency_key
 from backend.utils.model_registry import GameType
 
 
@@ -27,6 +28,41 @@ async def test_sqlite_pragmas_are_enabled(db_session):
     assert str(journal_mode).lower() == "wal"
     assert int(busy_timeout) == 5000
     assert int(synchronous) == 2
+
+
+def test_build_idempotency_key_normalizes_uuid_strings_and_set_order():
+    """Equivalent payloads should hash identically across driver formats."""
+
+    class OrderedSet(set):
+        def __init__(self, values):
+            super().__init__(values)
+            self._order = list(values)
+
+        def __iter__(self):
+            return iter(self._order)
+
+    token = uuid.uuid4()
+
+    first = build_idempotency_key(
+        "lifecycle-demo",
+        {
+            "player_id": token,
+            "reference_id": token,
+            "tags": OrderedSet(["beta", "alpha"]),
+            "nested": {"round_id": token},
+        },
+    )
+    second = build_idempotency_key(
+        "lifecycle-demo",
+        {
+            "player_id": str(token),
+            "reference_id": str(token),
+            "tags": OrderedSet(["alpha", "beta"]),
+            "nested": {"round_id": str(token)},
+        },
+    )
+
+    assert first == second
 
 
 @pytest.mark.asyncio
