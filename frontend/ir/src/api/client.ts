@@ -21,11 +21,14 @@ import type {
   IRUpdateTutorialProgressResponse,
 } from '@crowdcraft/api/types.ts';
 import { clearStoredUsername } from '../services/sessionDetection';
+import { resolveGameApiUrl } from '@crowdcraft/api/origin.ts';
 
 // Base URL - configure based on environment
-const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-const baseUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).replace(/\/$/, '');
-const API_URL = /\/ir($|\/)/.test(baseUrl) ? baseUrl : `${baseUrl}/ir`;
+const API_URL = resolveGameApiUrl(
+  'ir',
+  import.meta.env.VITE_API_URL,
+  window.location.origin,
+);
 
 // Create axios instance
 export const irClient = axios.create({
@@ -93,8 +96,8 @@ export const authAPI = {
 
 // IRPlayer API
 export const playerAPI = {
-  getBalance: async (): Promise<IRBalanceResponse> => {
-    const response = await irClient.get<IRBalanceResponse>('/players/balance');
+  getBalance: async (signal?: AbortSignal): Promise<IRBalanceResponse> => {
+    const response = await irClient.get<IRBalanceResponse>('/players/balance', { signal });
     return response.data;
   },
 

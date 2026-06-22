@@ -10,13 +10,9 @@ const SubHeader: React.FC = () => {
   const location = useLocation();
   const { player, pendingResults, refreshDashboard } = useIRGame();
 
-  if (!player) {
-    return null;
-  }
-
   // Refresh dashboard data when returning to dashboard
   React.useEffect(() => {
-    if (location.pathname === '/dashboard') {
+    if (player && location.pathname === '/dashboard') {
       const refreshSubHeaderData = async () => {
         try {
           await refreshDashboard();
@@ -27,7 +23,11 @@ const SubHeader: React.FC = () => {
 
       refreshSubHeaderData();
     }
-  }, [location.pathname, refreshDashboard]);
+  }, [location.pathname, player, refreshDashboard]);
+
+  if (!player) {
+    return null;
+  }
 
   const hasPendingResults = pendingResults && pendingResults.length > 0;
   const pendingCount = pendingResults?.length || 0;

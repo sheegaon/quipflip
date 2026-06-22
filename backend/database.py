@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.engine.url import make_url
 from backend.config import get_settings
+from backend.sqlite import configure_production_sqlite
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,27 +37,25 @@ except Exception as e:
     logger.error(f"Failed to parse DATABASE_URL: {e}")
     logger.error(f"Raw URL (first 50 chars): {settings.database_url[:50]}...")
 
-is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
-
-# Determine if we need SSL for a remote non-SQLite database.
+# Determine if we need SSL (for Heroku or other cloud databases)
 connect_args = {}
 needs_ssl = (
-    not is_sqlite
-    and (
-        "amazonaws" in settings.database_url or
-        settings.environment == "production"
-    )
+    "heroku" in settings.database_url or
+    "amazonaws" in settings.database_url or
+    settings.environment == "production"
 )
 
 if needs_ssl:
     connect_args["ssl"] = "require"
     logger.debug("SSL connection enabled (ssl=require)")
 else:
-    logger.debug("SSL connection disabled")
+    logger.debug("SSL connection disabled (local development)")
 
 logger.debug(f"Connect args: {connect_args}")
 
-# Configure pool sizing to avoid exhausting limited database connections.
+is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
+
+# Configure pool sizing to avoid exhausting limited database connections (e.g., on Heroku)
 engine_kwargs = {
     "echo": settings.environment == "development",
     "future": True,
@@ -87,6 +86,8 @@ try:
         settings.database_url,
         **engine_kwargs,
     )
+    if is_sqlite and settings.environment == "production":
+        configure_production_sqlite(engine)
     logger.debug("Database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")

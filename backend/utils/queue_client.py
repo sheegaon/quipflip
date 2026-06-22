@@ -137,3 +137,10 @@ class QueueClient:
                 if queue_name in self._memory_queues:
                     # Create a new empty queue to replace the old one
                     self._memory_queues[queue_name] = Queue()
+
+    def reset(self) -> None:
+        """Reset in-memory state between deterministic test cases."""
+        if self.backend == "redis":
+            return
+        with self._memory_lock:
+            self._memory_queues.clear()

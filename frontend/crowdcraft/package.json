@@ -23,11 +23,14 @@
     "dev": "vite",
     "build": "tsc && vite build --mode lib",
     "build:lib": "tsc && vite build --mode lib",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "1.7.7",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
+    "axios": "1.18.0",
     "lottie-react": "^2.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

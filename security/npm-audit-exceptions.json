@@ -1,0 +1,7 @@
+{
+  "GHSA-fx2h-pf6j-xcff": {
+    "package": "vite",
+    "expires": "2026-07-31",
+    "reason": "Windows-only development-server path handling; production artifacts are static builds. Upgrade to Vite 7 is tracked as an isolated major-version migration."
+  }
+}

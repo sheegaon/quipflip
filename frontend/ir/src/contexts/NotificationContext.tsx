@@ -18,6 +18,7 @@ import {
   ReactNode,
   FC,
 } from 'react';
+import { resolveGameApiUrl, resolveWebSocketUrl } from '@crowdcraft/api/origin.ts';
 import { useIRGame } from './IRGameContext';
 
 export interface NotificationMessage {
@@ -61,9 +62,13 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       wsAttempted = true;
 
       try {
-        // Step 1: Construct API base URL preserving the path prefix
-        const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-        const baseUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).replace(/\/$/, '');
+        // Step 1: Construct the same-origin IR API URL unless explicitly overridden.
+        const configuredApiUrl = import.meta.env.VITE_API_URL;
+        const baseUrl = resolveGameApiUrl(
+          'ir',
+          configuredApiUrl,
+          window.location.origin,
+        );
 
         // Step 2: Fetch short-lived WebSocket token via REST API
         // Construct URL by appending to base (no leading slash to preserve path)
@@ -78,12 +83,13 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
 
         const { token } = await tokenResponse.json();
 
-        // Step 3: Construct WebSocket URL preserving the base path
-        const wsBaseUrl = baseUrl
-          .replace('http://', 'ws://')
-          .replace('https://', 'wss://');
-
-        const wsUrl = `${wsBaseUrl}/notifications/ws?token=${encodeURIComponent(token)}`;
+        // Step 3: Construct WebSocket URL preserving the same origin and path.
+        const wsUrl = resolveWebSocketUrl(
+          '/ir/notifications/ws',
+          configuredApiUrl,
+          window.location.origin,
+        );
+        wsUrl.searchParams.set('token', token);
 
         // Create WebSocket connection
         const ws = new WebSocket(wsUrl);
