@@ -92,7 +92,13 @@ def upgrade() -> None:
             sa.Column('active_round_id', uuid_type, nullable=True),
             sa.Column('flag_dismissal_streak', sa.Integer(), nullable=False, server_default='0'),
             sa.ForeignKeyConstraint(['player_id'], ['players.player_id'], ondelete='CASCADE'),
-            sa.ForeignKeyConstraint(['active_round_id'], ['qf_rounds.round_id'], ondelete='SET NULL'),
+            sa.ForeignKeyConstraint(
+                ['active_round_id'],
+                ['qf_rounds.round_id'],
+                ondelete='SET NULL',
+                deferrable=True,
+                initially='DEFERRED',
+            ),
             sa.PrimaryKeyConstraint('player_id'),
         )
 

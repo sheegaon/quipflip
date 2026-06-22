@@ -13,6 +13,7 @@ from sqlalchemy import select
 from backend.config import get_settings
 from backend.models.mm.image import MMImage
 from backend.models.mm.caption import MMCaption
+from backend.utils.sqlite import configure_sqlite_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -153,7 +154,7 @@ async def seed_data(db: AsyncSession):
         # Determine how many captions to add
         captions_needed = max(10 - existing_captions, 0)
 
-        # Create captions for this image
+        # Create captions for each image
         for i in range(captions_needed):
             if i >= len(GENERIC_CAPTIONS):
                 break
@@ -187,6 +188,7 @@ async def seed_data(db: AsyncSession):
 async def main():
     """Main entry point."""
     engine = create_async_engine(settings.database_url)
+    configure_sqlite_engine(engine.sync_engine)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:

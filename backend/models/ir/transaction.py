@@ -1,5 +1,5 @@
 """Transaction ledger model."""
-from sqlalchemy import Column, Integer, String, ForeignKey, Index, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Index, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from backend.models.transaction_base import TransactionBase
@@ -30,4 +30,5 @@ class IRTransaction(TransactionBase):
         Index("ix_transaction_player", "player_id"),
         Index("ix_transaction_type", "transaction_type"),
         Index("ix_transaction_created", "created_at"),
+        UniqueConstraint("idempotency_key", name="uq_ir_transactions_idempotency_key"),
     )

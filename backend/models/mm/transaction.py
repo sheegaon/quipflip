@@ -1,5 +1,5 @@
 """Transaction ledger entries for Meme Mint."""
-from sqlalchemy import ForeignKey, Index
+from sqlalchemy import ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from backend.models.transaction_base import TransactionBase
@@ -19,4 +19,5 @@ class MMTransaction(TransactionBase):
 
     __table_args__ = (
         Index("ix_mm_transactions_player_created", "player_id", "created_at"),
+        UniqueConstraint("idempotency_key", name="uq_mm_transactions_idempotency_key"),
     )

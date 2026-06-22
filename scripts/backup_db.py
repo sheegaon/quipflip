@@ -31,6 +31,7 @@ sys.path.insert(0, str(project_root))
 # Import all models to ensure they're registered with SQLAlchemy
 from backend.config import get_settings
 from backend.database import Base
+from backend.utils.sqlite import configure_sqlite_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -82,6 +83,7 @@ async def fetch_all_data_from_remote(source_url: str) -> Dict[str, List[Dict[str
         echo=False,
         pool_pre_ping=True,
     )
+    configure_sqlite_engine(source_engine.sync_engine)
 
     # Create session
     AsyncSessionLocal = async_sessionmaker(
@@ -184,6 +186,7 @@ def insert_data_into_backup(all_data: Dict[str, List[Dict[str, Any]]]):
 
     # Create synchronous engine for inserting data
     engine = create_engine(BACKUP_DB_URL, echo=False)
+    configure_sqlite_engine(engine)
 
     # Create metadata and reflect tables
     metadata = MetaData()

@@ -1,9 +1,14 @@
 """Database connection and session management."""
+from __future__ import annotations
+
 import logging
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
+
 from backend.config import get_settings
+from backend.utils.sqlite import configure_sqlite_engine, is_sqlite_url
 from backend.sqlite import configure_production_sqlite
 
 # Configure logging
@@ -23,12 +28,13 @@ try:
 
         # Check for special characters that might need encoding
         import urllib.parse
-        encoded_password = urllib.parse.quote(password, safe='')
+
+        encoded_password = urllib.parse.quote(password, safe="")
         if encoded_password != password:
-            logger.warning(f"Password contains special characters that might need URL encoding")
+            logger.warning("Password contains special characters that might need URL encoding")
     else:
         # SQLite doesn't use passwords, so this is expected in development
-        if 'sqlite' not in parsed_url.drivername:
+        if "sqlite" not in parsed_url.drivername:
             logger.warning("No password found in DATABASE_URL!")
         else:
             logger.debug("Using SQLite (no password required)")
@@ -82,14 +88,22 @@ if not is_sqlite:
 else:
     logger.debug("SQLite detected; using default NullPool without pool sizing arguments")
 
+def create_app_engine(database_url: str | None = None):
+    """Create an async engine with the production SQLite pragmas applied."""
+    url = database_url or settings.database_url
+    kwargs = dict(engine_kwargs)
+    if not is_sqlite_url(url):
+        logger.debug("Creating non-SQLite async engine")
+    engine = create_async_engine(url, **kwargs)
+    configure_sqlite_engine(engine.sync_engine)
+    if is_sqlite_url(url) and settings.environment == "production":
+        configure_production_sqlite(engine)
+    return engine
+
+
 # Create async engine
 try:
-    engine = create_async_engine(
-        settings.database_url,
-        **engine_kwargs,
-    )
-    if is_sqlite and settings.environment == "production":
-        configure_production_sqlite(engine)
+    engine = create_app_engine()
     logger.debug("Database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")

@@ -1,5 +1,5 @@
 """Unified round model for quip (prompt), impostor (copy), and vote rounds."""
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index, CheckConstraint, text
 from sqlalchemy.orm import relationship
 import uuid
 from enum import Enum
@@ -7,17 +7,19 @@ from datetime import datetime, UTC
 
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.models.versioned_base import VersionedBase
 
 
 class RoundStatus(str, Enum):
     """Round status enumeration for type safety."""
     ACTIVE = "active"
     SUBMITTED = "submitted"
+    COMPLETED = "completed"
     EXPIRED = "expired"
     ABANDONED = "abandoned"
 
 
-class Round(Base):
+class Round(VersionedBase, Base):
     """Unified round model for all round types."""
     __tablename__ = "qf_rounds"
 
@@ -61,6 +63,19 @@ class Round(Base):
 
     # Indexes
     __table_args__ = (
+        CheckConstraint("round_type IN ('prompt', 'copy', 'vote')", name="valid_round_type"),
+        CheckConstraint("status IN ('active', 'submitted', 'completed', 'expired', 'abandoned')", name="valid_round_status"),
+        CheckConstraint(
+            "phraseset_status IN ('waiting_copies', 'waiting_copy1', 'active', 'finalized', 'abandoned', 'flagged_pending', 'flagged_removed', 'closed', 'closing', 'voting') OR phraseset_status IS NULL",
+            name="valid_phraseset_status",
+        ),
+        Index(
+            "uq_qf_rounds_active_player",
+            "player_id",
+            unique=True,
+            sqlite_where=text("status = 'active'"),
+            postgresql_where=text("status = 'active'"),
+        ),
         Index('ix_rounds_status_created', 'status', 'created_at'),
         Index('ix_rounds_phraseset_status', 'phraseset_status'),
         Index('ix_rounds_player_type_status', 'player_id', 'round_type', 'status'),

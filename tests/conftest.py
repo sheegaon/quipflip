@@ -24,6 +24,7 @@ os.environ["USE_SENTENCE_TRANSFORMERS"] = "false"
 os.environ.setdefault("CROWDCRAFT_TEST_SEED", "20260622")
 
 from backend.config import get_settings
+from backend.database import create_app_engine
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -143,13 +144,7 @@ def event_loop():
 async def test_engine():
     """Create test database engine using the same database as migrations."""
     # Use the same database URL as the migrations
-    engine = create_async_engine(
-        settings.database_url,
-        echo=False,
-        # Add connection pooling settings to help with cleanup
-        pool_pre_ping=True,
-        pool_recycle=300,
-    )
+    engine = create_app_engine(settings.database_url)
 
     yield engine
 

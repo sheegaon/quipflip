@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Import Base and all models
 from backend.database import Base
 from backend.config import get_settings
+from backend.utils.sqlite import configure_sqlite_engine
 # Import all models so Alembic can detect them
 # Using concrete game-type-specific models (QF = Quip Flip)
 from backend.models import (
@@ -135,6 +136,7 @@ async def run_async_migrations() -> None:
             prefix="sqlalchemy.",
             poolclass=pool.NullPool,
         )
+        configure_sqlite_engine(connectable.sync_engine)
         logger.info("Migration engine created successfully")
     except Exception as e:
         logger.error(f"Failed to create migration engine: {e}")
