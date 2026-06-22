@@ -225,23 +225,19 @@ class PartyCoordinationService:
             session_progress=await self._get_session_progress_summary(session_id),
         )
 
-        # Check if all players done with prompts
-        can_advance = await self.party_session_service.can_advance_phase(session_id)
-        logger.info(f"After prompt submission - can_advance_phase={can_advance} for session {session_id}")
-
-        if can_advance:
+        # Advance the phase atomically if this submission completed the phase.
+        old_session = await self.party_session_service.get_session_by_id(session_id)
+        advanced_session = await self.party_session_service.advance_phase_atomic(session_id)
+        if advanced_session and old_session and advanced_session.current_phase != old_session.current_phase:
             logger.info(f"Advancing phase for session {session_id} from PROMPT to COPY")
-            session = await self.party_session_service.advance_phase(session_id)
 
-            # Broadcast phase transition
             await self.ws_manager.notify_phase_transition(
                 session_id=session_id,
-                old_phase='PROMPT',
-                new_phase=session.current_phase,
+                old_phase=old_session.current_phase,
+                new_phase=advanced_session.current_phase,
                 message="All prompts submitted! Time to write copies.",
             )
 
-            # Trigger AI submissions for new phase (COPY)
             await self._trigger_ai_submissions_for_new_phase(
                 session_id=session_id,
                 transaction_service=transaction_service,
@@ -388,19 +384,16 @@ class PartyCoordinationService:
             session_progress=await self._get_session_progress_summary(session_id),
         )
 
-        # Check if all players done with copies
-        if await self.party_session_service.can_advance_phase(session_id):
-            session = await self.party_session_service.advance_phase(session_id)
-
-            # Broadcast phase transition
+        old_session = await self.party_session_service.get_session_by_id(session_id)
+        advanced_session = await self.party_session_service.advance_phase_atomic(session_id)
+        if advanced_session and old_session and advanced_session.current_phase != old_session.current_phase:
             await self.ws_manager.notify_phase_transition(
                 session_id=session_id,
-                old_phase='COPY',
-                new_phase=session.current_phase,
+                old_phase=old_session.current_phase,
+                new_phase=advanced_session.current_phase,
                 message="All copies submitted! Time to vote.",
             )
 
-            # Trigger AI submissions for new phase (VOTE)
             await self._trigger_ai_submissions_for_new_phase(
                 session_id=session_id,
                 transaction_service=transaction_service,
@@ -546,15 +539,13 @@ class PartyCoordinationService:
             session_progress=await self._get_session_progress_summary(session_id),
         )
 
-        # Check if all players done with votes
-        if await self.party_session_service.can_advance_phase(session_id):
-            session = await self.party_session_service.advance_phase(session_id)
-
-            # Broadcast phase transition
+        old_session = await self.party_session_service.get_session_by_id(session_id)
+        advanced_session = await self.party_session_service.advance_phase_atomic(session_id)
+        if advanced_session and old_session and advanced_session.current_phase != old_session.current_phase:
             await self.ws_manager.notify_phase_transition(
                 session_id=session_id,
-                old_phase='VOTE',
-                new_phase=session.current_phase,
+                old_phase=old_session.current_phase,
+                new_phase=advanced_session.current_phase,
                 message="All votes submitted! Check out the results.",
             )
 
@@ -1099,16 +1090,13 @@ class PartyCoordinationService:
 
             logger.info(f"🤖 [AI PROCESS] ✅ Parallel AI submissions completed for session {session_id}: {stats}")
 
-            # Check if phase can advance (now that all AI are done)
-            if await self.party_session_service.can_advance_phase(session_id):
-                logger.info(f"🤖 [AI PROCESS] 🎯 All participants ready, advancing phase for session {session_id}")
-                advanced_session = await self.party_session_service.advance_phase_atomic(session_id)
-                if advanced_session:
-                    logger.info(f"🤖 [AI PROCESS] ✅ Phase advanced to {advanced_session.current_phase} for session {session_id}")
-                    # Recursively trigger AI for next phase
-                    await self._trigger_ai_submissions_for_new_phase(session_id, transaction_service)
-                else:
-                    logger.debug(f"🤖 [AI PROCESS] Phase advancement was already handled by another process for session {session_id}")
+            old_session = await self.party_session_service.get_session_by_id(session_id)
+            advanced_session = await self.party_session_service.advance_phase_atomic(session_id)
+            if advanced_session and old_session and advanced_session.current_phase != old_session.current_phase:
+                logger.info(f"🤖 [AI PROCESS] ✅ Phase advanced to {advanced_session.current_phase} for session {session_id}")
+                await self._trigger_ai_submissions_for_new_phase(session_id, transaction_service)
+            else:
+                logger.debug(f"🤖 [AI PROCESS] Phase advancement was already handled or not yet ready for session {session_id}")
 
             return stats
 
