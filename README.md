@@ -13,10 +13,9 @@ Each game has a Vite/React frontend under `frontend/`; shared client code lives 
 eligibility, scoring, the in-game economies, AI backup players, and realtime
 channels.
 
-The repository is currently being hardened and migrated from Heroku/Vercel to a
-Mac-local SQLite/FastAPI deployment behind Cloudflare. Start with the
-[documentation index](docs/README.md) and the active
-[reliability and deployment plan](docs/transition-plan.md).
+The repository is being hardened for the Mac-local SQLite/FastAPI deployment
+behind Cloudflare. Start with the [documentation index](docs/README.md) and the
+active [reliability and deployment plan](docs/transition-plan.md).
 
 ## Requirements
 

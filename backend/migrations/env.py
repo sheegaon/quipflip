@@ -112,9 +112,11 @@ async def run_async_migrations() -> None:
     except Exception as e:
         logger.error(f"Failed to parse migration URL: {e}")
     
-    # Add SSL configuration for Heroku/production if needed
-    needs_ssl = url and (
-        "heroku" in url or
+    parsed_url = make_url(url) if url else None
+    is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
+
+    # Add SSL configuration for remote non-SQLite databases when needed.
+    needs_ssl = url and not is_sqlite and (
         "amazonaws" in url or
         get_settings().environment == "production"
     )
