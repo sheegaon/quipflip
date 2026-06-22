@@ -57,7 +57,7 @@
    - Provide transitional fields or shims for clients expecting delegated properties (e.g., optional `wallet` mirrors) guarded by a feature flag.
 2. **Frontend adjustments**
    - Update frontend auth contexts to consume the new global auth payload and request per-game player data explicitly when entering a game.
-   - Remove client-side assumptions about defaulting to Quipflip when `game_type` is absent.
+   - Remove client-side assumptions about defaulting to QuipFlip when `game_type` is absent.
 3. **Documentation**
    - Update DATA_MODELS docs to describe the fully game-agnostic Player model and the new service/endpoint behavior.
 
@@ -65,7 +65,7 @@
 
 ## What changed in Phase 4
 - **Global auth payloads separated:** Login and refresh responses now return a `player` envelope with global identity fields plus optional per-game snapshots. Legacy `wallet`/`vault` mirrors remain available behind the `auth_emit_legacy_fields` flag for backward compatibility.
-- **Session probing endpoint:** Added `/auth/session` to surface global authentication state (cookie or header) with optional game-scoped snapshots, enabling clients to bootstrap without assuming a Quipflip default.
+- **Session probing endpoint:** Added `/auth/session` to surface global authentication state (cookie or header) with optional game-scoped snapshots, enabling clients to bootstrap without assuming a QuipFlip default.
 - **Frontend session detection:** All game contexts now call the shared `/auth/session` flow with an explicit `gameType`, relying on the per-game snapshot rather than implicit QF balance checks when entering a title.
 
 ## Phase 5: Testing and Rollout
@@ -103,8 +103,8 @@
 This document captures the Phase 1 discovery work for globalizing the Player model and authentication flows. It summarizes the current code-level realities, database expectations, and the contract changes required before proceeding to schema/service refactors.
 
 ## Audit Findings
-- **Player model still delegates game-specific state** via relationships and property shims to Quipflip and ThinkLink tables, meaning `Player` implicitly owns QF/TL-specific behaviors (wallets, tutorials, lockouts) instead of being strictly global. 【F:backend/models/player.py†L38-L249】
-- **Auth router assumes Quipflip as the default game** for login, username login, refresh, and logout by hard-coding `GameType.QF` when constructing `AuthService`, which blocks a truly global login surface. 【F:backend/routers/auth.py†L33-L168】
+- **Player model still delegates game-specific state** via relationships and property shims to QuipFlip and ThinkLink tables, meaning `Player` implicitly owns QF/TL-specific behaviors (wallets, tutorials, lockouts) instead of being strictly global. 【F:backend/models/player.py†L38-L249】
+- **Auth router assumes QuipFlip as the default game** for login, username login, refresh, and logout by hard-coding `GameType.QF` when constructing `AuthService`, which blocks a truly global login surface. 【F:backend/routers/auth.py†L33-L168】
 - **WebSocket token helper iterates over games but still relies on per-game AuthService** instances, reinforcing the need for a global player service/token path. 【F:backend/routers/auth.py†L172-L218】
 - **AuthService is parameterized by `game_type` and loads game-specific player services** for creation/quest initialization; global auth is not yet centralized and defaults to QF when unspecified. 【F:backend/services/auth_service.py†L44-L165】
 - **Per-game player data tables remain separate and contain wallets/tutorial/lockout fields**, with single-row-per-player constraints via PK/FK to `players`. These tables currently back the delegated properties on `Player`. 【F:backend/models/qf/player_data.py†L16-L60】【F:backend/models/ir/player_data.py†L16-L45】【F:backend/models/mm/player_data.py†L16-L47】
@@ -114,7 +114,7 @@ This document captures the Phase 1 discovery work for globalizing the Player mod
 - **Players table**: global identity/authentication columns (username, email, password_hash, admin/guest flags, lockouts) with unique constraints on username/email. Delegated game state is not stored here but accessed via relationships. 【F:backend/models/player.py†L23-L184】
 - **Game-specific player data**: `qf_player_data`, `ir_player_data`, `mm_player_data`, and `tl_player_data` each require a `player_id` FK/PK, enforce CASCADE deletes, and own per-game wallet, vault, tutorial, and lockout fields. 【F:backend/models/qf/player_data.py†L23-L57】【F:backend/models/ir/player_data.py†L23-L41】【F:backend/models/mm/player_data.py†L23-L45】【F:backend/models/tl/player_data.py†L23-L43】
 - **Auth/session storage**: `refresh_tokens` table is global (player_id FK with CASCADE, indexed token hash) and supports SSO semantics without per-game scoping. 【F:backend/models/refresh_token.py†L15-L49】
-- **Implicit defaults**: Service constructors and dependencies default to `GameType.QF`, meaning many code paths will bind to Quipflip-specific behaviors unless explicitly overridden. 【F:backend/routers/auth.py†L33-L168】【F:backend/services/auth_service.py†L44-L165】
+- **Implicit defaults**: Service constructors and dependencies default to `GameType.QF`, meaning many code paths will bind to QuipFlip-specific behaviors unless explicitly overridden. 【F:backend/routers/auth.py†L33-L168】【F:backend/services/auth_service.py†L44-L165】
 
 ## Contract Changes Needed for Globalization
 1. **Authentication & tokens**
@@ -213,8 +213,8 @@ Reduce remaining implicit `GameType.QF` coupling in authentication/token handlin
 
 ## What changed in Phase 2
 - **Game-specific data fully isolated:** The unified `Player` model now requires explicit per-game access; no delegated balance/tutorial properties remain.
-- **Per-game state migration:** Added Alembic migration `0f5c7c89f4bb_phase2_player_data_cleanup.py` to backfill Quipflip player data rows from any legacy columns on `players` and drop those global columns to keep the table game-agnostic.
-- **Documentation alignment:** Updated `docs/DATA_MODELS.md` to reflect the explicit per-game data access pattern and removal of implicit Quipflip defaults.
+- **Per-game state migration:** Added Alembic migration `0f5c7c89f4bb_phase2_player_data_cleanup.py` to backfill QuipFlip player data rows from any legacy columns on `players` and drop those global columns to keep the table game-agnostic.
+- **Documentation alignment:** Updated `docs/DATA_MODELS.md` to reflect the explicit per-game data access pattern and removal of implicit QuipFlip defaults.
 
 ## Migration expectations
 - The migration uses dialect-aware column checks (per `HEROKU_MIGRATION_LESSONS.md`) before dropping columns to stay compatible with environments that already removed the fields.

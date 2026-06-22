@@ -1,10 +1,10 @@
-# Meme Mint Image Management
+# MemeMint Image Management
 
 > **Document type:** Asset operations reference
 > **Status:** Review-required — verify URLs and import behavior before use
 > **Audience:** Maintainers
 
-This directory contains the image management system for Meme Mint.
+This directory contains the image management system for MemeMint.
 
 ## Directory Structure
 

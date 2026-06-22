@@ -54,8 +54,8 @@ npm run build:tl
 ```
 
 At the 2026-06-22 baseline QF and MM passed, IR failed TypeScript compilation, and
-the chained command did not reach TL. Do not deploy a partial frontend set as a
-green release.
+the chained command did not reach TL; an independent TL build passed. Do not deploy
+a partial frontend set as a green release.
 
 ## Verification
 

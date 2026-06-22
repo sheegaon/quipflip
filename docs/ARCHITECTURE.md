@@ -105,7 +105,8 @@ high-risk lifecycle boundaries.
 ### Initial Reaction
 
 Backronym sets collect entries, move to voting, and finalize payouts. The 2026-06-22
-baseline includes IR model/transaction test failures and a failing frontend build.
+baseline includes IR model/transaction test failures and a failing frontend build;
+the other three frontend builds pass when run independently.
 
 ### ThinkLink
 

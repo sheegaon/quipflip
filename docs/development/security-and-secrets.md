@@ -1,6 +1,8 @@
 # Security and Secrets
 
+> **Document type:** Engineering guidance
 > **Status:** Active
+> **Audience:** Maintainers and contributors
 
 ## Credential policy
 

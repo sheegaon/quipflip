@@ -1,6 +1,8 @@
 # Dependency Policy
 
+> **Document type:** Engineering guidance
 > **Status:** Active
+> **Audience:** Maintainers and contributors
 
 This repository has two dependency surfaces: the Python backend (`requirements.txt`)
 and the npm workspaces for the four frontends + shared library (`package-lock.json`).

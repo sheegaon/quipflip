@@ -6,9 +6,9 @@
 
 The backend now mirrors the code split between shared infrastructure and game-specific routers. Authentication is **global**: auth endpoints live at the root (`/auth/*`) and issue tokens scoped to the unified player identity. Game-specific routers request per-game snapshots via an explicit `game_type` query parameter instead of relying on delegated `Player` fields.
 
-- [Quipflip (QF) API](quipflip/QF_API.md) – endpoints mounted under `/qf/*` and implemented in `backend/routers/qf`.
+- [QuipFlip (QF) API](quipflip/QF_API.md) – endpoints mounted under `/qf/*` and implemented in `backend/routers/qf`.
 - [Initial Reaction (IR) API](initialreaction/IR_API.md) – endpoints mounted under `/ir/*` and implemented in `backend/routers/ir`.
-- [Meme Mint (MM) API](mememint/MM_API.md) – endpoints mounted under `/mm/*` and implemented in `backend/routers/mm`.
+- [MemeMint (MM) API](mememint/MM_API.md) – endpoints mounted under `/mm/*` and implemented in `backend/routers/mm`.
 - [ThinkLink (TL) API](thinklink/TL_API.md) – endpoints mounted under `/tl/*` and implemented in `backend/routers/tl`.
 
 ## Shared Endpoints

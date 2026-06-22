@@ -1,10 +1,10 @@
-# Quipflip (QF) API Documentation
+# QuipFlip (QF) API Documentation
 
 > **Document type:** Implementation reference
 > **Status:** Review-required — validate against OpenAPI and tests
 > **Audience:** Client and backend maintainers
 
-Quipflip endpoints live under the `/qf` prefix and are implemented in `backend/routers/qf`, sharing authentication middleware and response envelopes with the common routers documented in [API.md](../API.md). Authentication, health, and WebSocket token exchange are defined centrally there; this guide focuses on game-specific behavior.
+QuipFlip endpoints live under the `/qf` prefix and are implemented in `backend/routers/qf`, sharing authentication middleware and response envelopes with the common routers documented in [API.md](../API.md). Authentication, health, and WebSocket token exchange are defined centrally there; this guide focuses on game-specific behavior.
 
 ## Base URL
 
@@ -18,7 +18,7 @@ Production (API): https://quipflip.xyz/api (proxied to Heroku backend)
 
 ## Authentication
 
-All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) access token. Authentication is **global** and handled by the shared `/auth/*` routes; pass `game_type=qf` on login/refresh/session calls when you need Quipflip-specific snapshots in the response.
+All endpoints except `/health` and `/` require a valid JSON Web Token (JWT) access token. Authentication is **global** and handled by the shared `/auth/*` routes; pass `game_type=qf` on login/refresh/session calls when you need QuipFlip-specific snapshots in the response.
 
 **Cookie-Based Authentication (Preferred):**
 - The API uses HTTP-only cookies for secure token storage
@@ -38,12 +38,12 @@ Authorization: Bearer <access_token>
 **Token Lifecycle & Snapshots:**
 - Login/registration endpoints automatically set both access and refresh token cookies
 - Access tokens expire after 2 hours
-- Call `POST /auth/refresh?game_type=qf` to get new tokens and the current Quipflip snapshot (wallet/vault/tutorial flags) in `game_data`
-- `GET /auth/session?game_type=qf` returns the global player plus Quipflip snapshot when cookies/headers are present
+- Call `POST /auth/refresh?game_type=qf` to get new tokens and the current QuipFlip snapshot (wallet/vault/tutorial flags) in `game_data`
+- `GET /auth/session?game_type=qf` returns the global player plus QuipFlip snapshot when cookies/headers are present
 - Logout clears both cookies from the browser
 
 **Getting Tokens:**
-- Use `POST /auth/login` with your email/password (or `/auth/login/username`) to obtain fresh tokens. Include `game_type=qf` when you need the Quipflip snapshot in the response.
+- Use `POST /auth/login` with your email/password (or `/auth/login/username`) to obtain fresh tokens. Include `game_type=qf` when you need the QuipFlip snapshot in the response.
 - Legacy QF-specific routes (`/player/guest`, `/player`, `/player/upgrade`) are still available but internally call the global auth flow and return the same `player`/`game_data` envelopes.
 
 ## Data Model Reference

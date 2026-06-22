@@ -50,7 +50,7 @@ smoke test.
   database/singleton state, AI mocks, IR model drift, and genuine rule regressions.
 - `npm run build:qf` and `npm run build:mm`: passed.
 - `npm run build:ir`: failed TypeScript compilation; the chained build therefore
-  did not reach ThinkLink.
+  did not reach ThinkLink. `npm run build:tl` was then run independently and passed.
 - `https://quipflip.xyz/`: returned HTTP 200 and rendered the landing page, but its
   browser console recorded a failed guest-account request.
 - `https://quipflip-c196034288cd.herokuapp.com/health`: returned Heroku

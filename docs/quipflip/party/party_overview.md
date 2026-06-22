@@ -1,4 +1,4 @@
-# Quipflip Party Mode: Architecture Overview
+# QuipFlip Party Mode: Architecture Overview
 
 > **Document type:** Historical design reference
 > **Status:** Archive — use QF rules, current code, and the active transition plan
@@ -6,7 +6,7 @@
 
 This document explains how the Party Mode pieces fit together:
 
-- How the party-specific tables relate to the core Quipflip data model
+- How the party-specific tables relate to the core QuipFlip data model
 - How lobby and in-game phases progress
 - How the coordination services use the existing prompt / copy / vote engine
 - How WebSockets and cleanup jobs keep sessions healthy
@@ -22,7 +22,7 @@ Think of this as the “how it works” narrative layer on top.
 
 ## 1. Core data model (where `PartyParticipant` fits)
 
-Party Mode sits on top of the normal Quipflip entities (`QFPlayer`, `Round`, `Phraseset`, `Transaction`, etc.) and adds four party-specific tables:
+Party Mode sits on top of the normal QuipFlip entities (`QFPlayer`, `Round`, `Phraseset`, `Transaction`, etc.) and adds four party-specific tables:
 
 - `PartySession`
 - `PartyParticipant`
@@ -270,7 +270,7 @@ Flow (conceptually):
    - `current_phase == 'PROMPT'`
    - Caller is an `ACTIVE` participant who hasn’t finished their required prompts
 
-2. Start a normal Quipflip **prompt** round:
+2. Start a normal QuipFlip **prompt** round:
 
    - Create a `Round` with the right `GameType` (party-mode variant)
    - Charge any entry fees using the existing `TransactionService` (if configured)
@@ -531,7 +531,7 @@ From a backend-architecture standpoint, Party Mode is:
 
 - **Models**
 
-  - `PartySession`, `PartyParticipant`, `PartyRound`, `PartyPhraseset` extend the existing Quipflip schema with:
+  - `PartySession`, `PartyParticipant`, `PartyRound`, `PartyPhraseset` extend the existing QuipFlip schema with:
     - Session config and lifecycle (`status`, `current_phase`, timestamps)
     - Per-player phase counters and presence
     - Party-specific round links

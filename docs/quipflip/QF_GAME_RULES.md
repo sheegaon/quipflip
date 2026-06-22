@@ -5,7 +5,7 @@
 > **Audience:** Product and engineering
 
 ## Overview
-Quipflip revolves around three sequential round types—prompt creation, copywriting, and voting—that funnel player fees into a shared prize pool before redistributing winnings based on how voters respond. All economic values, timers, and behavioral limits are configurable via `backend.config.Settings`, so this document references the setting names (for example `prompt_cost`) instead of hard-coded numbers.
+QuipFlip revolves around three sequential round types—prompt creation, copywriting, and voting—that funnel player fees into a shared prize pool before redistributing winnings based on how voters respond. All economic values, timers, and behavioral limits are configurable via `backend.config.Settings`, so this document references the setting names (for example `prompt_cost`) instead of hard-coded numbers.
 
 ## Economy and Rewards
 ### Core balances and income

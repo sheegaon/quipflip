@@ -14,7 +14,7 @@ You earn coins based on how much of the “crowd idea space” you cover.
 # **Gameplay Loop**
 
 * Player gets a prompt.
-* Player submits short phrases (validated like Quipflip).
+* Player submits short phrases (validated like QuipFlip).
 * Each valid guess is compared against **all active answers** for that prompt.
 * If the guess matches **no** active answers → **strike**.
 * Three strikes end the round.
@@ -22,7 +22,7 @@ You earn coins based on how much of the “crowd idea space” you cover.
 
 ---
 
-# **Phrase Validation (same as Quipflip)**
+# **Phrase Validation (same as QuipFlip)**
 
 * 2–5 words
 * A–Z letters + spaces only

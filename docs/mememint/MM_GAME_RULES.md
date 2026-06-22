@@ -1,4 +1,4 @@
-# Meme Mint Caption Game — Dev Game Rules
+# MemeMint Caption Game — Dev Game Rules
 
 > **Document type:** Canonical game rules
 > **Status:** Active intended behavior

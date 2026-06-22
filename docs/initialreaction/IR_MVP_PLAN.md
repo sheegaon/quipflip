@@ -83,7 +83,7 @@ That’s it — one vertical slice, no background workers required beyond the ex
 
 ### **3. Leverage Existing Infrastructure**
 
-| Quipflip Component                  | Reuse Strategy                                                                                        |
+| QuipFlip Component                  | Reuse Strategy                                                                                        |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | **FastAPI app**                     | Add `include_router(ir_routes, prefix="/api/ir")`                                                     |
 | **AIService**                       | New prompt builder: `build_backronym_prompt(word)` and `build_vote_prompt(entries)`                   |
@@ -97,7 +97,7 @@ That’s it — one vertical slice, no background workers required beyond the ex
 
 ### **4. Frontend MVP (Vite/React)**
 
-Reusing 80% of your existing Quipflip UI:
+Reusing 80% of your existing QuipFlip UI:
 
 1. **New route:** `/backronym-battle`
 
@@ -125,7 +125,7 @@ Reusing 80% of your existing Quipflip UI:
    * InitCoin counter
    * Toast system
    * Modals and button components
-   * Theme colors from Quipflip
+   * Theme colors from QuipFlip
 
 6. **AI placeholders**: show a small 🤖 icon on AI entries.
 
@@ -191,7 +191,7 @@ Use the same async OpenAI/Gemini wrappers you already have; log in `ai_metrics` 
 
 ---
 
-### **9. Timeline (if you start from current Quipflip base)**
+### **9. Timeline (if you start from current QuipFlip base)**
 
 | Phase                              | Duration | Deliverable                              |
 | ---------------------------------- | -------- | ---------------------------------------- |

@@ -1,6 +1,8 @@
 # Documentation Guide
 
+> **Document type:** Engineering guidance
 > **Status:** Active
+> **Audience:** Maintainers and contributors
 
 How to structure and maintain documentation in this repository, adapted from the
 sibling `pixel-plagiarist` conventions.

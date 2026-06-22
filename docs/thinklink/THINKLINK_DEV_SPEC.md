@@ -45,9 +45,9 @@ For each prompt:
 
 ---
 
-# **3. Phrase Validation (Reuses Quipflip Validator)**
+# **3. Phrase Validation (Reuses QuipFlip Validator)**
 
-All player submissions must pass **the same phrase validation system used by Quipflip**.
+All player submissions must pass **the same phrase validation system used by QuipFlip**.
 
 This includes:
 
@@ -102,7 +102,7 @@ New answers from other players are ignored for this round.
 
 Each guess:
 
-1. Validate phrase (using Quipflip validator)
+1. Validate phrase (using QuipFlip validator)
 2. If valid → embed using OpenAI small
 3. Compute cosine similarity vs **all snapshot answers** (≤1000)
 4. Determine which clusters (if any) were newly matched
@@ -287,13 +287,13 @@ No max-guess limit, except strike-based termination.
 
 Each prompt will be pre-seeded with 40–60 AI-generated answers:
 
-* Validate using Quipflip validator
+* Validate using QuipFlip validator
 * On-topic check
 * Moderation
 * Clustering
 * Ensure each initial cluster has multiple variants if possible
 
-This ensures a robust initial semantic landscape. Infrastructure for AI seeding must allow import/updates via CSV, similar to Quipflip `prompts.csv` and `prompt_completions.csv`. Create import script in `main.py`.
+This ensures a robust initial semantic landscape. Infrastructure for AI seeding must allow import/updates via CSV, similar to QuipFlip `prompts.csv` and `prompt_completions.csv`. Create import script in `main.py`.
 
 ---
 

@@ -1,10 +1,10 @@
-# Meme Mint (MM) API Documentation
+# MemeMint (MM) API Documentation
 
 > **Document type:** Implementation reference
 > **Status:** Review-required — validate against OpenAPI and tests
 > **Audience:** Client and backend maintainers
 
-Meme Mint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication and health/status probes are documented in [API.md](../API.md); this guide focuses on Meme Mint gameplay and account endpoints.
+MemeMint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication and health/status probes are documented in [API.md](../API.md); this guide focuses on MemeMint gameplay and account endpoints.
 
 ## Base URL
 
@@ -14,9 +14,9 @@ Development: http://localhost:8000/mm
 
 ## Authentication
 
-Meme Mint uses the shared authentication contract from [API.md](../API.md). Authentication is **global**; include `game_type=mm` on auth/session calls to receive Meme Mint balances/tutorial flags in the `game_data` envelope.
+MemeMint uses the shared authentication contract from [API.md](../API.md). Authentication is **global**; include `game_type=mm` on auth/session calls to receive MemeMint balances/tutorial flags in the `game_data` envelope.
 
-- HTTP-only cookies are set on login/refresh using the configured `access_token_cookie_name` and `refresh_token_cookie_name` (defaults mirror Quipflip).
+- HTTP-only cookies are set on login/refresh using the configured `access_token_cookie_name` and `refresh_token_cookie_name` (defaults mirror QuipFlip).
 - Authorization headers (`Bearer <token>`) are also accepted by the MM auth dependency.
 - Most endpoints require authentication; unauthenticated access is only allowed where noted (e.g., registration and guest creation).
 - `GET /auth/session?game_type=mm` is the preferred way to bootstrap the current player state without assuming a default game.
@@ -27,7 +27,7 @@ Game-specific schemas are defined in [MM_DATA_MODELS.md](MM_DATA_MODELS.md). Pla
 
 ## Response Format
 
-Meme Mint uses the same success and error envelope described in [API.md](../API.md). Error payloads surface via the `detail` field with appropriate HTTP status codes (400 for business rule violations such as insufficient balance, 404 when resources are missing, etc.).
+MemeMint uses the same success and error envelope described in [API.md](../API.md). Error payloads surface via the `detail` field with appropriate HTTP status codes (400 for business rule violations such as insufficient balance, 404 when resources are missing, etc.).
 
 ---
 
@@ -36,7 +36,7 @@ Meme Mint uses the same success and error envelope described in [API.md](../API.
 These endpoints extend the shared player router and issue JWT cookies for authentication.
 
 ### `POST /player`
-Create a new Meme Mint account. Returns tokens, player identifiers, and starting balances configured via `SystemConfigBase` overrides.
+Create a new MemeMint account. Returns tokens, player identifiers, and starting balances configured via `SystemConfigBase` overrides.
 
 ### `POST /player/guest`
 Create a guest player with auto-generated credentials and issued auth cookies. The response includes the generated email/password along with wallet and vault balances.
@@ -66,7 +66,7 @@ Update the player's username. Validation errors return `422` with the validation
 Delete the authenticated player's account and associated data. Clears cookies on success.
 
 ### `GET /player/me` and `GET /player/balance`
-Return the current player's Meme Mint balance using the shared `PlayerBalance` schema enriched with:
+Return the current player's MemeMint balance using the shared `PlayerBalance` schema enriched with:
 - `daily_bonus_available` – whether the player can claim the daily reward
 - `daily_bonus_amount` – configured reward size
 - `starting_balance` – game-specific starting funds
@@ -93,7 +93,7 @@ Expose client-facing configuration derived from `SystemConfigBase`, including ro
 Return a batched payload optimized for the dashboard. Data is cached for 10 seconds per player and includes:
 - `player` – the same payload as `/player/balance`
 - `round_availability` – voting/caption permissions, costs, remaining free captions, and bonus eligibility
-- `current_vote_round` and `current_caption_round` – always `null` in the current implementation because Meme Mint does not track active rounds on the player record
+- `current_vote_round` and `current_caption_round` – always `null` in the current implementation because MemeMint does not track active rounds on the player record
 
 ---
 
@@ -206,7 +206,7 @@ Retrieve details for a previously started round owned by the requesting player. 
 
 ## Circles Endpoints (`/mm/circles` prefix)
 
-Circles (groups) allow players to organize, share memes, and collaborate within the Meme Mint community. Players can create circles, invite members, and participate in shared meme activities.
+Circles (groups) allow players to organize, share memes, and collaborate within the MemeMint community. Players can create circles, invite members, and participate in shared meme activities.
 
 ### `POST /circles`
 Create a new circle (group).
@@ -418,4 +418,4 @@ Deny a pending join request (creator/admin only).
 ## Image Endpoint (`/mm/images` prefix)
 
 ### `GET /images/{filename}`
-Serve a Meme Mint image. In production the endpoint issues a `302` redirect to the GitHub-hosted asset with caching headers; in local development it serves the file directly from `backend/data/mm_images`. Requests with path traversal patterns return `400`, and missing files return `404`.
+Serve a MemeMint image. In production the endpoint issues a `302` redirect to the GitHub-hosted asset with caching headers; in local development it serves the file directly from `backend/data/mm_images`. Requests with path traversal patterns return `400`, and missing files return `404`.

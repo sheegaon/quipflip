@@ -94,5 +94,6 @@ default pytest collection.
 
 On 2026-06-22, full pytest collected localhost/stress suites and reported 355 passed,
 44 failed, 90 errors, and 9 skipped. QF/MM built; IR failed TypeScript compilation.
-This section is evidence for Phase 1, not an accepted permanent failure list. Update
-or remove it when the canonical gates are green.
+TL passed when run independently. This section is evidence for Phase 1, not an
+accepted permanent failure list. Update or remove it when the canonical gates are
+green.

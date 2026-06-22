@@ -1,7 +1,8 @@
 # Autonomous Agent Workflow
 
+> **Document type:** Engineering guidance
 > **Status:** Active
-> **Audience:** task authors, builders, and reviewers
+> **Audience:** Task authors, builders, and reviewers
 
 This document expands the universal rules in the root [`AGENTS.md`](../../AGENTS.md).
 Important requirements belong in executable checks whenever practical; prose explains

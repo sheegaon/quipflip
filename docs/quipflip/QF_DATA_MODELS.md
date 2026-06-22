@@ -1,14 +1,14 @@
-# Quipflip Data Models
+# QuipFlip Data Models
 
 > **Document type:** Implementation reference
 > **Status:** Review-required — models/migrations are implemented truth
 > **Audience:** Backend maintainers
 
-This guide documents the Quipflip-specific tables housed under `backend/models/qf`. These models build on the shared base tables described in [DATA_MODELS.md](../DATA_MODELS.md) (players, tokens, transactions, notifications, quests, and system configuration) and add the game entities unique to Quipflip.
+This guide documents the QuipFlip-specific tables housed under `backend/models/qf`. These models build on the shared base tables described in [DATA_MODELS.md](../DATA_MODELS.md) (players, tokens, transactions, notifications, quests, and system configuration) and add the game entities unique to QuipFlip.
 
 ## Architecture Note
 
-Quipflip uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all Quipflip balances, tutorials, and lockouts live in `QFPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="qf")`). Legacy `Player.wallet/vault` shims still exist during the migration and mirror `QFPlayerData` only when `auth_emit_legacy_fields` is enabled.
+QuipFlip uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all QuipFlip balances, tutorials, and lockouts live in `QFPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="qf")`). Legacy `Player.wallet/vault` shims still exist during the migration and mirror `QFPlayerData` only when `auth_emit_legacy_fields` is enabled.
 
 ## Core Models
 
@@ -28,13 +28,13 @@ Quipflip uses the **unified Player model with explicit per-game data** pattern. 
 - Constraints: PK on player_id (one-to-one relationship)
 - Relationships: `player` (back-reference to unified Player)
 
-**Note**: Game-facing APIs return Quipflip snapshots in the `game_data` envelope of auth/session responses instead of delegating through `Player`.
+**Note**: Game-facing APIs return QuipFlip snapshots in the `game_data` envelope of auth/session responses instead of delegating through `Player`.
 
 ### Player (Unified Authentication - See DATA_MODELS.md)
 The shared `Player` table contains unified authentication and account information:
 - `player_id`, `username`, `email`, `password_hash`, `created_at`, `last_login_date`
 - `is_guest`, `is_admin`, `locked_until`
-- Relationships: All game-specific relationships go through the appropriate player data table; Quipflip state is accessed via `QFPlayerData`
+- Relationships: All game-specific relationships go through the appropriate player data table; QuipFlip state is accessed via `QFPlayerData`
 
 **Authentication**: JWT access/refresh tokens (stored in the unified `refresh_tokens` table; legacy `qf_refresh_tokens` remains as an alias)
 **Registration**:

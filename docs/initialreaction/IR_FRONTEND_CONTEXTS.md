@@ -26,7 +26,7 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
 };
 ```
 
-This provider stack keeps IR-specific state isolated from the Quipflip contexts used by the main app while also supplying network resiliency, tutorial progress, notifications, and back-navigation helpers to every screen.
+This provider stack keeps IR-specific state isolated from the QuipFlip contexts used by the main app while also supplying network resiliency, tutorial progress, notifications, and back-navigation helpers to every screen.
 
 ## IRGameContext
 
