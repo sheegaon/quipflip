@@ -1,5 +1,6 @@
 """Database connection and session management."""
 import logging
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.engine.url import make_url
@@ -37,6 +38,19 @@ except Exception as e:
     logger.error(f"Raw URL (first 50 chars): {settings.database_url[:50]}...")
 
 is_sqlite = parsed_url.drivername.startswith("sqlite") if parsed_url else False
+
+
+def configure_sqlite_connection(dbapi_connection, _connection_record=None) -> None:
+    """Apply production SQLite pragmas to a fresh connection."""
+
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA synchronous=FULL")
+    finally:
+        cursor.close()
 
 # Determine if we need SSL for a remote non-SQLite database.
 connect_args = {}
@@ -87,6 +101,8 @@ try:
         settings.database_url,
         **engine_kwargs,
     )
+    if is_sqlite and settings.environment == "production":
+        event.listen(engine.sync_engine, "connect", configure_sqlite_connection)
     logger.debug("Database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")
