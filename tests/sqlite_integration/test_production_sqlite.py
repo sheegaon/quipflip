@@ -190,3 +190,11 @@ def test_backup_integrity_restore_and_query(tmp_path: Path) -> None:
             ("alpha",),
             ("beta",),
         ]
+
+
+def test_backup_rejects_missing_source_file(tmp_path: Path) -> None:
+    source = tmp_path / "missing.db"
+    restored = tmp_path / "restored.db"
+
+    with pytest.raises(FileNotFoundError):
+        backup_sqlite_database(source, restored)

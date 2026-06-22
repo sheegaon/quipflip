@@ -26,7 +26,8 @@ export const resolveWebSocketUrl = (
   browserOrigin: string,
 ): URL => {
   const root = resolveApiRoot(configuredApiUrl, browserOrigin);
-  const url = new URL(path, `${root}/`);
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  const url = new URL(cleanPath, `${root}/`);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   return url;
 };

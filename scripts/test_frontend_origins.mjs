@@ -37,3 +37,14 @@ test('WebSocket URLs preserve same-origin protocol and path', () => {
     'wss://quipflip.crowdcraftlabs.com/qf/party/session/ws',
   );
 });
+
+test('WebSocket URLs preserve configured API subpaths', () => {
+  assert.equal(
+    origin.resolveWebSocketUrl(
+      '/ir/notifications/ws',
+      'https://api.example.test/api',
+      'https://ignored.test',
+    ).toString(),
+    'wss://api.example.test/api/ir/notifications/ws',
+  );
+});

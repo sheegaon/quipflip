@@ -28,7 +28,7 @@ if ! git diff-index --quiet HEAD --; then
     exit 1
 fi
 
-cd ir_frontend
+cd frontend/ir
 
 # Install dependencies
 echo "📦 Installing dependencies..."
@@ -69,4 +69,4 @@ echo "✨ Frontend deployment complete!"
 echo "📍 URL: ${DEPLOY_URL}"
 echo "🌐 Dashboard: https://vercel.com/dashboard"
 
-cd ..
+cd ../..

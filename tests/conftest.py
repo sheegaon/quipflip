@@ -174,10 +174,13 @@ async def db_session(test_engine):
         )
         await connection.execute(text("PRAGMA foreign_keys=OFF"))
         await connection.commit()
-        for table_name in sorted(existing_tables - {"alembic_version"}):
-            await connection.execute(text(f'DELETE FROM "{table_name}"'))
+        async with connection.begin():
+            for table_name in sorted(existing_tables - {"alembic_version"}):
+                await connection.execute(text(f'DELETE FROM "{table_name}"'))
+        # Re-enable foreign keys after the cleanup transaction closes; SQLite
+        # ignores this pragma while a transaction is still open.
+        await connection.exec_driver_sql("PRAGMA foreign_keys=ON")
         await connection.commit()
-        await connection.execute(text("PRAGMA foreign_keys=ON"))
         assert await connection.scalar(text("PRAGMA foreign_keys")) == 1
 
     async with async_session() as session:

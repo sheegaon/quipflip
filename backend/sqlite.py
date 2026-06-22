@@ -59,6 +59,8 @@ def configure_production_sqlite(engine: Engine | AsyncEngine) -> None:
 
 def backup_sqlite_database(source: Path, destination: Path) -> None:
     """Create a consistent SQLite backup and verify the restored file."""
+    if not source.exists():
+        raise FileNotFoundError(f"Source database file not found: {source}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(source) as source_connection:
         with sqlite3.connect(destination) as destination_connection:

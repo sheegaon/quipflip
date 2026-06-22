@@ -23,7 +23,7 @@ const SubHeader: React.FC = () => {
 
       refreshSubHeaderData();
     }
-  }, [location.pathname, player, refreshDashboard]);
+  }, [location.pathname, player?.player_id, refreshDashboard]);
 
   if (!player) {
     return null;
