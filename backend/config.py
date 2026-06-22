@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     serve_images_from_github: bool = True  # Set to False for local development
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"
+    crowdcraft_runtime_root: str = os.path.expanduser("~/Library/Application Support/Crowdcraft")
+    crowdcraft_static_root: str = ""
+    crowdcraft_log_dir: str = os.path.expanduser("~/Library/Logs/Crowdcraft")
+    crowdcraft_release_id: str = ""
+    crowdcraft_expected_revision: str = ""
+    crowdcraft_workers: int = 1
+    crowdcraft_trust_proxy: bool = False
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
     access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
@@ -202,8 +209,12 @@ class Settings(BaseSettings):
 
         # Security validation
         if self.environment == "production":
-            if self.secret_key == "dev-secret-key-change-in-production":
+            if not self.secret_key or self.secret_key == "dev-secret-key-change-in-production":
                 raise ValueError("secret_key must be changed from default value in production")
+            from backend.runtime.config import validate_runtime_settings
+            runtime_errors = validate_runtime_settings(self)
+            if runtime_errors:
+                raise ValueError("; ".join(runtime_errors))
 
         # Validate JWT algorithm
         if self.jwt_algorithm not in ["HS256", "HS384", "HS512"]:

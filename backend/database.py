@@ -88,6 +88,7 @@ if not is_sqlite:
 else:
     logger.debug("SQLite detected; using default NullPool without pool sizing arguments")
 
+
 def create_app_engine(database_url: str | None = None):
     """Create an async engine with the production SQLite pragmas applied."""
     url = database_url or settings.database_url

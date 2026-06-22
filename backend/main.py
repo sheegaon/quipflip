@@ -386,6 +386,12 @@ async def lifespan(app_instance: FastAPI):
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
     logger.info("=" * 60)
 
+    from backend.runtime.config import validate_runtime_settings
+
+    runtime_errors = validate_runtime_settings(settings)
+    if runtime_errors:
+        raise RuntimeError("Invalid runtime configuration: " + "; ".join(runtime_errors))
+
     # Initialize phrase validation service using either local or remote API
     await initialize_phrase_validation()
 
