@@ -1,13 +1,14 @@
 """ThinkLink round model."""
 import uuid
-from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Float, JSON, CheckConstraint, Index
+from sqlalchemy import Column, ForeignKey, String, Integer, DateTime, Float, JSON, CheckConstraint, Index, text
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.models.versioned_base import VersionedBase
 
 
-class TLRound(Base):
+class TLRound(VersionedBase, Base):
     """ThinkLink round.
 
     Represents a single round of gameplay for a player on a prompt.
@@ -57,6 +58,13 @@ class TLRound(Base):
     __table_args__ = (
         CheckConstraint('strikes >= 0 AND strikes <= 3', name='valid_strikes'),
         CheckConstraint("status IN ('active', 'completed', 'abandoned')", name='valid_status'),
+        Index(
+            "uq_tl_round_active_player",
+            "player_id",
+            unique=True,
+            sqlite_where=text("status = 'active'"),
+            postgresql_where=text("status = 'active'"),
+        ),
         Index('idx_tl_round_player', 'player_id'),
         Index('idx_tl_round_status', 'status'),
     )

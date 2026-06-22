@@ -2,14 +2,15 @@
 import uuid
 from datetime import datetime, UTC
 
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Index, Boolean, JSON
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Index, Boolean, JSON, CheckConstraint, text
 from sqlalchemy.orm import relationship
 
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.models.versioned_base import VersionedBase
 
 
-class MMVoteRound(Base):
+class MMVoteRound(VersionedBase, Base):
     """Represents a single voting round for a player."""
 
     __tablename__ = "mm_vote_rounds"
@@ -41,6 +42,14 @@ class MMVoteRound(Base):
     chosen_caption = relationship("MMCaption", back_populates="vote_rounds", foreign_keys=[chosen_caption_id])
 
     __table_args__ = (
+        CheckConstraint("abandoned IN (0, 1)", name="valid_mm_vote_round_abandoned"),
+        Index(
+            "uq_mm_vote_round_active_player",
+            "player_id",
+            unique=True,
+            sqlite_where=text("abandoned = 0 AND result_finalized_at IS NULL"),
+            postgresql_where=text("abandoned = false AND result_finalized_at IS NULL"),
+        ),
         Index("ix_mm_vote_round_player_created", "player_id", "created_at"),
         Index("ix_mm_vote_round_image_created", "image_id", "created_at"),
         Index("ix_mm_vote_round_chosen_caption", "chosen_caption_id"),

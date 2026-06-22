@@ -85,6 +85,7 @@ class IRDailyBonusService:
                 player_id=player_id,
                 amount=self.settings.ir_daily_bonus_amount,
                 trans_type="daily_bonus",
+                reference_id=bonus.bonus_id,
                 auto_commit=False,
                 wallet_type="wallet",
             )

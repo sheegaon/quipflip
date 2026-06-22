@@ -177,12 +177,29 @@ def upgrade() -> None:
     # Handle cross-table foreign keys with dialect-specific approach
     if (dialect_name == 'postgresql'):
         # PostgreSQL can handle these foreign keys normally
-        op.create_foreign_key('fk_players_active_round_id', 'players', 'rounds', ['active_round_id'], ['round_id'], ondelete='SET NULL')
+        op.create_foreign_key(
+            'fk_players_active_round_id',
+            'players',
+            'rounds',
+            ['active_round_id'],
+            ['round_id'],
+            ondelete='SET NULL',
+            deferrable=True,
+            initially='DEFERRED',
+        )
         op.create_foreign_key('fk_rounds_wordset_id', 'rounds', 'wordsets', ['wordset_id'], ['wordset_id'], ondelete='SET NULL')
     else:
         # SQLite: Use batch mode to add foreign keys
         with op.batch_alter_table('players', schema=None) as batch_op:
-            batch_op.create_foreign_key('fk_players_active_round_id', 'rounds', ['active_round_id'], ['round_id'], ondelete='SET NULL')
+            batch_op.create_foreign_key(
+                'fk_players_active_round_id',
+                'rounds',
+                ['active_round_id'],
+                ['round_id'],
+                ondelete='SET NULL',
+                deferrable=True,
+                initially='DEFERRED',
+            )
         
         with op.batch_alter_table('rounds', schema=None) as batch_op:
             batch_op.create_foreign_key('fk_rounds_wordset_id', 'wordsets', ['wordset_id'], ['wordset_id'], ondelete='SET NULL')

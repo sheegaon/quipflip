@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config as AlembicConfig
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 # Ensure the application uses a dedicated SQLite database during tests
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
@@ -14,6 +14,7 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 os.environ["USE_PHRASE_VALIDATOR_API"] = "false"
 
 from backend.config import get_settings
+from backend.database import create_app_engine
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,13 +66,7 @@ def event_loop():
 async def test_engine():
     """Create test database engine using the same database as migrations."""
     # Use the same database URL as the migrations
-    engine = create_async_engine(
-        settings.database_url,
-        echo=False,
-        # Add connection pooling settings to help with cleanup
-        pool_pre_ping=True,
-        pool_recycle=300,
-    )
+    engine = create_app_engine(settings.database_url)
 
     yield engine
 

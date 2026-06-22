@@ -5,6 +5,7 @@ from sqlalchemy import (
     Integer,
     DateTime,
     Index,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship
 import uuid
@@ -12,9 +13,10 @@ from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
 from backend.models.ir.enums import SetStatus, Mode
+from backend.models.versioned_base import VersionedBase
 
 
-class BackronymSet(Base):
+class BackronymSet(VersionedBase, Base):
     """Represents a backronym set waiting for entries and votes."""
 
     __tablename__ = "ir_backronym_sets"
@@ -43,6 +45,8 @@ class BackronymSet(Base):
     voting_finalized_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
+        CheckConstraint("status IN ('open', 'voting', 'finalized')", name="valid_ir_set_status"),
+        CheckConstraint("mode IN ('standard', 'rapid')", name="valid_ir_set_mode"),
         Index("ix_ir_set_status_created", status, created_at),
         Index("ix_ir_set_mode_status", mode, status),
         Index("ix_ir_set_finalized_at", finalized_at),

@@ -16,6 +16,7 @@ from sqlalchemy import select, update
 
 from backend.config import get_settings
 from backend.models.mm.caption import MMCaption
+from backend.utils.sqlite import configure_sqlite_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ async def fix_orphaned_captions():
     """Update all captions with NULL author_player_id to use the system player ID."""
     settings = get_settings()
     engine = create_async_engine(settings.database_url)
+    configure_sqlite_engine(engine.sync_engine)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:

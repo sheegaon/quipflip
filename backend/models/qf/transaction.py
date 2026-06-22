@@ -1,5 +1,5 @@
 """Transaction ledger model."""
-from sqlalchemy import ForeignKey, Index
+from sqlalchemy import ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from backend.models.transaction_base import TransactionBase
 from backend.models.base import get_uuid_column
@@ -18,4 +18,5 @@ class QFTransaction(TransactionBase):
     # Indexes
     __table_args__ = (
         Index('ix_transactions_player_created', 'player_id', 'created_at'),
+        UniqueConstraint("idempotency_key", name="uq_qf_transactions_idempotency_key"),
     )

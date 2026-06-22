@@ -42,7 +42,12 @@ class QFPlayerData(Base):
 
     # QF-specific fields
     active_round_id = get_uuid_column(
-        ForeignKey("qf_rounds.round_id", ondelete="SET NULL"),
+        ForeignKey(
+            "qf_rounds.round_id",
+            ondelete="SET NULL",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         nullable=True
     )
     flag_dismissal_streak = Column(Integer, default=0, nullable=False)

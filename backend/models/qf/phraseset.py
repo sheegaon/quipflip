@@ -1,13 +1,14 @@
 """Phraseset model."""
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.models.versioned_base import VersionedBase
 
 
-class Phraseset(Base):
+class Phraseset(VersionedBase, Base):
     """Phraseset model for voting."""
     __tablename__ = "qf_phrasesets"
 
@@ -54,6 +55,11 @@ class Phraseset(Base):
 
     # Indexes
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'active', 'voting', 'closing', 'closed', 'finalized', 'abandoned')",
+            name="valid_phraseset_status",
+        ),
+        UniqueConstraint("prompt_round_id", name="uq_phrasesets_prompt_round_id"),
         Index('ix_phrasesets_status_vote_count', 'status', 'vote_count'),
         Index('ix_phrasesets_status_fifth_vote_at', 'status', 'fifth_vote_at'),
         Index('ix_phrasesets_status_third_vote_at', 'status', 'third_vote_at'),
