@@ -16,7 +16,7 @@ alembic==1.18.4
 pgvector==0.4.2
 
 # Redis (optional, for production)
-redis==6.4.0
+redis==8.0.0
 
 # Configuration and validation
 pydantic==2.13.4
