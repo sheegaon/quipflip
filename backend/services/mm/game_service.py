@@ -113,17 +113,19 @@ class MMGameService:
                 )
 
             # Charge entry cost
+            round_id = uuid4()
             await transaction_service.create_transaction(
                 player.player_id,
                 -entry_cost,
                 "mm_round_entry",
+                reference_id=round_id,
                 auto_commit=False,
                 skip_lock=True,
             )
 
             # Create round
             round_obj = MMVoteRound(
-                round_id=uuid4(),
+                round_id=round_id,
                 player_id=player.player_id,
                 image_id=image.image_id,
                 # Store UUIDs as strings to satisfy JSON serialization
