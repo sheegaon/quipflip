@@ -1,36 +1,36 @@
 # FastAPI and server
-fastapi==0.119.0
-uvicorn[standard]==0.37.0
-python-multipart==0.0.20
-aiohttp==3.12.15
+fastapi==0.138.0
+uvicorn[standard]==0.49.0
+python-multipart==0.0.32
+aiohttp==3.14.1
 
 # Authentication and Security
-PyJWT==2.10.1
+PyJWT==2.13.0
 bcrypt==5.0.0  # Password hashing
 
 # Database
-sqlalchemy[asyncio]==2.0.25
-asyncpg==0.29.0
-aiosqlite==0.21.0
-alembic==1.13.1
-pgvector==0.4.1
+sqlalchemy[asyncio]==2.0.51
+asyncpg==0.31.0
+aiosqlite==0.22.1
+alembic==1.18.4
+pgvector==0.4.2
 
 # Redis (optional, for production)
 redis==6.4.0
 
 # Configuration and validation
-pydantic==2.12.2
-pydantic-settings==2.11.0
-python-dotenv==1.0.0
+pydantic==2.13.4
+pydantic-settings==2.14.2
+python-dotenv==1.2.2
 
 # Testing
 pytest==8.4.2
-pytest-asyncio==1.2.0
+pytest-asyncio==1.4.0
 httpx==0.28.1
 faker==37.11.0
 
 # Utilities
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
 
 # OpenAI API
 openai>=2.4.0
