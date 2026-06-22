@@ -5,7 +5,9 @@ import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
+import type { QFPartyContext } from '@crowdcraft/api/types.ts';
 import { usePartyRoundStarter } from '../hooks/usePartyRoundStarter';
+import { useGame } from '../contexts/GameContext';
 
 const { loadingMessages } = quipflipBranding;
 
@@ -15,6 +17,7 @@ const { loadingMessages } = quipflipBranding;
 export const PartyGame: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { state: gameState } = useGame();
   const { state: partyState, actions: partyActions } = usePartyMode();
   // Remove usage of normal round starters
   // const { startPromptRound, startCopyRound, startVoteRound } = gameActions;
@@ -35,7 +38,49 @@ export const PartyGame: React.FC = () => {
       setError(null);
 
       try {
-        const status = await apiClient.qfGetPartySessionStatus(sessionId);
+        if (gameState.activeRound?.round_type && gameState.activeRound.state?.status === 'active') {
+          const route = `/${gameState.activeRound.round_type}`;
+          const currentStep = gameState.activeRound.round_type;
+          startPartyMode(sessionId, currentStep, initialSessionConfigRef.current ?? undefined);
+          setCurrentStep(currentStep);
+          navigate(route, { replace: true });
+          return;
+        }
+
+        const status = await apiClient.qfGetPartyState(sessionId);
+        const selfParticipant = gameState.player
+          ? status.participants.find((participant) => participant.player_id === gameState.player?.player_id)
+          : null;
+        const referenceParticipant = selfParticipant ?? status.participants[0] ?? null;
+        const sessionConfig = referenceParticipant
+          ? {
+              prompts_per_player: referenceParticipant.prompts_required,
+              copies_per_player: referenceParticipant.copies_required,
+              votes_per_player: referenceParticipant.votes_required,
+            }
+          : undefined;
+
+        if (selfParticipant || referenceParticipant) {
+          partyActions.updateFromPartyContext({
+            session_id: status.session_id,
+            current_phase: status.current_phase,
+            version: status.version,
+            phase_expires_at: status.phase_expires_at ?? null,
+            your_progress: {
+              prompts_submitted: selfParticipant?.prompts_submitted ?? 0,
+              prompts_required: referenceParticipant?.prompts_required ?? 0,
+              copies_submitted: selfParticipant?.copies_submitted ?? 0,
+              copies_required: referenceParticipant?.copies_required ?? 0,
+              votes_submitted: selfParticipant?.votes_submitted ?? 0,
+              votes_required: referenceParticipant?.votes_required ?? 0,
+            },
+            session_progress: {
+              players_ready_for_next_phase: status.progress.players_ready_for_next_phase,
+              total_players: status.progress.total_players,
+            },
+          } satisfies QFPartyContext);
+        }
+
         const phase = status.current_phase.toLowerCase();
 
         if (phase === 'results' || status.status === 'COMPLETED') {
@@ -50,13 +95,13 @@ export const PartyGame: React.FC = () => {
         };
 
         const step = phaseToStepMap[phase] ?? 'prompt';
-        startPartyMode(sessionId, step, initialSessionConfigRef.current ?? undefined);
+        startPartyMode(sessionId, step, sessionConfig ?? initialSessionConfigRef.current ?? undefined);
         setCurrentStep(step);
 
         if (step === 'prompt') {
           await startRoundForPhase('prompt', {
             sessionId,
-            sessionConfigOverride: initialSessionConfigRef.current,
+            sessionConfigOverride: sessionConfig ?? initialSessionConfigRef.current,
           });
         } else if (step === 'copy') {
           await startRoundForPhase('copy', { sessionId });
@@ -73,6 +118,7 @@ export const PartyGame: React.FC = () => {
 
     void beginPartyFlow();
   }, [
+    gameState.activeRound,
     navigate,
     sessionId,
     startPartyMode,

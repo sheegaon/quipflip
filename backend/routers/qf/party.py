@@ -74,6 +74,17 @@ async def get_qf_player(
     return await get_current_player(request=request, game_type=GameType.QF, authorization=authorization, db=db)
 
 
+async def _require_party_member(
+    party_service: PartySessionService,
+    session_id: UUID,
+    player: QFPlayer,
+):
+    participant = await party_service.get_participant(session_id, player.player_id)
+    if not participant:
+        raise HTTPException(status_code=403, detail="Not a participant in this session")
+    return participant
+
+
 @router.get("/list", response_model=PartyListResponse)
 async def list_active_parties(
     player: QFPlayer = Depends(get_qf_player),
@@ -608,6 +619,8 @@ async def start_party_session(
             current_phase=status_data['current_phase'],
             phase_started_at=session.phase_started_at,
             locked_at=session.locked_at,
+            phase_expires_at=status_data.get('phase_expires_at'),
+            version=status_data.get('version'),
             participants=status_data['participants'],
         )
 
@@ -625,6 +638,7 @@ async def start_party_session(
 
 
 @router.get("/{session_id}/status", response_model=PartySessionStatusResponse)
+@router.get("/{session_id}/state", response_model=PartySessionStatusResponse)
 async def get_party_session_status(
     session_id: UUID,
     player: QFPlayer = Depends(get_qf_player),
@@ -643,12 +657,18 @@ async def get_party_session_status(
     """
     try:
         party_service = PartySessionService(db)
+        session = await party_service.get_session_by_id(session_id)
+        if not session:
+            raise SessionNotFoundError(f"Session {session_id} not found")
+        await _require_party_member(party_service, session_id, player)
         status_data = await party_service.get_session_status(session_id)
 
         return PartySessionStatusResponse(**status_data)
 
     except SessionNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting session status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get session status")
@@ -680,6 +700,8 @@ async def get_party_results(
         session = await party_service.get_session_by_id(session_id)
         if not session:
             raise SessionNotFoundError(f"Session {session_id} not found")
+
+        await _require_party_member(party_service, session_id, player)
 
         if session.current_phase not in ['RESULTS', 'COMPLETED']:
             raise HTTPException(

@@ -112,7 +112,7 @@ export function usePartyWebSocket(
 
       const authCloseCodes = new Set([4000, 4001, 4002, 4003, 4401, 4403]);
       if (authCloseCodes.has(event.code)) {
-        setError(event.reason || 'Session is no longer active or you were removed from the party. Please return to party mode.');
+        setError(event.reason || 'Session is no longer active or you cannot connect to this party. Please return to party mode.');
         return false;
       }
 
@@ -126,7 +126,7 @@ export function usePartyWebSocket(
     const message = err instanceof Error ? err.message : 'Failed to connect';
 
     if (message.includes('403') || message.includes('401') || message.includes('Unauthorized') || message.includes('Forbidden')) {
-      setError('Session is no longer active or you were removed from the party. Please return to party mode.');
+      setError('Session is no longer active or you cannot connect to this party. Please return to party mode.');
       return false;
     }
 
