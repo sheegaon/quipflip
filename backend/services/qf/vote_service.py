@@ -426,6 +426,7 @@ class QFVoteService:
         from backend.utils import lock_client
         lock_name = f"start_vote_round:{player.player_id}"
         with lock_client.lock(lock_name, timeout=10):
+            round_id = uuid.uuid4()
             # Create transaction
             # Use skip_lock=True since we already have the lock
             # Use auto_commit=False to defer commit until all operations complete
@@ -433,13 +434,14 @@ class QFVoteService:
                 player.player_id,
                 -settings.vote_cost,
                 "vote_entry",
+                reference_id=round_id,
                 auto_commit=False,
                 skip_lock=True,
             )
 
             # Create round
             round = Round(
-                round_id=uuid.uuid4(),
+                round_id=round_id,
                 player_id=player.player_id,
                 round_type="vote",
                 status="active",

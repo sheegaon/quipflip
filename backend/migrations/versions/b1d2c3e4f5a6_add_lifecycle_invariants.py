@@ -51,8 +51,6 @@ def _backfill_idempotency_keys(table_name: str) -> None:
                 "transaction_id": values["transaction_id"],
             },
         )
-
-
 def _qf_rounds_copy_table() -> sa.Table:
     metadata = sa.MetaData()
     uuid_type = sa.String(length=36)
