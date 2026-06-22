@@ -137,7 +137,7 @@ export type TLTutorialProgress =
   | 'completed'
   | 'not_started';
 
-export interface TLTutorialStatus extends TutorialStatusBase<TLTutorialProgress> {}
+export type TLTutorialStatus = TutorialStatusBase<TLTutorialProgress>;
 
 export interface TLUpdateTutorialProgressResponse {
   tutorial_completed: boolean;

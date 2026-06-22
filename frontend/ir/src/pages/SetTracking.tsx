@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import { gameAPI } from '@crowdcraft/api/client.ts';
+import { gameAPI } from '@/api/client.ts';
 import Timer from '../components/Timer';
 import type { IRBackronymSet } from '@crowdcraft/api/types.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
@@ -14,7 +14,7 @@ const SetTracking: React.FC = () => {
   const [set, setSet] = useState<IRBackronymSet | null>(activeSet);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollingIntervalRef = useRef<number | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasNavigatedRef = useRef(false);
 
   // Fetch set status

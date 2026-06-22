@@ -5,7 +5,6 @@
  * features like online users, party web sockets, and feature flags.
  */
 
-/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useContext,
@@ -313,8 +312,9 @@ export const createNotificationContext = () => {
 
         const timeoutId = setTimeout(() => {
           setPingStatus((prev) => {
-            const { [username]: _removed, ...rest } = prev;
-            return rest;
+            const next = { ...prev };
+            delete next[username];
+            return next;
           });
         }, 2000);
 

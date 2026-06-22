@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.engine.url import make_url
 from backend.config import get_settings
+from backend.sqlite import configure_production_sqlite
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -87,6 +88,8 @@ try:
         settings.database_url,
         **engine_kwargs,
     )
+    if is_sqlite and settings.environment == "production":
+        configure_production_sqlite(engine)
     logger.debug("Database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")

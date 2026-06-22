@@ -18,7 +18,13 @@ from backend.config import get_settings
 
 @pytest.fixture
 def ai_service(db_session):
-    return AIService(db_session)
+    settings = get_settings()
+    original_key = settings.openai_api_key
+    settings.openai_api_key = "test-openai-key"
+    try:
+        yield AIService(db_session)
+    finally:
+        settings.openai_api_key = original_key
 
 @pytest.fixture
 def party_service(db_session):

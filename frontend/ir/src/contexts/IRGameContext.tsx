@@ -12,7 +12,7 @@ import type {
   IRAuthResponse,
   IRDashboardPlayerSummary,
 } from '@crowdcraft/api/types.ts';
-import { authAPI, playerAPI, gameAPI } from '@crowdcraft/api/client.ts';
+import { authAPI, playerAPI, gameAPI } from '@/api/client.ts';
 import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import {
@@ -124,7 +124,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       gameContextLogger.debug('🔍 Starting session detection on app load');
 
       try {
-        const result = await detectUserSession('ir', controller.signal);
+        const result = await detectUserSession(controller.signal);
 
         if (!isMounted) return;
 

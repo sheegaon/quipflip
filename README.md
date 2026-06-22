@@ -50,20 +50,42 @@ Mac deployment is considered production-ready.
 
 ## Verification
 
-The canonical single-command gate is planned but not implemented yet. Current
-required evidence is:
+Install dependencies from the committed manifests, then run the deterministic
+repository gate:
 
 ```bash
-.venv/bin/python -m pytest
-npm run build:qf
-npm run build:mm
-npm run build:ir
-npm run build:tl
+npm ci
+npm run verify
 ```
 
-The baseline is not green; see the transition plan for the dated results and the
-work to split deterministic, lifecycle, localhost, stress, and smoke tiers. Do not
-describe the repository as passing until the exact commands pass.
+The default gate runs the isolated backend suite, frontend origin contract tests,
+lint/typecheck/build for the shared library and all four games, and secret scanning.
+It does not require a server, credentials, or network access.
+
+The backend portion currently reports the deterministic product-regression
+families recorded in the [test inventory](docs/development/test-tier-inventory.md);
+the command is trustworthy and reproducible but is not yet green. Do not treat a
+nonzero result as an environment limitation.
+
+Production-shaped SQLite and transport checks are explicit separate gates:
+
+```bash
+npm run test:sqlite-integration
+npm run smoke  # requires the API on http://localhost:8000
+```
+
+Security checks run locally and in CI:
+
+```bash
+npm run security:secrets
+npm run security:npm-audit
+.venv/bin/pip-audit -r requirements.txt
+```
+
+Temporary audit exceptions must include an owner-readable reason and expiry in
+`security/`. Expired or newly discovered high/critical npm vulnerabilities fail
+the gate. Test tier ownership and runtime budgets are documented in
+[the test inventory](docs/development/test-tier-inventory.md).
 
 ## Authoritative documentation
 

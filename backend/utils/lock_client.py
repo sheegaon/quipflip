@@ -64,3 +64,12 @@ class LockClient:
                 yield
             finally:
                 lock.release()
+
+    def reset(self) -> None:
+        """Reset unheld in-memory locks between deterministic test cases."""
+        if self.backend == "redis":
+            return
+        with self._memory_locks_lock:
+            self._memory_locks = {
+                name: lock for name, lock in self._memory_locks.items() if lock.locked()
+            }
