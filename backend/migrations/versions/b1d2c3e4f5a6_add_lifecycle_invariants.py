@@ -7,7 +7,9 @@ Create Date: 2026-06-22 00:00:00.000000
 from __future__ import annotations
 
 from collections.abc import Sequence
+from hashlib import sha256
 from typing import Union
+from uuid import UUID
 
 import sqlalchemy as sa
 from alembic import op
@@ -22,12 +24,22 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _set_version_default(table_name: str) -> None:
+    op.execute(sa.text(f"UPDATE {table_name} SET version = 1 WHERE version IS NULL"))
+
+
+def _build_legacy_idempotency_key(table_name: str, values: dict[str, object]) -> str:
+    legacy_key = build_idempotency_key(table_name, values)
+    transaction_id = UUID(str(values["transaction_id"])).hex
+    return sha256(f"{legacy_key}:{transaction_id}".encode("utf-8")).hexdigest()
+
+
 def _backfill_idempotency_keys(table_name: str) -> None:
     bind = op.get_bind()
     rows = bind.execute(sa.text(f"SELECT * FROM {table_name}")).mappings().all()
     for row in rows:
         values = dict(row)
-        key = build_idempotency_key(table_name, values)
+        key = _build_legacy_idempotency_key(table_name, values)
         bind.execute(
             sa.text(
                 f"UPDATE {table_name} "
@@ -39,10 +51,6 @@ def _backfill_idempotency_keys(table_name: str) -> None:
                 "transaction_id": values["transaction_id"],
             },
         )
-
-
-def _set_version_default(table_name: str) -> None:
-    op.execute(sa.text(f"UPDATE {table_name} SET version = 1 WHERE version IS NULL"))
 
 
 def _qf_rounds_copy_table() -> sa.Table:
