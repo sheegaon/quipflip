@@ -36,4 +36,4 @@ python-dateutil==2.8.2
 openai>=2.4.0
 
 starlette~=0.48.0
-numpy~=1.24.0
+numpy~=2.5.0
