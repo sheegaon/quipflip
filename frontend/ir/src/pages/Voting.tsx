@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import { gameAPI } from '@crowdcraft/api/client.ts';
+import { gameAPI } from '@/api/client.ts';
 import Timer from '../components/Timer';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import type { IRBackronymSet, IRBackronymEntry } from '@crowdcraft/api/types.ts';
@@ -30,7 +30,7 @@ const Voting: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [hasVotedInSession, setHasVotedInSession] = useState(false);
-  const pollingIntervalRef = useRef<number | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasNavigatedRef = useRef(false);
   const hasShuffledRef = useRef(false);
 

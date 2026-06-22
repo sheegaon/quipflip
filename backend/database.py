@@ -9,6 +9,7 @@ from sqlalchemy.orm import declarative_base
 
 from backend.config import get_settings
 from backend.utils.sqlite import configure_sqlite_engine, is_sqlite_url
+from backend.sqlite import configure_production_sqlite
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -95,6 +96,8 @@ def create_app_engine(database_url: str | None = None):
         logger.debug("Creating non-SQLite async engine")
     engine = create_async_engine(url, **kwargs)
     configure_sqlite_engine(engine.sync_engine)
+    if is_sqlite_url(url) and settings.environment == "production":
+        configure_production_sqlite(engine)
     return engine
 
 

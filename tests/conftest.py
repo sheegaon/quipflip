@@ -1,57 +1,135 @@
 """Pytest configuration and fixtures."""
-import os
+import atexit
 import asyncio
+import os
+import random
+import socket
+import tempfile
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config as AlembicConfig
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import inspect, text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-# Ensure the application uses a dedicated SQLite database during tests
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+# Ensure each pytest run uses a dedicated, file-backed SQLite database.
+_test_database_directory = tempfile.TemporaryDirectory(prefix="crowdcraft-pytest-")
+atexit.register(_test_database_directory.cleanup)
+TEST_DB_PATH = Path(_test_database_directory.name) / "deterministic.db"
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 # Disable the phrase validator API for tests (use local validation instead)
 os.environ["USE_PHRASE_VALIDATOR_API"] = "false"
+os.environ["USE_SENTENCE_TRANSFORMERS"] = "false"
+os.environ.setdefault("CROWDCRAFT_TEST_SEED", "20260622")
 
 from backend.config import get_settings
 from backend.database import create_app_engine
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-TEST_DB_PATH = BASE_DIR / "test.db"
+get_settings.cache_clear()
 settings = get_settings()
+
+
+def pytest_collection_modifyitems(items):
+    """Assign exactly one tier and one owning subsystem to every test."""
+    tier_markers = {"deterministic", "sqlite_integration", "smoke", "stress", "external"}
+    owner_markers = {"owner_qf", "owner_mm", "owner_ir", "owner_tl", "owner_party", "owner_platform"}
+
+    for item in items:
+        path = str(item.path).replace("\\", "/")
+        filename = item.path.name
+        existing = {marker.name for marker in item.iter_markers()}
+
+        if not existing.intersection(tier_markers):
+            if "/sqlite_integration/" in path:
+                item.add_marker(pytest.mark.sqlite_integration)
+            elif filename == "test_tl_similarity_debug.py":
+                item.add_marker(pytest.mark.external)
+            elif filename == "test_stress_localhost.py":
+                item.add_marker(pytest.mark.stress)
+                item.add_marker(pytest.mark.localhost)
+            elif "_localhost" in filename:
+                item.add_marker(pytest.mark.smoke)
+                item.add_marker(pytest.mark.localhost)
+            else:
+                item.add_marker(pytest.mark.deterministic)
+
+        if not existing.intersection(owner_markers):
+            if "/party/" in path or "party" in filename:
+                item.add_marker(pytest.mark.owner_party)
+            elif filename.startswith("test_mm_"):
+                item.add_marker(pytest.mark.owner_mm)
+            elif filename.startswith("test_ir_"):
+                item.add_marker(pytest.mark.owner_ir)
+            elif filename.startswith("test_tl_"):
+                item.add_marker(pytest.mark.owner_tl)
+            elif filename in {
+                "test_migration_chain.py",
+                "test_code_quality_improvements.py",
+                "test_datetime_helpers.py",
+                "test_rate_limiting.py",
+                "test_simple_cache.py",
+                "test_timezone_awareness.py",
+                "test_verification_contract.py",
+            }:
+                item.add_marker(pytest.mark.owner_platform)
+            else:
+                item.add_marker(pytest.mark.owner_qf)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
     """Apply database migrations against the test database."""
-    # Clean up any existing test database
-    if TEST_DB_PATH.exists():
-        try:
-            TEST_DB_PATH.unlink()
-        except PermissionError:
-            # On Windows, if file is in use, wait and retry
-            import time
-            time.sleep(0.1)
-            try:
-                TEST_DB_PATH.unlink()
-            except PermissionError:
-                pass  # Continue anyway, migrations will handle it
-
     alembic_cfg = AlembicConfig(str(BASE_DIR / "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
     command.upgrade(alembic_cfg, "head")
 
     yield
 
-    # Clean up test database after all tests
-    if TEST_DB_PATH.exists():
-        try:
-            TEST_DB_PATH.unlink()
-        except PermissionError:
-            # On Windows, database might still be in use
-            # This is okay, it will be cleaned up next run
-            pass
+
+@pytest.fixture(autouse=True)
+def isolate_process_globals(request, monkeypatch):
+    """Reset mutable singleton state and prohibit network in deterministic tests."""
+    if request.node.get_closest_marker("deterministic") is None:
+        yield
+        return
+
+    seed = int(os.environ["CROWDCRAFT_TEST_SEED"])
+    random.seed(seed)
+
+    from backend.services import phrase_validator
+    from backend.services.tl import dependencies as tl_dependencies
+    from backend.utils import lock_client, queue_client
+    from backend.utils.cache import dashboard_cache
+
+    phrase_validator._phrase_validator = None
+    dashboard_cache.clear()
+    queue_client.reset()
+    lock_client.reset()
+    for dependency in (
+        tl_dependencies.get_matching_service,
+        tl_dependencies.get_scoring_service,
+        tl_dependencies.get_prompt_service,
+        tl_dependencies.get_clustering_service,
+        tl_dependencies.get_round_service,
+    ):
+        dependency.cache_clear()
+
+    def deny_network(*_args, **_kwargs):
+        raise RuntimeError(
+            "Unexpected network access in deterministic tests. "
+            "Mock the provider boundary or use the smoke/external tier."
+        )
+
+    monkeypatch.setattr(socket, "create_connection", deny_network)
+    monkeypatch.setattr(socket.socket, "connect", deny_network)
+    yield
+
+    dashboard_cache.clear()
+    queue_client.reset()
+    lock_client.reset()
 
 
 @pytest.fixture(scope="session")
@@ -82,6 +160,23 @@ async def db_session(test_engine):
         class_=AsyncSession,
         expire_on_commit=False,
     )
+
+    async with test_engine.connect() as connection:
+        existing_tables = await connection.run_sync(
+            lambda sync_connection: set(
+                inspect(sync_connection).get_table_names()
+            )
+        )
+        await connection.execute(text("PRAGMA foreign_keys=OFF"))
+        await connection.commit()
+        async with connection.begin():
+            for table_name in sorted(existing_tables - {"alembic_version"}):
+                await connection.execute(text(f'DELETE FROM "{table_name}"'))
+        # Re-enable foreign keys after the cleanup transaction closes; SQLite
+        # ignores this pragma while a transaction is still open.
+        await connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+        await connection.commit()
+        assert await connection.scalar(text("PRAGMA foreign_keys")) == 1
 
     async with async_session() as session:
         yield session

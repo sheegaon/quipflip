@@ -3,7 +3,7 @@
  * Implements the user session detection flow on app load
  */
 
-import { playerAPI } from '@crowdcraft/api/client.ts';
+import { playerAPI } from '@/api/client.ts';
 import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 const logger = createLogger('SessionDetection');
@@ -100,7 +100,7 @@ export interface SessionDetectionResult {
  *    - No visitor ID: New visitor
  */
 export async function detectUserSession(
-  _signal?: AbortSignal
+  signal?: AbortSignal
 ): Promise<SessionDetectionResult> {
   // Check if visitor ID exists BEFORE creating one to distinguish new vs returning visitors
   const existingVisitorId = getVisitorId();
@@ -122,7 +122,7 @@ export async function detectUserSession(
 
   try {
     // Step 1: Try to get player balance (validates auth via HTTP-only cookies)
-    const balanceResponse = await playerAPI.getBalance();
+    const balanceResponse = await playerAPI.getBalance(signal);
 
     // Success! User is authenticated
     // Note: IR API doesn't return username in balance response, use stored username

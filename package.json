@@ -14,7 +14,17 @@
     "build:mm": "cd frontend/mm && npm run build",
     "build:ir": "cd frontend/ir && npm run build",
     "build:tl": "cd frontend/tl && npm run build",
-    "install:all": "npm install --workspaces"
+    "build:all": "node scripts/run_frontend_checks.mjs",
+    "frontend:verify": "node scripts/run_frontend_checks.mjs",
+    "test:frontend-origins": "node --test scripts/test_frontend_origins.mjs",
+    "test:backend": "python3 scripts/verify.py backend",
+    "test:sqlite-integration": "python3 scripts/verify.py sqlite-integration",
+    "smoke": "python3 scripts/verify.py smoke",
+    "verify": "python3 scripts/verify.py verify",
+    "security:secrets": "python3 scripts/scan_secrets.py",
+    "security:npm-audit": "node scripts/check_npm_audit.mjs",
+    "security:python-audit": ".venv/bin/pip-audit -r requirements.txt",
+    "install:all": "npm ci"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
