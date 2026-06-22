@@ -1,20 +1,28 @@
 # API Documentation Index
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against FastAPI OpenAPI and tests
+> **Audience:** Client and backend maintainers
+
 The backend now mirrors the code split between shared infrastructure and game-specific routers. Authentication is **global**: auth endpoints live at the root (`/auth/*`) and issue tokens scoped to the unified player identity. Game-specific routers request per-game snapshots via an explicit `game_type` query parameter instead of relying on delegated `Player` fields.
 
 - [Quipflip (QF) API](quipflip/QF_API.md) – endpoints mounted under `/qf/*` and implemented in `backend/routers/qf`.
 - [Initial Reaction (IR) API](initialreaction/IR_API.md) – endpoints mounted under `/ir/*` and implemented in `backend/routers/ir`.
 - [Meme Mint (MM) API](mememint/MM_API.md) – endpoints mounted under `/mm/*` and implemented in `backend/routers/mm`.
+- [ThinkLink (TL) API](thinklink/TL_API.md) – endpoints mounted under `/tl/*` and implemented in `backend/routers/tl`.
 
 ## Shared Endpoints
 
-Authentication, health checks, and WebSocket token exchange are defined once in `backend/routers` and reused by both games:
+Authentication, health checks, and WebSocket token exchange are defined in shared
+routers and mounted where each game needs them:
 
 - `GET /health` and `GET /status` for service monitoring and discovery.
 - `POST /auth/login`, `POST /auth/login/username`, `POST /auth/refresh`, `POST /auth/logout` for cookie-backed JWTs.
 - `GET /auth/session`, `GET /auth/suggest-username`, `GET /auth/ws-token` for session probing, username generation, and WebSocket authentication.
 
-Refer to each game guide for gameplay-specific routes and payloads. Both games share the same authentication contract and HTTP error envelope.
+Refer to each game guide for gameplay-specific routes and payloads. Shared auth is
+the intended direction, but IR still has game-specific surfaces; verify mounts in
+`backend/main.py` before changing a client.
 
 ## Authentication Endpoints
 

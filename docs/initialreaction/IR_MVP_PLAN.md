@@ -1,5 +1,9 @@
 # ⚡ MVP GOAL
 
+> **Document type:** Historical implementation plan
+> **Status:** Historical — use IR game rules and current code
+> **Audience:** Maintainers seeking design context
+
 A single playable mode of *Initial Reaction* where:
 
 * Players click **Backronym Battle**.

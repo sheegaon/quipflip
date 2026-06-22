@@ -1,5 +1,9 @@
 # **ThinkLink — Game Rules (Developer Spec)**
 
+> **Document type:** Superseded developer specification
+> **Status:** Superseded by [TL_GAME_RULES.md](TL_GAME_RULES.md)
+> **Audience:** Historical reference only
+
 *Last updated: 2025-12-02*
 
 ---

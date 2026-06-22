@@ -1,5 +1,9 @@
 # Global Player Refactor Plan
 
+> **Document type:** Historical plan
+> **Status:** Historical — implemented state is defined by models/migrations
+> **Audience:** Maintainers seeking migration context
+
 ## Goals
 - Make the Player model truly global and game-agnostic while keeping game-specific state in per-game tables.
 - Provide a single cross-game authentication flow that issues tokens without requiring a game type.

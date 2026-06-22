@@ -1,143 +1,81 @@
-# Deployment Guide
+# Legacy Heroku and Vercel Deployment
 
-This guide documents how we ship the multi-game FastAPI backend to Heroku and the three Vercel frontends (QuipFlip, MemeMint, Initial Reaction). All frontends live in this repo and share the `frontend/crowdcraft` library via npm workspaces.
+> **Document type:** Operational reference
+> **Status:** Current legacy topology; scheduled for replacement
+> **Last checked:** 2026-06-22
 
-## Deployment Targets
-- **Backend:** Single FastAPI service on Heroku (`https://quipflip-c196034288cd.herokuapp.com`) serving `/qf`, `/mm`, and `/ir`.
-- **Frontends:** Three Vercel projects with roots `frontend/qf`, `frontend/mm`, and `frontend/ir`. Each project ships its own `vercel.json` rewrite.
-- **API proxy:** Vercel rewrites `/api/*` to the Heroku backend for same-origin REST (HttpOnly cookies stay intact). WebSockets connect directly to Heroku using a short-lived token exchange.
+This document describes the provider split that remains until the
+[Mac/Cloudflare cutover](development/persistent-startup-services.md). On the last
+check, `quipflip.xyz` served the Vercel frontend while the Heroku backend health URL
+returned maintenance-mode HTTP 503. Treat recovery steps below as legacy operations,
+not evidence that production is healthy.
 
-## Backend (Heroku)
+## Topology
 
-### Prerequisites
-- Heroku app set to `container` stack (uses `heroku.yml` + `Dockerfile`).
-- Add-ons: Postgres (required), Redis (optional but recommended for locks/queues).
+- Backend: `quipflip-c196034288cd.herokuapp.com`, FastAPI plus Heroku Postgres.
+- Frontends: Vercel projects rooted at `frontend/qf`, `frontend/mm`,
+  `frontend/ir`, and `frontend/tl`.
+- REST: each `vercel.json` rewrites `/api/*` to Heroku to preserve same-origin
+  cookies.
+- QF WebSockets: connect directly to Heroku after a short-lived token exchange.
 
-### Release pipeline
-- `heroku.yml` runs release commands: `alembic upgrade head` then `python3 scripts/auto_seed_prompts.py`.
-- Runtime command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`.
+The repository contains four frontend workspaces even though older deployment
+notes and CI refer to three.
 
-### Environment variables
-Set via `heroku config:set` (names map directly to `backend.config.Settings`):
+## Backend release
 
-| Variable | Purpose |
-| --- | --- |
-| `ENVIRONMENT=production` | Enables secure cookies/CORS defaults |
-| `SECRET_KEY` | Required; change from default |
-| `DATABASE_URL` | Heroku Postgres URL |
-| `REDIS_URL` | Optional; enables Redis locks/queues |
-| `QF_FRONTEND_URL` | Primary QuipFlip host (for CORS) |
-| `MM_FRONTEND_URL` | Primary MemeMint host (for CORS) |
-| `ALLOWED_ORIGINS` | Comma-separated extra origins (e.g., Vercel preview URLs) |
-| `OPENAI_API_KEY` / `GEMINI_API_KEY` | AI providers (optional) |
-| `AI_PROVIDER` | `openai` or `gemini` |
-| `USE_PHRASE_VALIDATOR_API` | `true` to use remote validator |
-| `PHRASE_VALIDATOR_URL` | Remote validator base URL when enabled |
+`heroku.yml` runs `alembic upgrade head` and prompt seeding in the release phase,
+then starts:
 
-Notes:
-- Cookies are HttpOnly + Secure (in production) with SameSite=Lax; REST stays same-origin via the Vercel proxy.
-- CORS defaults include `QF_FRONTEND_URL`, `MM_FRONTEND_URL`, localhost dev ports, and any values in `ALLOWED_ORIGINS`.
-- If `USE_PHRASE_VALIDATOR_API=false`, the local validator uses the bundled NASPA dictionary.
-
-## Frontends (Vercel)
-
-Common settings for each project:
-- **Project root:** `frontend/qf`, `frontend/mm`, or `frontend/ir`.
-- **Install:** `npm install` (repo uses npm workspaces; this pulls shared `frontend/crowdcraft`).
-- **Build:** `npm run build`
-- **Output directory:** `dist`
-- **Node:** 18+ (match local dev; 20 recommended).
-- **Rewrite:** Use the included `vercel.json` (rewrites `/api/:path*` → Heroku backend).
-- **Env vars:**
-  - QF/MM: `VITE_API_URL=/api` (client appends `/qf` or `/mm` automatically).
-  - IR: `VITE_API_URL=/api` (client appends `/ir` if missing).
-
-### WebSockets
-- WebSockets bypass Vercel; the frontend first calls `/api/qf/auth/ws-token` (via the proxy) then connects to `wss://quipflip-c196034288cd.herokuapp.com/qf/...` with the returned token (60s TTL).
-- Channels: notifications, online users, and party mode. See `docs/WEBSOCKET.md` for paths and client behavior.
-
-## Deployment Checklist
-
-### Backend
-- [ ] `ENVIRONMENT=production` and strong `SECRET_KEY` set
-- [ ] Postgres add-on provisioned (`DATABASE_URL` present)
-- [ ] Redis add-on configured (`REDIS_URL`) or confirmed optional fallback
-- [ ] CORS: `QF_FRONTEND_URL`, `MM_FRONTEND_URL`, and `ALLOWED_ORIGINS` cover prod + previews
-- [ ] AI keys set if using backups/hints (`OPENAI_API_KEY`/`GEMINI_API_KEY`, `AI_PROVIDER`)
-- [ ] Phrase validator configured (`USE_PHRASE_VALIDATOR_API`, `PHRASE_VALIDATOR_URL`) or local mode chosen
-- [ ] Deploy (e.g., `git push heroku main`) and confirm release phase migrations succeed
-
-### Frontends
-- [ ] Vercel project roots set to `frontend/qf`, `frontend/mm`, `frontend/ir`
-- [ ] `VITE_API_URL=/api` configured for each project
-- [ ] `vercel.json` rewrite intact
-- [ ] Build succeeds (`npm run build`)
-- [ ] Smoke tests: REST calls go through `/api/*`; QF WebSockets connect directly to Heroku
-
-## Smoke Tests
-- Backend health: `curl https://quipflip-c196034288cd.herokuapp.com/health`
-- WebSocket token + connect (QF):
-  ```bash
-  curl -b cookies.txt -c cookies.txt https://quipflip-c196034288cd.herokuapp.com/qf/auth/ws-token
-  # then connect to wss://quipflip-c196034288cd.herokuapp.com/qf/users/online/ws?token=...
-  ```
-- Frontend builds locally (optional confidence before deploy):
-  ```bash
-  npm run build:qf   # from repo root
-  npm run build --workspace frontend/mm
-  npm run build --workspace frontend/ir
-  ```
-
-## Testing
-
-### Manual API + cookie verification (QF)
-```bash
-# Login (replace credentials) and persist cookies locally
-curl -X POST https://quipflip-c196034288cd.herokuapp.com/qf/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"YOUR_EMAIL","password":"YOUR_PASSWORD"}' \
-  -c cookies.txt -v
-
-# Verify cookies authenticate subsequent requests
-curl https://quipflip-c196034288cd.herokuapp.com/qf/player/me \
-  -b cookies.txt -v
+```text
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
 ```
 
-### Manual WebSocket check (QF online users)
+Required provider configuration includes production environment, a non-default
+signing secret, `DATABASE_URL`, exact frontend origins, and optional AI provider
+keys. Redis is optional in the legacy topology, but current lifecycle integrity
+must not be assumed when Redis/in-memory queues diverge from the database.
+
+Do not paste provider values into documentation, shell history, logs, or tickets.
+
+## Frontend release
+
+Each Vercel project uses Node 20, installs from the repository lockfile, builds its
+workspace, and publishes `dist`. Legacy builds set `VITE_API_URL=/api`; the shared
+WebSocket hook may use `VITE_BACKEND_WS_URL` for the Heroku socket host.
+
+Before any release, all four commands must pass:
+
 ```bash
-# Mint short-lived token (requires cookies from prior login)
-token=$(curl -s -b cookies.txt https://quipflip-c196034288cd.herokuapp.com/qf/auth/ws-token | jq -r .token)
-
-# Connect directly to Heroku WS endpoint
-node -e "const WebSocket=require('ws'); const ws=new WebSocket('wss://quipflip-c196034288cd.herokuapp.com/qf/users/online/ws?token='+process.env.TOKEN); ws.on('open',()=>console.log('connected')); ws.on('message',m=>console.log('msg',m.toString())); ws.on('close',(c,r)=>console.log('closed',c,r));" TOKEN=$token
-```
-
-### Frontend sanity checks (after deploy)
-- Hit `https://quipflip.xyz` (QF), MemeMint, and IR prod URLs.
-- Open DevTools → Network: confirm API calls go to `/api/...` (same-origin) and carry `Cookie` headers.
-- For QF, open the Online Users screen and confirm live updates; force a token expiration by waiting >60s then ensure reconnection fetches a new token.
-
-### Automated
-```bash
-# Backend
-pytest
-
-# Frontends (from repo root)
 npm run build:qf
-npm run build --workspace frontend/mm
-npm run build --workspace frontend/ir
+npm run build:mm
+npm run build:ir
+npm run build:tl
 ```
 
-## Troubleshooting
-- **Cookies not set:** Requests must go through `/api/*` rewrite; confirm `ENVIRONMENT=production` and HTTPS on the deployed domain listed in `QF_FRONTEND_URL` / `MM_FRONTEND_URL`.
-- **WebSocket auth failures (code 1008 or instant close):** Token older than 60s, cookies missing during token request, or using `ws://` instead of `wss://`. Refresh page to mint a new token.
-- **CORS errors / preflight failures:** Add preview domains to `ALLOWED_ORIGINS` and redeploy backend; make sure `VITE_API_URL` is `/api` (not an absolute cross-site URL).
-- **API 401s after login:** Check that `SECRET_KEY` changed from default and clocks are in sync; ensure Secure cookies are allowed in the browser (no mixed-content HTTP).
-- **Builder fails on Vercel:** Ensure the project root points to the correct frontend folder and Node version is 18/20; clear `.next`/`node_modules` caches if using custom settings.
+At the 2026-06-22 baseline QF and MM passed, IR failed TypeScript compilation, and
+the chained command did not reach TL. Do not deploy a partial frontend set as a
+green release.
 
-## Monitoring
-- **Health:** `curl https://quipflip-c196034288cd.herokuapp.com/health`
-- **Logs:** `heroku logs --tail --app quipflip-c196034288cd`
-- **DB/Redis status:** Check add-on dashboards for connection limits and slow queries.
-- **Frontend deploys:** Vercel dashboards for `frontend/qf`, `frontend/mm`, `frontend/ir`—review build logs and check rewrites.
-- **WebSocket signal:** Backend logs emit connect/disconnect counts; watch for repeated 1008/440x codes indicating auth issues.
+## Verification
+
+```bash
+curl -fsS https://quipflip-c196034288cd.herokuapp.com/health
+curl -fsS https://quipflip.xyz/
+```
+
+A complete check also verifies exact REST origin, cookie login/refresh/logout, one
+game flow per deployed frontend, QF WebSocket token/connect/reconnect, and browser
+console errors. Never put a real password or token into a command retained in shell
+history.
+
+## Recovery and retirement
+
+- Use Heroku/Vercel dashboards and provider logs for the legacy system; redact
+  request data and tokens before sharing output.
+- Confirm release-phase migrations completed before diagnosing application startup.
+- A frontend HTTP 200 is not service health when proxied API calls fail.
+- Keep this topology available as cutover rollback until the new SQLite deployment
+  completes its soak window.
+- After retirement, mark this document Historical and remove provider-specific
+  rewrites/configuration in a separate reviewed change.

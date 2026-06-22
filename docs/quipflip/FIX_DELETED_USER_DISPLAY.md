@@ -1,5 +1,9 @@
 # Fix: Display Generated Usernames for Deleted Users
 
+> **Document type:** Historical repair note
+> **Status:** Historical — do not treat as active architecture
+> **Audience:** Maintainers
+
 ## Problem
 On the VoteRound results screen (View Details section), deleted users are shown as "Deleted User #..." which looks unprofessional and breaks immersion.
 

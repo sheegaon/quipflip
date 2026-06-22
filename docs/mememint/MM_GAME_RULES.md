@@ -1,5 +1,9 @@
 # Meme Mint Caption Game — Dev Game Rules
 
+> **Document type:** Canonical game rules
+> **Status:** Active intended behavior
+> **Audience:** Product and engineering
+
 ## 1. Overview
 
 This game is an asynchronous meme-caption battler built on the existing Crowdcraft / MemeCoin economy.
@@ -82,7 +86,7 @@ The **vault** itself is a global sink. Coins sent to vault are removed from circ
 - **Daily bonus**:
   - `DAILY_BONUS_AMOUNT = 100 MC`.
   - Can be claimed **once per UTC day** by non-guest accounts.
-  - **Not available on day 1**:  
+  - **Not available on day 1**:
     - If `now_utc.date() == floor(player.created_at_utc).date()`, they are **ineligible** to claim the daily bonus.
   - From day 2 onwards:
     - Claiming daily bonus immediately credits `DAILY_BONUS_AMOUNT` to `wallet_balance`.

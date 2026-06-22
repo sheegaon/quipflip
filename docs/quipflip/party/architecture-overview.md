@@ -1,5 +1,9 @@
 # Party Mode Architecture Overview
 
+> **Document type:** Historical design reference
+> **Status:** Archive — validate every claim against current Party code/tests
+> **Audience:** Maintainers
+
 > **Purpose**: Comprehensive architectural documentation for Party Mode refactoring, including current state analysis, target architecture, and detailed component interactions.
 
 ## Table of Contents
@@ -1282,7 +1286,8 @@ async def can_advance_phase(self, session: PartySession) -> bool:
 
 ### Next Steps
 
-Proceed to [Phase 1: Backend Foundation →](./phase-1-backend-foundation.md) to begin implementation.
+This historical phase document is not present. Use the active
+[reliability plan](../../transition-plan.md#d-quipflip-party-mode) for current work.
 
 ---
 

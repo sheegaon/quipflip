@@ -1,5 +1,9 @@
 # Initial Reaction — Game Rules
 
+> **Document type:** Canonical game rules
+> **Status:** Active intended behavior
+> **Audience:** Product and engineering
+
 ## Overview
 
 **Initial Reaction** is an asynchronous multiplayer word game where players invent clever *backronyms* for randomly generated short words, then vote on which backronym deserves to win. The game uses the same in-game economy, wallet, and vault structure as **Quipflip**, with InitCoins earned and spent across rounds.

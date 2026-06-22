@@ -1,5 +1,9 @@
 # Meme Mint Data Models
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
 This guide documents the Meme Mint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. Meme Mint uses the unified `Player` model with explicit per-game data and adds additional tables for images, captions, rounds, player state, and social features.
 
 ## Architecture Note

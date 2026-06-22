@@ -1,5 +1,9 @@
 # Initial Reaction Data Model Specification
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
 This guide covers the Initial Reaction models inside `backend/models/ir`, which extend the shared foundations documented in [DATA_MODELS.md](../DATA_MODELS.md). Wallets, tokens, quests, notifications, and other shared primitives come from the base modules and are not repeated here.
 
 ## Architecture Note

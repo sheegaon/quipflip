@@ -1,5 +1,9 @@
 # Quipflip Party Mode: Architecture Overview
 
+> **Document type:** Historical design reference
+> **Status:** Archive — use QF rules, current code, and the active transition plan
+> **Audience:** Maintainers
+
 This document explains how the Party Mode pieces fit together:
 
 - How the party-specific tables relate to the core Quipflip data model

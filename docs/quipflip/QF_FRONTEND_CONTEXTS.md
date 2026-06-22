@@ -1,5 +1,9 @@
 # Quipflip Frontend Context Architecture
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against current frontend code
+> **Audience:** Frontend maintainers
+
 This document describes the current state of the Quipflip frontend context architecture, which is organized into specialized contexts for different domains of application state.
 
 ## Overview

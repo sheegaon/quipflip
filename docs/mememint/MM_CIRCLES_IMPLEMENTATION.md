@@ -1,5 +1,9 @@
 # MemeMint Circles Feature - Detailed Implementation Plan
 
+> **Document type:** Historical implementation plan
+> **Status:** Historical — current code/tests and product specification take precedence
+> **Audience:** Maintainers seeking design context
+
 ## Table of Contents
 
 1. [Overview](#overview)

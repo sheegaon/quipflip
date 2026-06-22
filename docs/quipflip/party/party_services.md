@@ -1,3 +1,9 @@
+# Party Mode Services Notes
+
+> **Document type:** Historical implementation notes
+> **Status:** Archive — validate against current Party services
+> **Audience:** Backend maintainers
+
 High level:
 
 * **Party mode wraps the existing Quipflip engine** (prompt/copy/vote, phrasesets, scoring, Flipcoin economy) in a multi-round “match” container with lobbies, phases, progress tracking, AI players, WebSockets, and end-of-match stats.

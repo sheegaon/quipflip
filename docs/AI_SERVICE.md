@@ -1,5 +1,9 @@
 # Crowdcraft AI Service
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — verify provider behavior against code/tests
+> **Audience:** Backend maintainers
+
 ## Overview
 
 The AI service fills in for missing players by generating backup copy phrases and casting votes when human activity is low. It supports both OpenAI and Google Gemini models, records detailed telemetry for every AI operation, and integrates with the existing queue, phrase validation, and round management services so that AI decisions follow the same rules as real players. The same service also powers Initial Reaction (IR) by generating backronym entries and votes when IR sets stall.

@@ -1,0 +1,48 @@
+name: Agent task
+description: Define one reviewable behavioral objective for an autonomous builder.
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Relevant files or subsystem
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Invariants that must remain true
+      description: e.g. single command path, SQLite constraints/CAS, idempotency key, money ledger, private projection, reconnect restores state
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+  - type: textarea
+    id: verification
+    attributes:
+      label: Required verification
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation impact

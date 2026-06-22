@@ -1,5 +1,9 @@
 # **ThinkLink — Quick Facts (Developer Edition)**
 
+> **Document type:** Developer summary
+> **Status:** Active companion to TL game rules; rules take precedence
+> **Audience:** Engineering
+
 ### **Core Idea**
 
 Guess short phrases that semantically match what prior players wrote for the same prompt.

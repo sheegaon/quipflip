@@ -1,5 +1,9 @@
 # Quipflip (QF) API Documentation
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against OpenAPI and tests
+> **Audience:** Client and backend maintainers
+
 Quipflip endpoints live under the `/qf` prefix and are implemented in `backend/routers/qf`, sharing authentication middleware and response envelopes with the common routers documented in [API.md](../API.md). Authentication, health, and WebSocket token exchange are defined centrally there; this guide focuses on game-specific behavior.
 
 ## Base URL

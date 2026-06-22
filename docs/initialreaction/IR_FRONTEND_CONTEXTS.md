@@ -1,5 +1,9 @@
 # Initial Reaction Frontend Contexts
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against current frontend code
+> **Audience:** Frontend maintainers
+
 The Initial Reaction (IR) frontend uses a lightweight context layer focused on session management and gameplay for backronym battles.
 
 ## AppProviders

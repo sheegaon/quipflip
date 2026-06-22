@@ -1,5 +1,9 @@
 # Party Mode Data Models & Schemas
 
+> **Document type:** Historical implementation reference
+> **Status:** Archive — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
 This document describes:
 
 * The **4 SQLAlchemy data models** that back Party Mode:

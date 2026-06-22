@@ -1,5 +1,9 @@
 # **ThinkLink — Game Rules**
 
+> **Document type:** Canonical game rules
+> **Status:** Active intended behavior
+> **Audience:** Product and engineering
+
 # **1. Core Concept**
 
 ThinkLink is a semantic-guessing game.

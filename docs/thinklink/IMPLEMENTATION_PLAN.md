@@ -1,5 +1,9 @@
 # ThinkLink Implementation Plan (v1)
 
+> **Document type:** Historical implementation plan
+> **Status:** Historical — current rules, code, and tests take precedence
+> **Audience:** Maintainers seeking design context
+
 ## Executive Summary
 
 ThinkLink is a semantic-matching game where players guess answers that match the crowd's prior answers. This plan outlines how to implement ThinkLink v1 (solo play) by reusing existing QuipFlip (QF) and MemeMint (MM) infrastructure while building the game-specific semantic matching, clustering, and scoring systems.

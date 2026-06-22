@@ -1,5 +1,9 @@
 # Meme Mint (MM) API Documentation
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against OpenAPI and tests
+> **Audience:** Client and backend maintainers
+
 Meme Mint endpoints live under the `/mm` prefix and are implemented in `backend/routers/mm`. Shared authentication and health/status probes are documented in [API.md](../API.md); this guide focuses on Meme Mint gameplay and account endpoints.
 
 ## Base URL
