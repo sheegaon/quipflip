@@ -58,6 +58,30 @@ smoke test.
 - No Crowdcraft service was listening on local port 8000, and the four target
   `crowdcraftlabs.com` hostnames were not yet deployed.
 
+### Current status notes
+
+These notes describe the implementation snapshot on 2026-06-22; they are not
+acceptance criteria.
+
+- QuipFlip is the most complete surface. It has the broadest backend and frontend
+  footprint, including solo play, practice paths, admin tools, and the separate
+  Party Mode stack that still needs the reliability work called out below.
+- MemeMint is the next most mature game. The vote/caption loop, circles, and
+  leaderboard/admin pages are present, but the remaining work is around lifecycle
+  and money integrity rather than basic feature coverage.
+- ThinkLink is comparatively narrow and focused. Its client and backend cover the
+  core round play, results, history, and admin corpus flows, with the main gap in
+  the scoring/matching/finalization hardening work.
+- Initial Reaction is the smallest game surface. Its routing and services are
+  present, but it still has the strongest signal of build/model drift and the
+  thinnest regression coverage of the four games.
+- The shared backend shape is already established: one FastAPI app mounts the four
+  game routers plus shared auth, health, notifications, and online-user routes.
+- The shared frontend library is also real, with common components, hooks,
+  contexts, and the base API client in `frontend/crowdcraft`, but the client still
+  carries legacy localhost/Heroku fallbacks that do not match the target same-origin
+  deployment model.
+
 ### Code-level findings that change this plan
 
 1. The database is intended to be authoritative, but the QF prompt and phraseset
