@@ -1,5 +1,9 @@
 # Heroku Migration Lessons Learned
 
+> **Document type:** Historical operations note
+> **Status:** Historical — does not override the active deployment plan
+> **Audience:** Maintainers
+
 ## Context
 In October 2025 a Heroku deployment failed because the release phase could not
 locate the Alembic revision identifier `guest_lockout_001`. Production

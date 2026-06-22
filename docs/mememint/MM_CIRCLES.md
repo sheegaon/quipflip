@@ -1,5 +1,9 @@
 # MemeMint “Circles” Feature — Product Specification (MVP)
 
+> **Document type:** Product specification
+> **Status:** Active intended behavior
+> **Audience:** Product and engineering
+
 ## 1. High-Level Summary
 
 We’re introducing **Circles** to MemeMint: persistent social groups whose members’ memes and captions are preferentially shown to each other during play. Circles create the feeling of “being in a room with people you know,” but without requiring real-time coordination or lobbies.

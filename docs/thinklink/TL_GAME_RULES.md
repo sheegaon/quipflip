@@ -1,5 +1,9 @@
 # **ThinkLink — Game Rules**
 
+> **Document type:** Canonical game rules
+> **Status:** Active intended behavior
+> **Audience:** Product and engineering
+
 # **1. Core Concept**
 
 ThinkLink is a semantic-guessing game.
@@ -33,7 +37,7 @@ Each prompt maintains **up to 1000 “active” answers**:
 
 Each prompt is initially seeded with AI-generated answers:
 
-* Validated using Quipflip’s phrase validator
+* Validated using QuipFlip’s phrase validator
 * Topic-checked
 * Moderated
 * Clustered (see below)
@@ -43,7 +47,7 @@ Each prompt is initially seeded with AI-generated answers:
 
 # **3. Phrase Validation**
 
-ThinkLink **reuses the Quipflip phrase validator**.
+ThinkLink **reuses the QuipFlip phrase validator**.
 Every submission must satisfy:
 
 1. **Dictionary + Structure**
@@ -94,7 +98,7 @@ New answers from other players do **not** affect the ongoing round.
 
 For each submission:
 
-1. Validate phrase (Quipflip rules)
+1. Validate phrase (QuipFlip rules)
 2. Embed via OpenAI small
 3. Compute cosine similarity vs **all snapshot answers**
 4. Detect matched clusters
@@ -283,7 +287,7 @@ The round terminates when:
 
 ThinkLink is a semantic-guessing game built on four pillars:
 
-1. **Quipflip-grade phrase validation**
+1. **QuipFlip-grade phrase validation**
 2. **Semantic matching** against up to 1000 active answers
 3. **Clustered + weighted scoring**, rewarding popular ideas
 4. **Predictable gameplay** through snapshot freezing and strike rules

@@ -1,5 +1,9 @@
 # Party Mode API
 
+> **Document type:** Historical implementation reference
+> **Status:** Archive — validate against OpenAPI and current Party routers
+> **Audience:** Client and backend maintainers
+
 Party Mode lets a group of players (human + optional AI) play a structured multi-phase match:
 
 1. **LOBBY** – players join, mark ready, host can add AI/ping.
@@ -8,7 +12,7 @@ Party Mode lets a group of players (human + optional AI) play a structured multi
 4. **VOTE** – everyone votes on phrases.
 5. **RESULTS/COMPLETED** – ranking, awards, breakdown.
 
-All endpoints require an authenticated `QFPlayer` via the standard access token (`get_current_player`) unless otherwise noted. 
+All endpoints require an authenticated `QFPlayer` via the standard access token (`get_current_player`) unless otherwise noted.
 
 Schemas referenced below are the Pydantic models from `backend/schemas/party.py` which you already have documented.
 
@@ -91,7 +95,7 @@ Returns all **joinable** sessions:
 
 * Looks up session by `party_code`.
 * If player is not already in the session, adds them as a `PartyParticipant`.
-* Emits `ws_manager.notify_player_joined` to the party WebSocket subscribers. 
+* Emits `ws_manager.notify_player_joined` to the party WebSocket subscribers.
 
 **Response**
 
@@ -164,7 +168,7 @@ Same semantics as **join by code**, but you supply `session_id` directly (used w
 * Only allowed **before** the session starts.
 * Removes current player’s `PartyParticipant` row.
 * If this was the **last participant**, the session is deleted.
-* Broadcasts `ws_manager.notify_player_left` when the session survives. 
+* Broadcasts `ws_manager.notify_player_left` when the session survives.
 
 **Response**
 
@@ -200,7 +204,7 @@ Same semantics as **join by code**, but you supply `session_id` directly (used w
 
 * Marks the caller’s `PartyParticipant` status as `READY` in the lobby.
 * Recomputes number of ready players.
-* Emits `ws_manager.notify_player_ready` with `ready_count` and `total_count`. 
+* Emits `ws_manager.notify_player_ready` with `ready_count` and `total_count`.
 
 **Response**
 
@@ -235,7 +239,7 @@ Same semantics as **join by code**, but you supply `session_id` directly (used w
 
 * Host-only, lobby-only.
 * Creates an AI `QFPlayer` (according to your `PartySessionService.add_ai_player` logic) and attaches it as a `PartyParticipant`.
-* Broadcasts `ws_manager.notify_player_joined` with updated count. 
+* Broadcasts `ws_manager.notify_player_joined` with updated count.
 
 **Response**
 
@@ -276,7 +280,7 @@ Same semantics as **join by code**, but you supply `session_id` directly (used w
   * `timestamp` (UTC ISO string)
   * `join_url` – `"/party/{session_id}"`
 * For each **non-host, non-AI** participant, sends this message via the global `NotificationConnectionManager` (not the party-specific WS).
-* Emits `ws_manager.notify_host_ping` into the party WS for live feedback. 
+* Emits `ws_manager.notify_host_ping` into the party WS for live feedback.
 
 **Response**
 
@@ -343,7 +347,7 @@ Same semantics as **join by code**, but you supply `session_id` directly (used w
   * `current_phase` (usually `PROMPT`)
   * `participant_count`
   * `message` – `"Party started! Everyone write your best original phrase."`
-* Synchronously triggers AI submissions for the new phase via `PartyCoordinationService._trigger_ai_submissions_for_new_phase`. Errors here are logged but **do not** abort the session start. 
+* Synchronously triggers AI submissions for the new phase via `PartyCoordinationService._trigger_ai_submissions_for_new_phase`. Errors here are logged but **do not** abort the session start.
 
 **Response**
 
@@ -412,7 +416,7 @@ Same semantics as **join by code**, but you supply `session_id` directly (used w
 **Behavior**
 
 * Validates that the session exists and is in `RESULTS` or `COMPLETED` phase. Otherwise fails.
-* Calls `PartyScoringService.calculate_session_results(session_id)` and returns it as `PartyResultsResponse`. 
+* Calls `PartyScoringService.calculate_session_results(session_id)` and returns it as `PartyResultsResponse`.
 
 **Response**
 
@@ -457,7 +461,7 @@ Each returns a `StartPartyRoundResponse`, with `round_type` set accordingly and 
 
 * Calls `PartyCoordinationService.start_party_prompt_round(...)` to create a new prompt `Round` and associated `PartyRound`.
 * Counts “active” participants (`status == 'ACTIVE'`) and how many of them have hit their prompt quota.
-* Returns the round plus progress info. 
+* Returns the round plus progress info.
 
 **Response**
 
@@ -609,7 +613,7 @@ Each returns a `StartPartyRoundResponse`, with `round_type` set accordingly and 
 
 **Current behavior**
 
-* The function is effectively a stub: it unconditionally raises an HTTP 400 telling clients to use the specific endpoints (prompt/copy/vote). Due to the error being wrapped in a broad `except Exception`, in practice this endpoint ends up returning a 500 `"Failed to submit round"` instead. 
+* The function is effectively a stub: it unconditionally raises an HTTP 400 telling clients to use the specific endpoints (prompt/copy/vote). Due to the error being wrapped in a broad `except Exception`, in practice this endpoint ends up returning a 500 `"Failed to submit round"` instead.
 
 **Practical note**
 
@@ -646,7 +650,7 @@ Each returns a `StartPartyRoundResponse`, with `round_type` set accordingly and 
 2. Validate using `AuthService.decode_access_token` (GameType.QF).
 3. Extract `sub` as `player_id`.
 4. Verify that this player is **currently a participant** in the specified `session_id`.
-5. If any step fails, the websocket is closed early with a warning log. 
+5. If any step fails, the websocket is closed early with a warning log.
 
 **Connection behavior**
 

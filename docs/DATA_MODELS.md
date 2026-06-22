@@ -1,6 +1,10 @@
 # Data Model Documentation Index
 
-The application uses a unified **cross-game Player model** with explicit per-game data tables. Shared building blocks live in `backend/models/`, while game-specific models and player data live in `backend/models/qf` (Quipflip), `backend/models/ir` (Initial Reaction), `backend/models/mm` (Meme Mint), and `backend/models/tl` (ThinkLink). Use the dedicated game guides alongside this index when exploring schemas or planning migrations.
+> **Document type:** Implementation reference
+> **Status:** Review-required — models and Alembic migrations are implemented truth
+> **Audience:** Backend maintainers
+
+The application uses a unified **cross-game Player model** with explicit per-game data tables. Shared building blocks live in `backend/models/`, while game-specific models and player data live in `backend/models/qf` (QuipFlip), `backend/models/ir` (Initial Reaction), `backend/models/mm` (MemeMint), and `backend/models/tl` (ThinkLink). Use the dedicated game guides alongside this index when exploring schemas or planning migrations.
 
 ## Architecture Overview
 
@@ -10,9 +14,10 @@ The application implements a **multi-game authentication system** with a single 
 
 ```
 players table (unified authentication across all games)
-├── qf_player_data (Quipflip-specific wallet, vault, tutorial state)
+├── qf_player_data (QuipFlip-specific wallet, vault, tutorial state)
 ├── ir_player_data (Initial Reaction-specific wallet, vault, player state)
-└── mm_player_data (Meme Mint-specific wallet, vault, player state)
+├── mm_player_data (MemeMint-specific wallet, vault, player state)
+└── tl_player_data (ThinkLink-specific wallet, vault, player state)
 ```
 
 Each player account is linked to at most one record in each game's player data table. The `Player` model is game-agnostic and only stores identity/auth fields; services and routers explicitly access per-game records (e.g., via `player.get_game_data(game_type)` or `PlayerService.snapshot_player_data`). Auth responses include `player` (global identity) plus an optional `game_data` snapshot when a `game_type` query parameter is provided, with temporary `legacy_*` mirrors controlled by `auth_emit_legacy_fields` for backward compatibility.
@@ -25,9 +30,10 @@ Each player account is linked to at most one record in each game's player data t
 
 ## Where to Look
 
-- [Quipflip Data Models](quipflip/QF_DATA_MODELS.md) – complete reference for Quipflip tables including QFPlayerData, Rounds, Phrasesets, and Party Mode models under `backend/models/qf`.
+- [QuipFlip Data Models](quipflip/QF_DATA_MODELS.md) – complete reference for QuipFlip tables including QFPlayerData, Rounds, Phrasesets, and Party Mode models under `backend/models/qf`.
 - [Initial Reaction Data Models](initialreaction/IR_DATA_MODELS.md) – companion reference for IR tables under `backend/models/ir`.
-- [Meme Mint Data Models](mememint/MM_DATA_MODELS.md) – companion reference for MM tables including Circles and caption models under `backend/models/mm`.
+- [MemeMint Data Models](mememint/MM_DATA_MODELS.md) – companion reference for MM tables including Circles and caption models under `backend/models/mm`.
+- [ThinkLink Data Models](thinklink/TL_DATA_MODELS.md) – companion reference for TL rounds, prompts, answers, clusters, and transactions under `backend/models/tl`.
 
 ## Core Shared Models
 
@@ -85,7 +91,7 @@ Each game has a companion table for game-specific player state:
 - `wallet_balance_after` (integer, nullable) - wallet balance after transaction for audit trail
 - `vault_balance_after` (integer, nullable) - vault balance after transaction for audit trail
 
-**Purpose**: Complete audit trail for all currency movements across both games
+**Purpose**: Shared shape for game-specific currency ledgers
 **Indexing**: Optimized for player transaction history and temporal queries
 
 ### RefreshTokenBase
@@ -120,7 +126,7 @@ Each game has a companion table for game-specific player state:
 - `completed_at` (timestamp with timezone, nullable) - when quest objectives were met
 - `claimed_at` (timestamp with timezone, nullable) - when reward was claimed by player
 
-**Enums**: 
+**Enums**:
 - `QuestStatus`: ACTIVE, COMPLETED, CLAIMED
 - `QuestCategory`: STREAK, QUALITY, ACTIVITY, MILESTONE
 

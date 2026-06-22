@@ -1,8 +1,12 @@
 # Initial Reaction — Game Rules
 
+> **Document type:** Canonical game rules
+> **Status:** Active intended behavior
+> **Audience:** Product and engineering
+
 ## Overview
 
-**Initial Reaction** is an asynchronous multiplayer word game where players invent clever *backronyms* for randomly generated short words, then vote on which backronym deserves to win. The game uses the same in-game economy, wallet, and vault structure as **Quipflip**, with InitCoins earned and spent across rounds.
+**Initial Reaction** is an asynchronous multiplayer word game where players invent clever *backronyms* for randomly generated short words, then vote on which backronym deserves to win. The game uses the same in-game economy, wallet, and vault structure as **QuipFlip**, with InitCoins earned and spent across rounds.
 
 Players compete in two modes:
 
@@ -18,7 +22,7 @@ There are two round types:
 ### 1. Backronym Round
 
 * Cost: **100 InitCoins**
-* Player is served a **random 3–5 letter English word** from the standard dictionary (same validator as Quipflip).
+* Player is served a **random 3–5 letter English word** from the standard dictionary (same validator as QuipFlip).
 * The player must create a *backronym* — one word per letter, each word validated against the dictionary.
 * Grammar doesn’t matter; only that all words are valid.
 * Repeated words are allowed.
@@ -56,7 +60,7 @@ There are two round types:
 3. Players must cast their own votes to receive their share of winnings.
 
    * If a backronym creator doesn’t vote before round finalization, their share is forfeited to the vault.
-4. **30% of each player’s net winnings** are automatically added to their **vault** (same as Quipflip).
+4. **30% of each player’s net winnings** are automatically added to their **vault** (same as QuipFlip).
 
 ---
 
@@ -91,7 +95,7 @@ There are two round types:
 
 ## AI Behavior
 
-* The AI system mirrors Quipflip’s backup and stale handlers.
+* The AI system mirrors QuipFlip’s backup and stale handlers.
 * AI submits backronyms and votes under special “bot” accounts marked with a **bot icon**.
 * AI backronyms and votes follow the same rules as human entries.
 * AI prompt templates weight responses toward **coherence, humor, and wordplay quality.**
@@ -143,7 +147,7 @@ Two independent leaderboards:
 | Non-participant vote | 10 InitCoins            | 20 InitCoins if correct        | Max 5 per round           |
 | AI entry             | —                   | No wallet impact           | Backup participation only |
 | Vault contribution   | 30% of net winnings | —                          | Automatic                 |
-| Daily login bonus    | Same as Quipflip    | —                          | Optional cross-game bonus |
+| Daily login bonus    | Same as QuipFlip    | —                          | Optional cross-game bonus |
 
 ---
 
@@ -151,7 +155,7 @@ Two independent leaderboards:
 
 * No player can vote for their own backronym.
 * Duplicate entries (same player submitting multiple backronyms for one word) disallowed.
-* Guests limited by IP rate caps (mirroring Quipflip).
+* Guests limited by IP rate caps (mirroring QuipFlip).
 * AI players excluded from leaderboards.
 
 ---
@@ -165,5 +169,5 @@ Two independent leaderboards:
 
 Would you like me to:
 
-1. Format this for repo insertion (section headers, consistent with Quipflip’s markdown style), or
+1. Format this for repo insertion (section headers, consistent with QuipFlip’s markdown style), or
 2. Add a **“Game Flow Diagram”** section visualizing how a backronym moves from creation → voting → payout (for docs/marketing)?

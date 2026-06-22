@@ -13,6 +13,9 @@ screenshots/
 test-results/
 playwright-report/
 
+# Local volunteer/PII data — never commit to this public repo
+*.numbers
+
 # =============================================================================
 # PYTHON
 # =============================================================================

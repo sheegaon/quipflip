@@ -1,5 +1,9 @@
 # Party Mode Data Models & Schemas
 
+> **Document type:** Historical implementation reference
+> **Status:** Archive — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
 This document describes:
 
 * The **4 SQLAlchemy data models** that back Party Mode:
@@ -10,7 +14,7 @@ This document describes:
   * `PartyPhraseset`
 * The **Pydantic schemas** in `backend/schemas/party.py` used by the Party Mode API.
 
-Party Mode is a wrapper around the core Quipflip entities (`QFPlayer`, `Round`, `Phraseset`), adding session-level orchestration (lobby → prompt → copy → vote → results) and per-match stats.
+Party Mode is a wrapper around the core QuipFlip entities (`QFPlayer`, `Round`, `Phraseset`), adding session-level orchestration (lobby → prompt → copy → vote → results) and per-match stats.
 
 ---
 
@@ -212,7 +216,7 @@ Represents a single player’s participation inside a specific `PartySession` (i
 **File:** `backend/models/party_round.py`
 **Table:** `party_rounds`
 
-Links a core `Round` record into a `PartySession` context, tagged with round type and party phase. This lets you reuse normal Quipflip rounds while tracking them per-party and per-participant.
+Links a core `Round` record into a `PartySession` context, tagged with round type and party phase. This lets you reuse normal QuipFlip rounds while tracking them per-party and per-participant.
 
 **Columns**
 
@@ -224,7 +228,7 @@ Links a core `Round` record into a `PartySession` context, tagged with round typ
   * Party session this round belongs to.
 * `round_id` (UUID, FK → `qf_rounds.round_id`, not null, CASCADE)
 
-  * Underlying Quipflip `Round` object.
+  * Underlying QuipFlip `Round` object.
 * `participant_id` (UUID, FK → `party_participants.participant_id`, not null, CASCADE)
 
   * Participant for whom this round is being played (e.g., whose prompt / copy / votes are being tracked).

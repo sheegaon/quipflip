@@ -1,5 +1,9 @@
 # Initial Reaction Frontend Contexts
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against current frontend code
+> **Audience:** Frontend maintainers
+
 The Initial Reaction (IR) frontend uses a lightweight context layer focused on session management and gameplay for backronym battles.
 
 ## AppProviders
@@ -22,7 +26,7 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
 };
 ```
 
-This provider stack keeps IR-specific state isolated from the Quipflip contexts used by the main app while also supplying network resiliency, tutorial progress, notifications, and back-navigation helpers to every screen.
+This provider stack keeps IR-specific state isolated from the QuipFlip contexts used by the main app while also supplying network resiliency, tutorial progress, notifications, and back-navigation helpers to every screen.
 
 ## IRGameContext
 

@@ -1,5 +1,9 @@
 # ThinkLink Data Models
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
 This guide documents the ThinkLink-specific tables housed under `backend/models/tl`. These models build on the shared base tables described in [DATA_MODELS.md](../DATA_MODELS.md) (players, tokens, transactions, notifications, and system configuration) and add the game entities unique to ThinkLink.
 
 ## Architecture Note

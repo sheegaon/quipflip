@@ -1,6 +1,10 @@
-# Meme Mint Image Management
+# MemeMint Image Management
 
-This directory contains the image management system for Meme Mint.
+> **Document type:** Asset operations reference
+> **Status:** Review-required — verify URLs and import behavior before use
+> **Audience:** Maintainers
+
+This directory contains the image management system for MemeMint.
 
 ## Directory Structure
 
@@ -104,7 +108,7 @@ GET /api/mm/images/{filename}
 ### Example
 ```bash
 # Production
-curl -L https://quipflip.herokuapp.com/api/mm/images/image001.png
+curl -L http://127.0.0.1:8000/mm/images/image001.png
 # → Redirects to GitHub
 
 # Local development

@@ -1,10 +1,14 @@
-# Quipflip Frontend Context Architecture
+# QuipFlip Frontend Context Architecture
 
-This document describes the current state of the Quipflip frontend context architecture, which is organized into specialized contexts for different domains of application state.
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against current frontend code
+> **Audience:** Frontend maintainers
+
+This document describes the current state of the QuipFlip frontend context architecture, which is organized into specialized contexts for different domains of application state.
 
 ## Overview
 
-The Quipflip frontend uses a modular context architecture that separates concerns across different domains:
+The QuipFlip frontend uses a modular context architecture that separates concerns across different domains:
 
 - **NetworkContext**: Network status, offline queueing, and reconnection helpers
 - **GameContext**: Core game state, authentication, and round management

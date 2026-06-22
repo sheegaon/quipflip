@@ -1,5 +1,9 @@
 # **Initial Reaction — Rapid Mode UX Flow**
 
+> **Document type:** Product/UX reference
+> **Status:** Active companion to IR game rules
+> **Audience:** Product and frontend engineering
+
 *(Applies to both guest and registered players, with guest-specific rules highlighted.)*
 
 ## **Overview**

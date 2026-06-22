@@ -1,12 +1,16 @@
-# Meme Mint Data Models
+# MemeMint Data Models
 
-This guide documents the Meme Mint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. Meme Mint uses the unified `Player` model with explicit per-game data and adds additional tables for images, captions, rounds, player state, and social features.
+> **Document type:** Implementation reference
+> **Status:** Review-required — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
+This guide documents the MemeMint–specific tables housed under `backend/models/mm` and explains how they extend the shared base models defined in `DATA_MODELS.md`. MemeMint uses the unified `Player` model with explicit per-game data and adds additional tables for images, captions, rounds, player state, and social features.
 
 ## Architecture Note
 
-Meme Mint uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all MM balances and state live in `MMPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="mm")`). Legacy `Player.wallet/vault` shims may mirror MM data only while `auth_emit_legacy_fields` is enabled during the migration.
+MemeMint uses the **unified Player model with explicit per-game data** pattern. `Player` remains global and game-agnostic; all MM balances and state live in `MMPlayerData` and are loaded explicitly (e.g., via `PlayerService.snapshot_player_data(game_type="mm")`). Legacy `Player.wallet/vault` shims may mirror MM data only while `auth_emit_legacy_fields` is enabled during the migration.
 
-**MMPlayerData** contains Meme Mint-specific player state:
+**MMPlayerData** contains MemeMint-specific player state:
 - `player_id` (UUID, PK, FK to players.player_id)
 - `wallet` (integer, default 1000)
 - `vault` (integer, default 0)
@@ -16,7 +20,7 @@ Meme Mint uses the **unified Player model with explicit per-game data** pattern.
 
 ## 1. Relationship to Shared Models
 
-Meme Mint uses the unified `Player` authentication model and adds game-specific state:
+MemeMint uses the unified `Player` authentication model and adds game-specific state:
 
 * Reuses:
 
@@ -34,7 +38,7 @@ All balance changes (entry fees, payouts, bonuses) must still flow through `Tran
 
 ---
 
-## 2. Meme Mint Tables
+## 2. MemeMint Tables
 
 All tables are logically under the `mm` namespace, e.g. `mm_image`, `mm_caption`, etc.
 
@@ -378,7 +382,7 @@ This table is **optional** but recommended for debugging, moderation, and analyt
 
 ### 2.7 `mm_circle` — Player Groups / Circles
 
-Represents a social group or "circle" in Meme Mint where players can organize, collaborate, and share content.
+Represents a social group or "circle" in MemeMint where players can organize, collaborate, and share content.
 
 * `circle_id` (UUID, primary key)
 
@@ -529,11 +533,11 @@ Tracks pending requests from players who want to join a circle.
 
 ## 3. Economy Integration
 
-These are **not new tables**, but rules for how Meme Mint uses the shared economic models.
+These are **not new tables**, but rules for how MemeMint uses the shared economic models.
 
 ### 3.1 `TransactionBase` Types
 
-Meme Mint introduces new values for `TransactionBase.type`. Suggested conventions:
+MemeMint introduces new values for `TransactionBase.type`. Suggested conventions:
 
 **Round-related:**
 
@@ -589,7 +593,7 @@ If you share payouts between original and riff caption:
 
 ### 3.2 `SystemConfigBase` Keys
 
-Meme Mint relies on `SystemConfigBase` for tunable parameters. Suggested keys and semantics:
+MemeMint relies on `SystemConfigBase` for tunable parameters. Suggested keys and semantics:
 
 Economy:
 
@@ -631,7 +635,7 @@ Misc:
 
 * `mm_starting_wallet_override` (int, optional)
 
-  * If set, service layer can override default `PlayerBase.wallet` for Meme Mint–only registrations (e.g. 500 MC).
+  * If set, service layer can override default `PlayerBase.wallet` for MemeMint–only registrations (e.g. 500 MC).
 * `mm_daily_bonus_amount` (int, optional)
 
   * If the meme-mint daily bonus differs from global default; otherwise reuse existing key.
@@ -647,16 +651,16 @@ All config rows should set:
 
 * `PlayerBase.wallet` and `PlayerBase.vault` are used exactly as in other games:
 
-  * Wallet = spendable MemeCoins within Meme Mint.
+  * Wallet = spendable MemeCoins within MemeMint.
   * Vault = global sink used for ecosystem-wide leaderboards.
-* Starting balances and daily bonuses for Meme Mint are configured via `SystemConfigBase` and implemented in the service layer; the schema does not change.
+* Starting balances and daily bonuses for MemeMint are configured via `SystemConfigBase` and implemented in the service layer; the schema does not change.
 * Per-player free caption quota is tracked in `mm_player_daily_state` (this doc), not in the base player record.
 
 ---
 
 ## 4. Summary
 
-New schema objects for Meme Mint:
+New schema objects for MemeMint:
 
 * `mm_image` — catalog of meme images.
 * `mm_caption` — captions with stats and economy aggregates.

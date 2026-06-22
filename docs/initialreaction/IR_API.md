@@ -1,5 +1,9 @@
 # Initial Reaction (IR) API Documentation
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — validate against OpenAPI and tests
+> **Audience:** Client and backend maintainers
+
 Initial Reaction routes are mounted under `/ir` and live in `backend/routers/ir`, sharing authentication and error-handling contracts with the common routers described in [API.md](../API.md).
 
 ## Base URL
@@ -12,7 +16,7 @@ Development: http://localhost:8000/ir
 
 Authentication is **global** and handled by the shared `/auth/*` routes. Pass `game_type=ir` to receive an IR snapshot in the `game_data` envelope on login/refresh/session responses.
 
-- HTTP-only cookies are set on login/refresh using the configured `access_token_cookie_name` and `refresh_token_cookie_name` (defaults mirror Quipflip). Cookies are sent automatically with `withCredentials: true`.
+- HTTP-only cookies are set on login/refresh using the configured `access_token_cookie_name` and `refresh_token_cookie_name` (defaults mirror QuipFlip). Cookies are sent automatically with `withCredentials: true`.
 - Authorization headers (`Bearer <token>`) are also accepted by the IR auth dependency.
 - Most endpoints require authentication; unauthenticated access is only allowed where noted (e.g., registration and guest creation).
 - Use `GET /auth/session?game_type=ir` to bootstrap the current player and per-game balances without assuming a default game.

@@ -1,5 +1,9 @@
 # Initial Reaction Data Model Specification
 
+> **Document type:** Implementation reference
+> **Status:** Review-required — models/migrations are implemented truth
+> **Audience:** Backend maintainers
+
 This guide covers the Initial Reaction models inside `backend/models/ir`, which extend the shared foundations documented in [DATA_MODELS.md](../DATA_MODELS.md). Wallets, tokens, quests, notifications, and other shared primitives come from the base modules and are not repeated here.
 
 ## Architecture Note
@@ -16,7 +20,7 @@ Initial Reaction uses the **unified Player model with explicit per-game data** p
 
 ## Overview
 
-Initial Reaction (“IR”) mirrors Quipflip’s round/phraseset pattern with entities specialized for backronyms:
+Initial Reaction (“IR”) mirrors QuipFlip’s round/phraseset pattern with entities specialized for backronyms:
 
 * **BackronymSet** – the unit of play for one 3–5 letter word; collects 5 creator entries and fans into a voting phase.
 * **BackronymEntry** – a creator’s backronym for the set word (one token per letter).
@@ -111,7 +115,7 @@ One creator’s backronym for the set word. Exactly **N tokens** for **N letters
 **Constraints**
 
 * **Unique** `(player_id, set_id)` – one entry per creator per set.
-* `json_schema`: `backronym_text` length must equal `length(word)` of parent set; each token A–Z[2..15] chars (same validator rules as Quipflip).
+* `json_schema`: `backronym_text` length must equal `length(word)` of parent set; each token A–Z[2..15] chars (same validator rules as QuipFlip).
 * Foreign-key cascade delete on `set_id`.
 
 **Notes**
@@ -210,7 +214,7 @@ On **finalize**:
 
 4. **Vault skim**
 
-   * On each positive creator payout, ledger **30% of net** to vault (same rule as Quipflip)
+   * On each positive creator payout, ledger **30% of net** to vault (same rule as QuipFlip)
    * Store `vote_share_pct` and `received_votes` on entries for replayability
 
 5. **ResultView**
@@ -330,7 +334,7 @@ CREATE INDEX ix_ir_vote_created ON backronym_vote (created_at);
 
 ## Validation Rules (summary)
 
-* **Word source**: same dictionary + validator as Quipflip.
+* **Word source**: same dictionary + validator as QuipFlip.
 * **Backronym shape**: length(backronym_text) == length(set.word); each token passes dictionary validation; 2–15 chars; A–Z only (stored uppercase).
 * **Voting**: single choice; randomized order per voter; service prevents self-vote; non-participant cap=5; observer gating verified against guard.
 
@@ -338,7 +342,7 @@ CREATE INDEX ix_ir_vote_created ON backronym_vote (created_at);
 
 ## Design Notes
 
-* The schema keeps Quipflip tables untouched and relies on the same horizontal services (ledger, vault, AI, metrics).
+* The schema keeps QuipFlip tables untouched and relies on the same horizontal services (ledger, vault, AI, metrics).
 * Pool arithmetic and vault skims are persisted on the set and entries for replayability, while the **Transaction** table remains the source of truth.
 * AI accounts are flagged via `is_ai` and excluded from leaderboards.
 * All finalize math is idempotent; re-runs reconcile against the ledger and `ResultView`.

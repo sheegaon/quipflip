@@ -1,6 +1,12 @@
+# Party Mode Services Notes
+
+> **Document type:** Historical implementation notes
+> **Status:** Archive — validate against current Party services
+> **Audience:** Backend maintainers
+
 High level:
 
-* **Party mode wraps the existing Quipflip engine** (prompt/copy/vote, phrasesets, scoring, Flipcoin economy) in a multi-round “match” container with lobbies, phases, progress tracking, AI players, WebSockets, and end-of-match stats.
+* **Party mode wraps the existing QuipFlip engine** (prompt/copy/vote, phrasesets, scoring, Flipcoin economy) in a multi-round “match” container with lobbies, phases, progress tracking, AI players, WebSockets, and end-of-match stats.
 * The main pieces are:
 
   * **Data models**: `PartySession`, `PartyParticipant`, `PartyRound`, `PartyPhraseset`.
@@ -35,7 +41,7 @@ Party mode adds four main tables on top of the core `Round`, `Phraseset`, `QFTra
    * Fields: `party_phraseset_id`, `session_id`, `phraseset_id`, `created_in_phase`, `available_for_voting` etc.
    * Used for “which phrasesets should party members vote on” and for end-of-match summaries.
 
-**Response models** like `PartySessionStatusResponse`, `PartySessionProgressResponse`, `PartyResultsResponse`, `PartyPlayerStatsResponse`, and `PartyPhrasesetSummaryResponse` are basically read-only views built off these tables plus the core Quipflip tables.
+**Response models** like `PartySessionStatusResponse`, `PartySessionProgressResponse`, `PartyResultsResponse`, `PartyPlayerStatsResponse`, and `PartyPhrasesetSummaryResponse` are basically read-only views built off these tables plus the core QuipFlip tables.
 
 ---
 
@@ -67,7 +73,7 @@ Essentially this is the “source of truth” for lobby membership, phases, and 
 
 ### 2.2 PartyCoordinationService – glue to the core game engine
 
-`PartyCoordinationService` is where party mode actually *plays Quipflip*.
+`PartyCoordinationService` is where party mode actually *plays QuipFlip*.
 
 It does **not** implement game rules itself; instead it:
 
@@ -272,7 +278,7 @@ Putting it all together, a typical match looks like this:
 ## 4. Short mental model
 
 * **PartySessionService** – “state and rules of the match”: lobby, phases, quotas, per-player counters.
-* **PartyCoordinationService** – “do the work”: call the existing Quipflip prompt/copy/vote APIs in a party-aware way, wire them back to party models, and coordinate AI + phase transitions.
+* **PartyCoordinationService** – “do the work”: call the existing QuipFlip prompt/copy/vote APIs in a party-aware way, wire them back to party models, and coordinate AI + phase transitions.
 * **PartyScoringService** – “final scorekeeper”: aggregate all the rounds and transactions into a nice scoreboard + recap for the match.
 * **PartyWebSocketManager** – “live feed”: broadcast lobby events, progress, and phase changes to all connected clients.
 

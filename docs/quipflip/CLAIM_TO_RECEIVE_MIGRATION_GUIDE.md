@@ -1,5 +1,9 @@
 # Migration Guide: Transitioning to a True Claim-to-Receive System
 
+> **Document type:** Historical migration guide
+> **Status:** Historical — current rules, code, and transition plan take precedence
+> **Audience:** Maintainers seeking migration context
+
 ## Overview
 
 This document provides a roadmap for transitioning from **Option A** (current: auto-pay at finalization) to **Option B** (true claim-to-receive system where players must explicitly claim their earnings).

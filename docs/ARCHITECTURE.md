@@ -1,122 +1,122 @@
-# Technical Architecture and Overview
+# Current Architecture
 
-## System Overview
-- Crowdcraft platform runs three games—QuipFlip (phrases), MemeMint (memes/captions), and Initial Reaction (backronyms)—behind a single FastAPI backend.
-- Backend exposes stateless REST endpoints plus a few WebSocket channels; it owns persistence, queueing, wallets, quests, AI backups, and finalization logic. Frontends are thin clients.
-- React + TypeScript frontends are Vite apps that reuse a shared `frontend/crowdcraft` component/util/API layer via `@crowdcraft/*` path aliases.
-- Phrase validation and AI generation can run locally or through external services but plug into the same service layer and metrics.
+> **Document type:** Implementation reference
+> **Status:** Current snapshot with known gaps
+> **Last reviewed:** 2026-06-22
 
-## Project Structure
-```
-repo/
-├── backend/                # FastAPI app, routers, services, models, utils, middleware
-│   ├── routers/            # auth/health + game routers (qf/mm/ir) and WebSocket endpoints
-│   ├── services/           # shared infrastructure + game-specific domains (rounds, party, AI, notifications)
-│   ├── models/             # SQLAlchemy models (shared bases + game packages)
-│   ├── schemas/            # Pydantic request/response models
-│   ├── middleware/         # deduplication + online user tracking
-│   ├── tasks/              # periodic maintenance helpers
-│   └── migrations/         # Alembic migrations
-├── frontend/
-│   ├── crowdcraft/         # shared component/util/API library exported as @crowdcraft/*
-│   ├── qf/                 # QuipFlip SPA
-│   ├── mm/                 # MemeMint SPA
-│   └── ir/                 # Initial Reaction SPA
-├── docs/                   # Architecture, API, data models, websocket, AI docs
-├── scripts/                # Ops/data helpers (dictionary download, cleanup)
-├── tests/                  # Pytest suites (integration focus)
-├── package.json            # npm workspaces for all frontend packages
-├── requirements.txt        # Backend dependencies
-└── docker-compose.yml      # Local Postgres/Redis helpers
-```
+This document describes the code that exists today. The
+[transition plan](transition-plan.md) and
+[codebase guide](development/codebase-organization.md) describe the target.
 
-## Backend Architecture
+## System shape
 
-### Authentication & Player Model
-- **Unified Player Account**: Single `players` table stores authentication and cross-game identity for all three games (QF, IR, MM).
-- **Game-Specific Data Delegation**: Each game has a `{Game}PlayerData` table (qf_player_data, ir_player_data, mm_player_data) that stores game-specific state like wallet, vault, and tutorial progress.
-- The `Player` model provides transparent access to game-specific fields via property accessors, allowing frontend code to use `player.wallet` regardless of which game's PlayerData stores the actual value.
-- See [DATA_MODELS.md](DATA_MODELS.md#architecture-overview) for detailed architecture.
+One async FastAPI application serves four game APIs:
 
-### Entrypoint & runtime lifecycle
-- `backend/main.py` sets UTC before imports, configures rotating logs (general, SQL, API access), mounts CORS, and applies middleware for request deduplication and online-user tracking.
-- Lifespan startup initializes the phrase validator (local or remote API), syncs prompt seeds, backfills quests, imports MemeMint images/captions, and starts background tasks (AI backup cycle, stale-content sweep, cleanup cycle, party maintenance). Shutdown closes the validator client and cancels tasks cleanly.
+| Game | API prefix | Frontend |
+| --- | --- | --- |
+| QuipFlip | `/qf` | `frontend/qf` |
+| MemeMint | `/mm` | `frontend/mm` |
+| Initial Reaction | `/ir` | `frontend/ir` |
+| ThinkLink | `/tl` | `frontend/tl` |
 
-### Routers & dependencies
-- Game routers live under `backend/routers/{qf,mm,ir}` and are mounted at `/qf`, `/mm`, `/ir`. Shared router bases (admin/player/quest) handle authentication and common dependency wiring.
-- Auth router issues JWT access/refresh tokens (stored in game-specific HttpOnly cookies), maintains refresh token tables, and exposes `/auth/ws-token` for short-lived WebSocket tokens. Health router serves readiness probes.
-- QF-only real-time endpoints: notifications (`/qf/notifications/ws`), online users (`/qf/users/online/ws`), and party updates (`/qf/party/{sessionId}/ws`).
-- MM includes social features: circles endpoint (`/mm/circles`) for player-created groups with membership management.
+The React/Vite frontends import shared contexts, hooks, components, types, and API
+clients from `frontend/crowdcraft`. QuipFlip also exposes notification, online-user,
+and Party WebSocket channels.
 
-### Service layer
-- Routers validate/authenticate then delegate to services; services encapsulate database work, locking, and business rules.
-- Core services: queue and round orchestration, voting/finalization, transaction logging, quests, statistics, notification delivery, and phrase validation (local validator or remote client).
-- **QF Services**:
-  - Party mode (`PartySessionService`, `PartyCoordinationService`, `PartyScoringService`, `PartyWebSocketManager`) enables multiplayer synchronized gameplay with AI player support.
-  - Rich notification fan-out (`WebSocketNotificationService`) delivers copy/vote alerts and pings to prompt creators.
-  - Statistics and leaderboard services compute weekly/all-time rankings split by role (prompt, copy, voter).
-- **MM Services**: Circles/social group management (`CircleService`) with membership requests and approval workflows.
-- **AI Orchestration** in `services/ai/*`: Generates backup copies/votes/hints for QF and backronyms/votes for IR using OpenAI or Gemini. Results, latency, and costs are recorded in `ai_metrics` table and cached in phrase/quip tables to avoid duplicate API calls. Stale content handler (`StaleAIService`) ensures permanently abandoned content receives AI help after configurable threshold.
+## Backend
 
-### Data & infrastructure
-- Async SQLAlchemy with Postgres in production and SQLite locally (`backend/database.py`); migrations in `backend/migrations/`.
-- Models are split into shared bases (`*_base.py` for auth/tokens/transactions) and per-game packages (`models/qf`, `models/mm`, `models/ir`). Pydantic schemas mirror API shapes in `backend/schemas`.
-- Locking and queue helpers prefer Redis when configured (`utils/lock_client.py`, `utils/queue_client.py`) and fall back to in-memory/thread locks. Rate limiting, cookie helpers, and JSON encoding live in `backend/utils`.
-- Logging writes to `logs/` via rotating handlers; API request logging middleware emits structured entries.
+`backend/main.py` configures logging, CORS, request middleware, routers, and lifespan
+work. Startup currently:
 
-### Background jobs
-- `ai_backup_cycle` periodically fills stalled prompts/phrasesets with AI copies and votes.
-- `ai_stale_handler_cycle` sweeps older content to keep games fresh.
-- `cleanup_cycle` removes stale tokens and related auth artifacts.
-- `party_maintenance_cycle` prunes stale party sessions/participants.
-- `ir_backup_cycle` is available for Initial Reaction but currently disabled by default in the lifespan loop.
+- initializes the local phrase validator;
+- synchronizes QuipFlip prompts and quests;
+- imports MemeMint images/captions;
+- seeds and cleans ThinkLink prompts/answers; and
+- starts AI backup, stale-AI, token cleanup, and Party maintenance loops.
 
-## Frontend Architecture
+Several startup actions mutate data. The target deployment moves release/migration
+work out of readiness-critical startup and distinguishes `/livez` from `/readyz`.
+The current `/health` endpoint checks the database and queue backend, but its
+database-failure tuple does not reliably set HTTP 503 and must not yet gate releases.
 
-### Shared library: `frontend/crowdcraft`
-- Vite-built library exporting UI components, contexts, utilities, and API/base client helpers via `@crowdcraft/*`.
-- Consumed directly via path aliases in each game `tsconfig`; `frontend/crowdcraft` is included in the TypeScript `include` list so types remain in sync during local dev.
+Routers live under `backend/routers`; services under `backend/services`; SQLAlchemy
+models under `backend/models`; Pydantic wire schemas under `backend/schemas`; and
+Alembic migrations under `backend/migrations`.
 
-### Game apps
-- `frontend/{qf,mm,ir}` are Vite + React + TypeScript SPAs with Tailwind for styling and per-game branding/routes.
-- Each app imports shared pieces from `@crowdcraft` plus game-specific pages, assets, and API extensions. Axios clients are configured with `withCredentials` and derive the base URL from Vite env (`VITE_API_URL`) so HttpOnly cookies flow to the backend proxy.
-- Vercel hosts the production frontends; Vercel proxies REST under `/api/*` to the Heroku backend to keep same-origin cookie semantics.
+## Persistence and concurrency
 
-## Authentication & Session Model
-- JWT access tokens (~2h) and refresh tokens (~30d) are stored in HttpOnly cookies (`access_token_cookie_name` / `refresh_token_cookie_name` for QF, IR-specific names for IR). Authorization headers remain supported for API clients.
-- Token refresh is automatic on 401 via frontend interceptors; logout clears cookies. SameSite is lax in dev and secure in production.
-- WebSocket access uses `/qf/auth/ws-token` to mint 60-second tokens passed via query param; sockets are closed and do not retry on auth failures.
+The code supports Postgres through `asyncpg` and SQLite through `aiosqlite`. Local
+development/tests default to `crowdcraft.db`; the legacy Heroku deployment uses
+Postgres. The accepted Mac target is SQLite-only with exactly one Uvicorn worker.
 
-## Real-Time Channels (QF)
-- Notifications: `/qf/notifications/ws` pushes pings and notification payloads via `WebSocketNotificationService`.
-- Online users: `/qf/users/online/ws` broadcasts presence snapshots; REST polling fallback exists when the socket drops.
-- Party mode: `/qf/party/{sessionId}/ws` emits lobby/progress updates while REST endpoints drive actions (create/join/start/submit).
-See `docs/WEBSOCKET.md` for connection details and error handling.
+Current lifecycle correctness is incomplete:
 
-## Game Flows
+- `QueueClient` stores FIFO data in Redis or process memory separately from the
+  database.
+- `LockClient` uses synchronous Redis/thread locks, including inside async service
+  methods.
+- some candidate selection happens before a resource-level critical section;
+- SQLite connections do not yet uniformly enable foreign keys, WAL, and busy
+  timeout;
+- several services use `.with_for_update()`, which does not provide the intended
+  row-locking guarantee on SQLite; and
+- transaction rows do not have one general idempotency key for every logical money
+  movement.
 
-### QuipFlip (QF)
-- **Solo Mode - Quip → Impostor → Vote** rounds share a common queue managed by `QueueService`: prompt players submit quips, two impostor copies are collected, then phrasesets enter the voting queue.
-- Round limits: single active round per player, outstanding prompt limits, copy discount when the prompt queue is deep, timers with grace periods, and distributed locks to prevent double-claiming.
-- Voting closes at configurable thresholds (min 3 votes to start closing, 5-vote short window, max 20). Finalization distributes prizes, writes transactions, and caches result views.
-- **Party Mode** - Multiplayer synchronized rounds where players play together in real-time, with optional AI players to fill seats. Party sessions manage member readiness, round progression, and shared scoring.
-- AI assists both solo and party modes by generating backup copies when prompts stall and voting when phrasesets need participation.
+Accordingly, current locks and queues should not be described as preventing double
+claims. The target uses SQLite conditional updates, constraints, short transactions,
+and idempotency keys; queues/async locks become rebuildable coordination.
 
-### MemeMint (MM)
-- **Vote → Caption** flow: players vote on image captions (entry fee), then submit their own captions for the same images.
-- Caption quality is tracked via performance stats (shows, picks, quality_score) and used for weighted selection in future rounds.
-- **Social Groups (Circles)**: Players can create circles to organize, collaborate, and manage shared meme activities with membership requests and approval workflows.
+## Authentication and transport
 
-### Initial Reaction (IR)
-- **Backronym Sets**: Players create backronym entries (one letter = one word) for random 3–5 letter words, then vote on submissions.
-- Set lifecycle: collecting entries (0–5), voting phase, finalization with prize distribution.
-- AI generates backronyms and votes when sets stall, ensuring games progress even with low human participation.
+The unified `players` table owns account identity; per-game player-data tables own
+wallet/vault/tutorial fields. JWT access and refresh tokens are stored in HttpOnly,
+host-only cookies. QF/MM/TL reuse shared auth routes; IR has game-specific auth
+surfaces.
 
-## Phrase Validation & AI
-- Phrase validation can run locally (`services/phrase_validator.py` + NASPA dictionary + similarity thresholds) or through a remote Phrase Validation API client; both enforce word lists, length limits, and semantic-distance checks.
-- AI service (`docs/AI_SERVICE.md`) integrates with the same validators, caches generated phrases/backronyms, and records latency/cost/accuracy metrics. Backup cycles run as background tasks; hints reuse the same cached phrases.
+WebSockets mint short-lived tokens through `/auth/ws-token` variants, then pass the
+token in the WebSocket query string. QF channels are documented in
+[WEBSOCKET.md](WEBSOCKET.md).
 
-## Deployment Notes
-- Production setup: Vercel frontends (e.g., `quipflip.xyz`) proxy REST calls to the Heroku backend (`quipflip-c196034288cd.herokuapp.com`) at `/api/*` for same-origin cookies; WebSockets connect directly to the backend using short-lived tokens.
-- Local dev uses SQLite by default, optional Redis for locks/queues, and the same FastAPI app with `uvicorn backend.main:app --reload`.
-- Config is environment-driven via `backend.config.Settings`; set env vars as needed (see `docs/API.md` for endpoint specifics).
+The shared frontend client currently defaults to `http://localhost:8000` when
+`VITE_API_URL` is falsy, and the shared WebSocket hook falls back to the Heroku host.
+The same-origin target therefore requires code changes; setting an empty environment
+value is insufficient.
+
+## Game flows
+
+### QuipFlip
+
+Solo play is quip/prompt → two impostor/copy submissions → vote → finalization and
+payout. Durable state spans QF rounds, phrasesets, votes, result views, player data,
+and transaction rows. Process/Redis queues accelerate prompt/phraseset assignment.
+
+Party Mode uses `PartySession`, `PartyParticipant`, `PartyRound`, and
+`PartyPhraseset` plus large session, coordination, scoring, and WebSocket services.
+Actions are REST commands; sockets deliver presence/progress. The current atomic
+phase-advance path contains a sync/async lock mismatch and lacks direct coverage.
+
+### MemeMint
+
+Players vote among captions and submit captions/riffs for images. Circles add social
+membership workflows. Caption author integrity and vote/caption money movements are
+high-risk lifecycle boundaries.
+
+### Initial Reaction
+
+Backronym sets collect entries, move to voting, and finalize payouts. The 2026-06-22
+baseline includes IR model/transaction test failures and a failing frontend build;
+the other three frontend builds pass when run independently.
+
+### ThinkLink
+
+Players submit guesses against prompt answer clusters with scoring and transaction
+state. It is the newest flow and has substantial historical implementation notes;
+current rules take precedence over those plans.
+
+## Verification state
+
+There is no single root gate. Pytest's default collection currently mixes
+deterministic tests with localhost/stress suites. The legacy CI runs a hand-selected
+backend list, uses Python 3.11, and omits the IR frontend job. See the transition
+plan for exact dated results and the required tier split.
