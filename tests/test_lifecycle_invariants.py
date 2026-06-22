@@ -8,8 +8,11 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm.exc import StaleDataError
 
-from backend.models.qf.transaction import QFTransaction
+from backend.migrations.versions.b1d2c3e4f5a6_add_lifecycle_invariants import (
+    _build_legacy_idempotency_key,
+)
 from backend.models.qf.party_session import PartySession
+from backend.models.qf.transaction import QFTransaction
 from backend.services.transaction_service import TransactionService
 from backend.utils.idempotency import build_idempotency_key
 from backend.utils.model_registry import GameType
@@ -63,6 +66,34 @@ def test_build_idempotency_key_normalizes_uuid_strings_and_set_order():
     )
 
     assert first == second
+
+
+def test_legacy_idempotency_backfill_is_unique_per_transaction_row():
+    """Historical rows with the same logical payload still need unique keys."""
+
+    payload = {
+        "player_id": uuid.uuid4(),
+        "amount": -5,
+        "type": "mm_round_entry",
+        "reference_id": None,
+        "wallet_type": "wallet",
+    }
+    first = _build_legacy_idempotency_key(
+        "mm_transactions",
+        {
+            **payload,
+            "transaction_id": uuid.uuid4(),
+        },
+    )
+    second = _build_legacy_idempotency_key(
+        "mm_transactions",
+        {
+            **payload,
+            "transaction_id": uuid.uuid4(),
+        },
+    )
+
+    assert first != second
 
 
 @pytest.mark.asyncio
