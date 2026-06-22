@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, UTC
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.mm.caption import MMCaption
@@ -422,7 +422,15 @@ class MMVoteService:
         Returns:
             True if first vote bonus was awarded
         """
-        if caption.first_vote_awarded:
+        result = await self.db.execute(
+            update(MMCaption)
+            .where(
+                MMCaption.caption_id == caption.caption_id,
+                MMCaption.first_vote_awarded == False,
+            )
+            .values(first_vote_awarded=True)
+        )
+        if result.rowcount != 1:
             return False
 
         # This is the first vote! Award bonus to the voter
@@ -444,9 +452,6 @@ class MMVoteService:
                 skip_lock=True,
                 wallet_type="wallet"
             )
-
-            caption.first_vote_awarded = True
-
             logger.info(
                 f"First vote bonus awarded: {bonus_amount} to player {round_obj.player_id} "
                 f"for caption {caption.caption_id}"

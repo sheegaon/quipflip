@@ -212,3 +212,39 @@ class TestMatchingService:
 
         # Should find no matches for unrelated text
         assert len(matches) == 0
+
+    @pytest.mark.asyncio
+    async def test_find_matches_requires_similarity_strictly_above_threshold(self, monkeypatch):
+        """A 0.55 similarity should not count as a match."""
+
+        service = object.__new__(TLMatchingService)
+        snapshot_answers = [
+            {
+                "answer_id": "1",
+                "text": "Keys",
+                "embedding": [0.0, 1.0],
+                "cluster_id": "cluster1",
+            },
+            {
+                "answer_id": "2",
+                "text": "Wallet",
+                "embedding": [1.0, 0.0],
+                "cluster_id": "cluster2",
+            },
+        ]
+
+        monkeypatch.setattr(
+            TLMatchingService,
+            "batch_cosine_similarity",
+            staticmethod(lambda _query_vec, _candidate_vecs: [0.55, 0.5501]),
+        )
+
+        matches = await TLMatchingService.find_matches(
+            service,
+            "Keys",
+            [1.0, 0.0],
+            snapshot_answers,
+            threshold=0.55,
+        )
+
+        assert [match["answer_id"] for match in matches] == ["2"]

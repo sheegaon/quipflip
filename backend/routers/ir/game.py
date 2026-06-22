@@ -80,28 +80,10 @@ async def start_game(
     db: AsyncSession = Depends(get_db),
 ) -> StartGameResponse:
     """Start a new backronym battle or join an existing one."""
-    from sqlalchemy import select
-    from backend.models.ir.player_data import IRPlayerData
-
     logger = logging.getLogger(__name__)
 
     try:
-        # Load IR player data to check wallet
-        result = await db.execute(
-            select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-        )
-        player_data = result.scalar_one_or_none()
-
-        wallet = player_data.wallet if player_data else settings.ir_initial_balance
-
-        if wallet < settings.ir_backronym_entry_cost:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Insufficient balance (need {settings.ir_backronym_entry_cost} IC)",
-            )
-
         set_service = BackronymSetService(db)
-        txn_service = TransactionService(db, GameType.IR)
 
         available_set = await set_service.get_available_set_for_entry(
             exclude_player_id=str(player.player_id)
@@ -111,13 +93,6 @@ async def start_game(
             set_obj = await set_service.create_set()
         else:
             set_obj = available_set
-
-        await txn_service.debit_wallet(
-            player_id=str(player.player_id),
-            amount=settings.ir_backronym_entry_cost,
-            transaction_type=txn_service.ENTRY_CREATION,
-            reference_id=str(set_obj.set_id),
-        )
 
         return StartGameResponse(
             set_id=str(set_obj.set_id),
@@ -147,10 +122,24 @@ async def submit_backronym(
         logger.debug(f"submit_backronym called with set_id={set_id}, words={request.words}")
 
         set_service = BackronymSetService(db)
+        txn_service = TransactionService(db, GameType.IR)
 
         set_obj = await set_service.get_set_by_id(set_id)
         if not set_obj:
             raise HTTPException(status_code=404, detail="Set not found")
+
+        validator = PhraseValidator()
+        is_valid, error = validator.validate_backronym_words(request.words, len(set_obj.word))
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error)
+
+        await txn_service.debit_wallet(
+            player_id=str(player.player_id),
+            amount=settings.ir_backronym_entry_cost,
+            transaction_type=txn_service.ENTRY_CREATION,
+            reference_id=str(set_obj.set_id),
+            auto_commit=False,
+        )
 
         entry = await set_service.add_entry(
             set_id=set_id,
@@ -192,12 +181,11 @@ async def validate_backronym(
             raise HTTPException(status_code=404, detail="Set not found")
 
         normalized_words = [word.strip().upper() for word in request.words]
-
-        async with PhraseValidator() as validator:
-            is_valid, error = await validator.validate_backronym_words(
-                normalized_words,
-                len(set_obj.word),
-            )
+        validator = PhraseValidator()
+        is_valid, error = validator.validate_backronym_words(
+            normalized_words,
+            len(set_obj.word),
+        )
 
         return ValidateBackronymResponse(
             is_valid=is_valid,
@@ -291,6 +279,7 @@ async def submit_vote(
                 amount=settings.ir_vote_cost,
                 transaction_type=txn_service.VOTE_ENTRY,
                 reference_id=set_id,
+                auto_commit=False,
             )
 
         vote_result = await vote_service.submit_vote(

@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 class TransactionService:
     """Service for managing player transactions."""
 
+    ENTRY_CREATION = "ir_backronym_entry"
+    VOTE_ENTRY = "ir_vote_entry"
+    VOTE_PAYOUT = "ir_vote_payout"
+    CREATOR_PAYOUT = "ir_creator_payout"
+    VAULT_CONTRIBUTION = "ir_vault_contribution"
+
     def __init__(self, db: AsyncSession, game_type: GameType):
         self.db = db
         if game_type is None:
@@ -61,11 +67,27 @@ class TransactionService:
             },
         )
 
+    def _is_ir_ledger(self) -> bool:
+        return self.game_type == GameType.IR
+
     async def _load_player_data(self, player_id: UUID):
         result = await self.db.execute(
             select(self.player_data_model)
             .where(self.player_data_model.player_id == player_id)
             .execution_options(populate_existing=True)
+        )
+        return result.scalar_one_or_none()
+
+    async def _resolve_ir_set_id(self, reference_id: UUID | None) -> UUID | None:
+        """Resolve an IR reference to a real backronym set when possible."""
+
+        if reference_id is None:
+            return None
+
+        from backend.models.ir.backronym_set import BackronymSet
+
+        result = await self.db.execute(
+            select(BackronymSet.set_id).where(BackronymSet.set_id == reference_id)
         )
         return result.scalar_one_or_none()
 
@@ -126,17 +148,35 @@ class TransactionService:
             if not player:
                 raise ValueError(f"Player not found after update: {player_id}")
 
-            transaction = self.transaction_model(
-                transaction_id=uuid.uuid4(),
-                player_id=player_id,
-                amount=amount,
-                type=trans_type,
-                reference_id=reference_id,
-                wallet_type=wallet_type,
-                wallet_balance_after=player.wallet,
-                vault_balance_after=player.vault,
-                idempotency_key=idempotency_key,
-            )
+            if self._is_ir_ledger():
+                set_id = await self._resolve_ir_set_id(reference_id)
+                transaction = self.transaction_model(
+                    transaction_id=uuid.uuid4(),
+                    player_id=player_id,
+                    amount=amount,
+                    type=trans_type,
+                    transaction_type=trans_type,
+                    reference_id=reference_id,
+                    wallet_type=wallet_type,
+                    wallet_balance_after=player.wallet,
+                    vault_balance_after=player.vault,
+                    vault_contribution=amount if wallet_type == "vault" else 0,
+                    entry_id=None,
+                    set_id=set_id,
+                    idempotency_key=idempotency_key,
+                )
+            else:
+                transaction = self.transaction_model(
+                    transaction_id=uuid.uuid4(),
+                    player_id=player_id,
+                    amount=amount,
+                    type=trans_type,
+                    reference_id=reference_id,
+                    wallet_type=wallet_type,
+                    wallet_balance_after=player.wallet,
+                    vault_balance_after=player.vault,
+                    idempotency_key=idempotency_key,
+                )
 
             self.db.add(transaction)
             await self.db.flush()
@@ -169,6 +209,104 @@ class TransactionService:
             await self.db.refresh(transaction)
 
         return transaction
+
+    async def debit_wallet(
+        self,
+        player_id: UUID,
+        amount: int,
+        transaction_type: str,
+        reference_id: UUID | None = None,
+        auto_commit: bool = True,
+        skip_lock: bool = False,
+        wallet_type: str = "wallet",
+    ) -> TransactionBase:
+        """Debit coins from a wallet or vault."""
+
+        return await self.create_transaction(
+            player_id=player_id,
+            amount=-abs(amount),
+            trans_type=transaction_type,
+            reference_id=reference_id,
+            auto_commit=auto_commit,
+            skip_lock=skip_lock,
+            wallet_type=wallet_type,
+        )
+
+    async def credit_wallet(
+        self,
+        player_id: UUID,
+        amount: int,
+        transaction_type: str,
+        reference_id: UUID | None = None,
+        auto_commit: bool = True,
+        skip_lock: bool = False,
+    ) -> TransactionBase:
+        """Credit coins to a wallet."""
+
+        return await self.create_transaction(
+            player_id=player_id,
+            amount=abs(amount),
+            trans_type=transaction_type,
+            reference_id=reference_id,
+            auto_commit=auto_commit,
+            skip_lock=skip_lock,
+            wallet_type="wallet",
+        )
+
+    async def credit_vault(
+        self,
+        player_id: UUID,
+        amount: int,
+        transaction_type: str | None = None,
+        reference_id: UUID | None = None,
+        auto_commit: bool = True,
+        skip_lock: bool = False,
+    ) -> TransactionBase:
+        """Credit coins to a vault."""
+
+        return await self.create_transaction(
+            player_id=player_id,
+            amount=abs(amount),
+            trans_type=transaction_type or self.VAULT_CONTRIBUTION,
+            reference_id=reference_id,
+            auto_commit=auto_commit,
+            skip_lock=skip_lock,
+            wallet_type="vault",
+        )
+
+    async def process_vote_payout(
+        self,
+        player_id: UUID,
+        amount: int,
+        set_id: UUID | None = None,
+        auto_commit: bool = True,
+    ) -> TransactionBase:
+        """Credit an IR vote payout to the player's wallet."""
+
+        return await self.credit_wallet(
+            player_id=player_id,
+            amount=amount,
+            transaction_type=self.VOTE_PAYOUT,
+            reference_id=set_id,
+            auto_commit=auto_commit,
+        )
+
+    async def process_creator_payout(
+        self,
+        player_id: UUID,
+        amount: int,
+        set_id: UUID | None = None,
+        auto_commit: bool = True,
+    ) -> TransactionBase:
+        """Credit an IR creator payout to the player's wallet."""
+
+        return await self.credit_wallet(
+            player_id=player_id,
+            amount=amount,
+            transaction_type=self.CREATOR_PAYOUT,
+            reference_id=set_id,
+            auto_commit=auto_commit,
+        )
 
     async def create_split_payout(
         self,

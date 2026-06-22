@@ -562,7 +562,6 @@ export const GameProvider: React.FC<{
         await refreshRoundAvailability(signal);
         gameContextLogger.debug('✅ Start vote round API call successful:', {
           roundId: response.round_id,
-          expiresAt: response.expires_at,
         });
 
         return response;

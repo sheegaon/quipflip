@@ -449,8 +449,8 @@ const GameHistory: React.FC = () => {
                   <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <p className="text-xs text-gray-500 mb-2">Matched clusters</p>
                     <p className="text-sm text-ccl-navy">
-                      {roundDetails.matched_clusters.length > 0
-                        ? `${roundDetails.matched_clusters.length} clusters hit`
+                      {roundDetails.matched_cluster_count > 0
+                        ? `${roundDetails.matched_cluster_count} clusters hit`
                         : 'No clusters matched'}
                     </p>
                   </div>

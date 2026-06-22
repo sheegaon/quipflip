@@ -13,6 +13,14 @@ class VoteRoundCaption(BaseSchema):
     caption_id: UUID
     text: str
     author_username: str | None = None
+    kind: Literal["original", "riff"] | None = None
+    parent_caption_id: UUID | None = None
+    is_ai: bool | None = None
+    is_bot: bool | None = None
+    is_system: bool | None = None
+    is_seed_caption: bool | None = None
+    is_circle_member: bool | None = None
+    in_circle: bool | None = None
 
 
 class StartVoteRoundResponse(BaseSchema):
@@ -23,7 +31,6 @@ class StartVoteRoundResponse(BaseSchema):
     thumbnail_url: str | None
     attribution_text: str | None
     captions: list[VoteRoundCaption]
-    expires_at: datetime
     cost: int
 
 
@@ -34,7 +41,6 @@ class StartCaptionRoundResponse(BaseSchema):
     image_url: str
     thumbnail_url: str | None
     attribution_text: str | None
-    expires_at: datetime
     cost: int  # 0 if using free quota, otherwise caption_submission_cost
     used_free_slot: bool
 
@@ -71,7 +77,11 @@ class SubmitVoteResponse(BaseModel):
     success: bool
     chosen_caption_id: UUID
     payout: int  # Payout for this vote (may be 0 or negative if incorrect)
-    correct: bool  # Whether the vote was correct (implementation-specific)
+    payout_wallet: int | None = None
+    payout_vault: int | None = None
+    first_vote_bonus: bool = False
+    local_crowd_favorite_bonus: bool = False
+    revealed_captions: list[VoteRoundCaption] | None = None
     new_wallet: int
     new_vault: int
 
@@ -102,7 +112,6 @@ class RoundDetails(BaseSchema):
     round_id: UUID
     type: Literal["vote", "caption_submission"]
     status: str
-    expires_at: datetime
     image_id: UUID
     image_url: str
     cost: int

@@ -5,6 +5,8 @@ from datetime import timedelta
 from backend.services import IRPlayerService
 from backend.services import GameType, TransactionService
 from backend.services import IRDailyBonusError, IRDailyBonusService
+from backend.models.ir.backronym_set import BackronymSet
+from backend.models.ir.enums import SetStatus, Mode
 from backend.utils.passwords import hash_password
 
 
@@ -137,20 +139,27 @@ async def test_ir_transaction_ledger_tracking(db_session, ir_player_factory):
     player = await ir_player_factory()
     transaction_service = TransactionService(db_session, GameType.IR)
 
-    ref_id = str(uuid.uuid4())
+    backronym_set = BackronymSet(
+        set_id=uuid.uuid4(),
+        word="CARR",
+        mode=Mode.STANDARD,
+        status=SetStatus.OPEN,
+    )
+    db_session.add(backronym_set)
+    await db_session.flush()
 
     transaction = await transaction_service.debit_wallet(
         player_id=str(player.player_id),
         amount=100,
         transaction_type="ir_backronym_entry",
-        reference_id=ref_id
+        reference_id=backronym_set.set_id,
     )
 
     assert transaction is not None
     assert str(transaction.player_id) == str(player.player_id)
     assert transaction.amount == -100  # Debits are stored as negative
     assert transaction.transaction_type == "ir_backronym_entry"
-    assert str(transaction.set_id) == ref_id  # Schema uses set_id instead of reference_id
+    assert str(transaction.set_id) == str(backronym_set.set_id)
 
 
 @pytest.mark.asyncio
@@ -247,7 +256,7 @@ async def test_ir_concurrent_transactions(db_session, ir_player_factory):
             player_id=str(player.player_id),
             amount=10,
             transaction_type="ir_vote_entry",
-            reference_id=None  # set_id is optional
+            reference_id=uuid.uuid4(),
         )
 
     # Refresh and verify
