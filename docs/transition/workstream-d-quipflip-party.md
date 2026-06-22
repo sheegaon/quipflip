@@ -28,6 +28,31 @@ to merge blindly.
   [Party documentation](../quipflip/party/party_overview.md), resolving conflicts
   against running code and tests explicitly.
 
+## Repository anchors and gotchas (verified 2026-06-22)
+
+- **The branches are on the `gh-quipflip` remote, not `origin`.** This checkout's
+  only remote is `gh-quipflip` (`https://github.com/sheegaon/quipflip.git`). Inspect
+  with `git log --stat gh-quipflip/party-refactor` and
+  `git log --stat gh-quipflip/refactor-round-names` (D0); there is no
+  `origin/party-refactor`.
+- **The broken-lock site is exact: `backend/services/qf/party_session_service.py:959`**
+  uses `async with lock_client.lock(...)` against a synchronous `@contextmanager`
+  (`backend/utils/lock_client.py`), which raises `AttributeError` whenever that path
+  runs — which is why it has no working test today (roadmap finding 6). This is D1's
+  "replace broken synchronous lock usage."
+- **Party state and services are already substantial.** Models:
+  `backend/models/qf/{party_session,party_participant,party_round,party_phraseset}.py`
+  (`party_phraseset` already has `uq_party_phrasesets_session_phraseset`). Services:
+  `backend/services/qf/{party_session_service,party_coordination_service,party_scoring_service,party_websocket_manager}.py`
+  — these are the oversized boundaries D2 splits along command/projection/rule lines.
+  Docs: `docs/quipflip/party/{architecture-overview,party_api,party_services,party_data_models_and_schemas,party_overview}.md`.
+- **A leftover `backend/migrations/cleanup_party_tables.sql` exists** — confirm its
+  status and whether it is still referenced during D0.
+- **Existing coverage**: `tests/test_party_session_service.py` and `tests/party/`;
+  reconcile rather than replace.
+- Implements [ADR 0001](../decisions/0001-server-authoritative-lifecycle.md) and
+  [ADR 0002](../decisions/0002-private-response-projection.md).
+
 ## Phase D0 - Reconcile intent and current ownership
 
 - [ ] Inspect `party-refactor` without merging it.

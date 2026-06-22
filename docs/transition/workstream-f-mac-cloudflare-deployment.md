@@ -28,6 +28,31 @@ and startup performed mutation that should be explicit release work.
   [startup-services runbook](../development/persistent-startup-services.md).
 - Exactly one Uvicorn worker owns the production SQLite database.
 
+## Repository anchors and gotchas (verified 2026-06-22)
+
+- **`/health` is the readiness bug to fix (F2).** `backend/routers/health.py:25-28`
+  does `return {"status": "error", ...}, 503` — a `(dict, int)` tuple, which FastAPI
+  serializes as a **200 OK body**, not a 503. It also opens a DB connection on every
+  call. A sibling `/status` endpoint exists; `/livez` and `/readyz` do not.
+- **Exact same-origin fallbacks to remove (F3).**
+  `frontend/crowdcraft/src/api/client.ts:74`
+  (`import.meta.env.VITE_API_URL || 'http://localhost:8000'`);
+  `src/hooks/useWebSocket.ts:65` (`|| http://${window.location.hostname}:8000`); and
+  `useWebSocket.ts:68`, which hardcodes
+  `VITE_BACKEND_WS_URL || 'wss://quipflip-c196034288cd.herokuapp.com'`. The same
+  file's `client.ts:76` prefix regex omits `ir` (see workstream E), so the
+  same-origin rewrite must cover all four game prefixes.
+- **Startup mutation to relocate (F2).** `backend/main.py` starts hourly token/guest
+  cleanup and Party maintenance on startup (see
+  [`docs/CLEANUP_SCRIPTS.md`](../CLEANUP_SCRIPTS.md)); these are the destructive/slow
+  startup mutations to move into explicit idempotent release commands.
+- **Backup tooling exists.** `scripts/backup_db.py` is present for F1b; current deploy
+  scripts are `scripts/deploy-{all,heroku,vercel}.sh`. The Heroku app is
+  `quipflip-c196034288cd`.
+- Implements [ADR 0004](../decisions/0004-same-origin-cloudflare-deployment.md)
+  (already linked) and [ADR 0005](../decisions/0005-sqlite-concurrency-boundary.md)
+  (one worker).
+
 ## Phase F1a - Decisions, inventory, and rollback contract
 
 - [ ] Decide whether and how Heroku production data will be retained.

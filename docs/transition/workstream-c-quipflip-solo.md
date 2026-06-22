@@ -25,6 +25,28 @@ stable internal relationships.
 - Preserve the economy and gameplay intent in
   [QF game rules](../quipflip/QF_GAME_RULES.md).
 
+## Repository anchors and gotchas (verified 2026-06-22)
+
+- **The repair scripts live at the repository root, not `scripts/`**:
+  `cleanup_orphaned_rounds.py`, `debug_copy_availability.py`,
+  `fix_orphaned_captions.py` (plus `run_cleanup.py`, `cleanup_test_players.py`).
+  [`docs/CLEANUP_SCRIPTS.md`](../CLEANUP_SCRIPTS.md) already inventories them,
+  documents the safe backup/dry-run procedure, and names `scripts/ops/` as the
+  target — C5 should update that doc, not duplicate it.
+- **Some C0/C5 regressions already exist**:
+  `tests/test_copy_availability_regression.py` (copy availability) and
+  `tests/test_stale_ai_service.py` (stale AI results). Build on these instead of
+  starting from zero.
+- **The locks to make transactional are concrete**:
+  `backend/services/qf/round_service.py` lines 92, 375, 869, 1170 and
+  `backend/services/qf/vote_service.py:428` use the synchronous `lock_client.lock(...)`.
+  These are the "candidate selection outside the decisive transaction" sites C2/C3
+  must replace with conditional database updates.
+- **Idempotent prize collection already has a model**
+  (`backend/models/qf/result_view.py`, `uq_player_phraseset_result`). Key refunds and
+  payouts (C3) the same way, and reconcile them against `qf_transactions`, which
+  currently has no idempotency key.
+
 ## Phase C0 - Contract and regression baseline
 
 - [ ] Complete the QF solo state-machine and mutation inventory from B0.

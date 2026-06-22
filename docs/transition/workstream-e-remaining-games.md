@@ -27,6 +27,25 @@ the strongest build/model drift signal and thinnest regression coverage.
   then cross-game behavior.
 - Canonical rules under `docs/<game>/` define intended gameplay and economy.
 
+## Repository anchors and gotchas (verified 2026-06-22)
+
+- **Concrete IR drift signals.** The shared client's prefix-strip regex at
+  `frontend/crowdcraft/src/api/client.ts:76` is `replace(/\/(qf|mm|tl)(\/)?$/, '')` —
+  it **omits `ir`**, so IR's root-API base resolution differs from the other three
+  games. CI also has **no IR frontend lint/build job** while QF/MM/TL do
+  (`.github/workflows/testing.yml`). Fix both in E1, paired with A5/A6.
+- **Each game already has model scaffolding to extend.** IR/MM/TL each have a
+  `transaction.py` plus uniqueness/result models — e.g.
+  `uq_ir_result_view_player_set`, `uq_ir_entry_player_set`, `uq_ir_vote_player_set`;
+  MM has `caption.py` and `vote_round.py`. E2/E3 add lifecycle versions and ledger
+  idempotency keys on top, following workstream B.
+- **Per-game tests are namespaced** `test_ir_*`, `test_mm_*`, `test_tl_*` and are
+  already invoked individually in CI (`.github/workflows/testing.yml:69-71`). E0's
+  per-game commands should formalize this split with markers.
+- Implements [ADR 0001](../decisions/0001-server-authoritative-lifecycle.md),
+  [0002](../decisions/0002-private-response-projection.md), and
+  [0003](../decisions/0003-database-source-of-truth.md).
+
 ## Phase E0 - Common readiness
 
 - [ ] Complete state-machine pages for IR, MM, and TL.

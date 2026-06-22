@@ -217,7 +217,8 @@ phases and implementation evidence.
 - **A5 — Repair frontend gates.** Fix IR compilation, then lint/typecheck/build all
   four apps and the shared library from one root command using `npm ci`.
 - **A6 — Create canonical commands.** Add `verify`, `test:sqlite-integration`, and `smoke`
-  entry points. CI uses Python 3.12, Node 20, pinned actions, minimal permissions,
+  entry points. CI moves to Python 3.12 (from 3.11) and keeps Node on the
+  `AGENTS.md` floor of 20+ (CI already runs 22), with pinned actions, minimal permissions,
   concurrency cancellation, timeouts, secret scanning, npm audit, and a Python
   dependency audit.
 

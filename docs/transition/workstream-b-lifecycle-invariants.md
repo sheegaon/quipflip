@@ -27,6 +27,37 @@ key for retry-safe money movement.
 - This plan defines shared invariants; canonical game rules still define intended
   scoring, eligibility, and economy.
 
+## Repository anchors and gotchas (verified 2026-06-22)
+
+- **An idempotent-collection pattern already exists; copy it for money.**
+  `backend/models/qf/result_view.py` is titled "Result view tracking for idempotent
+  prize collection" and carries
+  `UniqueConstraint('player_id','phraseset_id', name='uq_player_phraseset_result')`;
+  IR has `uq_ir_result_view_player_set`. The real gap (roadmap finding 5) is the
+  *ledger*: `backend/models/qf/transaction.py` (`qf_transactions`) has only
+  `ix_transactions_player_created` and no idempotency key. Extend the existing
+  pattern rather than inventing one.
+- **There is no centralized pragma hook.** `backend/database.py` configures only
+  pool/SSL settings; add pragmas via `event.listens_for(engine.sync_engine, "connect")`.
+  SQLite uses NullPool (database.py:80), so the hook must run on each new connection.
+- **FK actions are declared but unenforced.** QF models alone declare `ondelete=` on
+  many tables (`qf_transactions`, notifications, party rounds, flagged prompts, etc.),
+  but with `foreign_keys=ON` never set, SQLite ignores them today. B2's cleanup
+  queries must run *before* the pragma is enabled, or previously tolerated orphans
+  will start rejecting writes and cascade deletes will begin firing.
+- **The concrete async-lock defect (B4) is `backend/services/qf/party_session_service.py:959`**:
+  `async with lock_client.lock(...)` against the synchronous `@contextmanager` in
+  `backend/utils/lock_client.py` raises `AttributeError`. Synchronous
+  `with lock_client.lock(...)` also appears in `backend/services/qf/round_service.py`
+  (lines 92, 375, 869, 1170) and `vote_service.py:428`, blocking the event loop.
+  (Shared with workstream D.)
+- **These invariants implement existing ADRs**:
+  [0001 server-authoritative lifecycle](../decisions/0001-server-authoritative-lifecycle.md)
+  (B5), [0002 private response projection](../decisions/0002-private-response-projection.md)
+  (cross-cutting), [0003 database source of truth](../decisions/0003-database-source-of-truth.md)
+  (B3), and [0005 SQLite-enforced concurrency](../decisions/0005-sqlite-concurrency-boundary.md)
+  (B2/B4). Cite them in migration and review notes.
+
 ## Phase B1 - State-machine inventory
 
 - [ ] Create one state-machine page for QF solo.

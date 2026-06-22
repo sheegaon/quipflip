@@ -29,6 +29,45 @@ gate.
 - Follow the [testing strategy](../development/testing-strategy.md) and
   [dependency policy](../development/dependency-policy.md).
 
+## Repository anchors and gotchas (verified 2026-06-22)
+
+Concrete current state so an implementer does not rediscover it:
+
+- **CI does not run the whole collection.** `.github/workflows/testing.yml`
+  enumerates ~30 specific files (lines 42-71) instead of running `pytest`. That is
+  why `*_localhost` and stress suites pass CI today: they are never invoked. It also
+  means files such as `test_ai_service.py`, `test_stale_ai_service.py`,
+  `test_rate_limiting.py`, `test_phraseset_service.py`, and `test_ai_player_pooling.py`
+  run nowhere. The `verify` gate must be a marker-filtered collection, not a
+  hand-maintained file list, or A2's isolation gains can be silently bypassed.
+- **The version gap is Python, not Node.** CI runs Python 3.11 while `AGENTS.md` and
+  local dev use 3.12; CI already runs Node 22, which satisfies the "Node.js 20+"
+  floor (see the A6 correction below).
+- **CI has QF/MM/TL frontend jobs but none for IR** (`testing.yml`). A5/A6 must add
+  the IR job, not only fix its build.
+- **No aggregate frontend build exists.** `package.json` has only per-app
+  `build:qf|mm|ir|tl` (plus `build:crowdcraft`), and `install:all` uses
+  `npm install --workspaces`, not `npm ci`. A5's "earlier chained build fails"
+  describes a command that does not exist yet; A5/A6 must create the aggregate build
+  and ensure it does not stop at the first failing app.
+- **Isolation today is shared, not per-run.** `tests/conftest.py` sets
+  `os.environ["DATABASE_URL"]` at import (line 12), then a session-scoped autouse
+  fixture runs `alembic upgrade head` once against that single `test.db`, and
+  `test_engine` is session-scoped. There is no per-test database and no reset of
+  `queue_client`, caches, validator, clock, or settings singletons. A2 must replace
+  the import-time env mutation and the session-scoped engine.
+- **`tests/test_migration_chain.py` already exists** — extend it for the
+  production-pragma file database in A4 rather than starting fresh.
+- **A localhost tier already has tooling**: `run_localhost_tests.py`,
+  `run_localhost_tests.sh`, and `tests/{README_LOCALHOST_TESTS,QUICK_START_TESTS,TROUBLESHOOTING_TESTS}.md`.
+  A1 should classify these, not re-document them.
+- **Playwright infra already exists** (`playwright.config.ts`, `tests/e2e/`,
+  `playwright-report/`). Reconcile the new built-server `smoke` gate with it instead
+  of adding a parallel browser harness.
+- **No SQLite pragmas are set anywhere** (see workstream B). A3/A4 are net-new
+  connection configuration, and enabling `foreign_keys=ON` will begin enforcing many
+  existing `ondelete=` rules, so sequence A3 with B2's cleanup queries.
+
 ## Phase A1 - Define test tiers
 
 - [ ] Inventory every backend test by deterministic, SQLite integration, smoke,
@@ -107,7 +146,9 @@ Gate:
 
 - [ ] Add one deterministic `verify` entry point.
 - [ ] Add separately named `test:sqlite-integration` and `smoke` entry points.
-- [ ] Align CI with Python 3.12 and Node.js 20.
+- [ ] Move CI from Python 3.11 to 3.12 (the version `AGENTS.md` requires and local
+      dev already uses). Keep Node on the `AGENTS.md` floor of 20+; CI already runs
+      Node 22, so this is not a Node downgrade.
 - [ ] Pin third-party actions to immutable commit SHAs.
 - [ ] Set minimal workflow permissions, concurrency cancellation, and job timeouts.
 - [ ] Add secret scanning, npm audit, and Python dependency audit gates with
