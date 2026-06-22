@@ -384,3 +384,9 @@ def downgrade() -> None:
     op.drop_column("party_sessions", "version")
     op.drop_column("qf_phrasesets", "version")
     op.drop_column("qf_rounds", "version")
+
+    if op.get_bind().dialect.name == "sqlite":
+        for replica_table in ("qf_players", "mm_players", "ir_players"):
+            op.execute(sa.text(f"DROP TRIGGER IF EXISTS {replica_table}_ad"))
+            op.execute(sa.text(f"DROP TRIGGER IF EXISTS {replica_table}_ai"))
+            op.drop_table(replica_table)
