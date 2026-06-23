@@ -875,8 +875,8 @@ class QFRoundService:
 
         from backend.utils.cache import dashboard_cache
 
+        self.invalidate_available_prompts_cache()
         dashboard_cache.invalidate_player_data(player.player_id)
-        self.invalidate_available_prompts_cache(player.player_id)
 
         logger.debug(
             f"Round {round_id} ({round_object.round_type}) abandoned by player {player.player_id}; "
@@ -948,10 +948,10 @@ class QFRoundService:
 
         from backend.utils.cache import dashboard_cache
 
+        self.invalidate_available_prompts_cache()
         dashboard_cache.invalidate_player_data(player.player_id)
         if prompt_round.player_id:
             dashboard_cache.invalidate_player_data(prompt_round.player_id)
-        self.invalidate_available_prompts_cache()
 
         logger.debug(f"{round_id=} flagged by {player.player_id}; {prompt_round.round_id=} marked pending review")
 

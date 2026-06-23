@@ -193,7 +193,8 @@ async def online_user_tracking_middleware(request: Request, call_next):
                     player_id_str = payload.get("sub")
                     username = payload.get("username")
                     action_path = str(request.url.path)
-                    detected_game_type = _infer_game_type_from_path(action_path)
+                    host_scope = getattr(request.state, "host_scope", None)
+                    detected_game_type = getattr(host_scope, "game", None) or _infer_game_type_from_path(action_path)
 
                     if player_id_str and username and detected_game_type:
                         player_id = UUID(player_id_str)

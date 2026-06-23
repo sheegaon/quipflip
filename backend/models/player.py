@@ -155,7 +155,10 @@ class Player(Base):
 
     @wallet.setter
     def wallet(self, value: int):
-        self._ensure_qf_data().wallet = value
+        source = self._wallet_source()
+        if source is None:
+            source = self._ensure_qf_data()
+        source.wallet = value
 
     @property
     def vault(self) -> int:
@@ -164,7 +167,10 @@ class Player(Base):
 
     @vault.setter
     def vault(self, value: int):
-        self._ensure_qf_data().vault = value
+        source = self._wallet_source()
+        if source is None:
+            source = self._ensure_qf_data()
+        source.vault = value
 
     @property
     def active_round_id(self):
@@ -182,25 +188,33 @@ class Player(Base):
     def consecutive_incorrect_votes(self) -> int:
         """Proxy guest lockout counters to the Quipflip-specific player data."""
 
-        if self.qf_player_data:
-            return self.qf_player_data.consecutive_incorrect_votes
+        source = self._wallet_source()
+        if source is not None and hasattr(source, "consecutive_incorrect_votes"):
+            return source.consecutive_incorrect_votes
         return 0
 
     @consecutive_incorrect_votes.setter
     def consecutive_incorrect_votes(self, value: int):
-        self._ensure_qf_data().consecutive_incorrect_votes = value
+        source = self._wallet_source()
+        if source is None or not hasattr(source, "consecutive_incorrect_votes"):
+            source = self._ensure_qf_data()
+        source.consecutive_incorrect_votes = value
 
     @property
     def vote_lockout_until(self):
         """Proxy guest vote lockout timestamps to the Quipflip-specific player data."""
 
-        if self.qf_player_data:
-            return self.qf_player_data.vote_lockout_until
+        source = self._wallet_source()
+        if source is not None and hasattr(source, "vote_lockout_until"):
+            return source.vote_lockout_until
         return None
 
     @vote_lockout_until.setter
     def vote_lockout_until(self, value):
-        self._ensure_qf_data().vote_lockout_until = value
+        source = self._wallet_source()
+        if source is None or not hasattr(source, "vote_lockout_until"):
+            source = self._ensure_qf_data()
+        source.vote_lockout_until = value
 
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "
