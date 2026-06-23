@@ -106,7 +106,7 @@ class TestDatabaseTimezoneAwareness:
         """Phraseset created_at and finalized_at should be UTC-aware."""
         from backend.utils.datetime_helpers import ensure_utc
 
-        # Create minimal phraseset for testing
+        # Create a valid phraseset bundle so the foreign keys are real.
         player = QFPlayer(
             player_id=uuid.uuid4(),
             username=f"test_{uuid.uuid4().hex[:8]}",
@@ -117,7 +117,24 @@ class TestDatabaseTimezoneAwareness:
         db_session.add(player)
         await db_session.commit()
 
-        round_obj = Round(
+        copy_player_1 = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"test_copy1_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"test_copy1_{uuid.uuid4().hex[:8]}",
+            email=f"test_copy1_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+        )
+        copy_player_2 = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"test_copy2_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"test_copy2_{uuid.uuid4().hex[:8]}",
+            email=f"test_copy2_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+        )
+        db_session.add_all([copy_player_1, copy_player_2])
+        await db_session.commit()
+
+        prompt_round = Round(
             round_id=uuid.uuid4(),
             player_id=player.player_id,
             round_type="prompt",
@@ -127,14 +144,36 @@ class TestDatabaseTimezoneAwareness:
             prompt_text="Test",
             submitted_phrase="ORIGINAL",
         )
-        db_session.add(round_obj)
+        copy_round_1 = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy_player_1.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY ONE",
+        )
+        copy_round_2 = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy_player_2.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY TWO",
+        )
+        db_session.add_all([prompt_round, copy_round_1, copy_round_2])
         await db_session.flush()
 
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
-            prompt_round_id=round_obj.round_id,
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_1_id=copy_round_1.round_id,
+            copy_round_2_id=copy_round_2.round_id,
             prompt_text="Test",
             original_phrase="ORIGINAL",
             copy_phrase_1="COPY1",
@@ -169,9 +208,85 @@ class TestDatabaseTimezoneAwareness:
         db_session.add(player)
         await db_session.commit()
 
+        prompt_player = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"prompt_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"prompt_{uuid.uuid4().hex[:8]}",
+            email=f"prompt_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+        )
+        copy_player_1 = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"copy1_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"copy1_{uuid.uuid4().hex[:8]}",
+            email=f"copy1_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+        )
+        copy_player_2 = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"copy2_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"copy2_{uuid.uuid4().hex[:8]}",
+            email=f"copy2_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+        )
+        db_session.add_all([prompt_player, copy_player_1, copy_player_2])
+        await db_session.commit()
+
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompt_player.player_id,
+            round_type="prompt",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_text="Test",
+            submitted_phrase="ORIGINAL",
+        )
+        copy_round_1 = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy_player_1.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY1",
+        )
+        copy_round_2 = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy_player_2.player_id,
+            round_type="copy",
+            status="submitted",
+            cost=100,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY2",
+        )
+        db_session.add_all([prompt_round, copy_round_1, copy_round_2])
+        await db_session.commit()
+
+        phraseset = Phraseset(
+            phraseset_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_1_id=copy_round_1.round_id,
+            copy_round_2_id=copy_round_2.round_id,
+            prompt_text="Test",
+            original_phrase="ORIGINAL",
+            copy_phrase_1="COPY1",
+            copy_phrase_2="COPY2",
+            status="open",
+            vote_count=0,
+            total_pool=200,
+            system_contribution=0,
+        )
+        db_session.add(phraseset)
+        await db_session.commit()
+
         vote = Vote(
             vote_id=uuid.uuid4(),
-            phraseset_id=uuid.uuid4(),
+            phraseset_id=phraseset.phraseset_id,
             player_id=player.player_id,
             voted_phrase="ORIGINAL",
             correct=True,

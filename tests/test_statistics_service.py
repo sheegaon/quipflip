@@ -202,13 +202,36 @@ async def test_get_player_statistics_win_rate(db_session):
     await db_session.commit()
 
     # Create 2 phrasesets linked to the first 2 prompt rounds (these will be "wins")
+    copy_player_1 = _base_player("copy_winner_1")
+    copy_player_2 = _base_player("copy_winner_2")
+    db_session.add_all([copy_player_1, copy_player_2])
+    await db_session.commit()
+
+    copy_rounds = []
+    for i, copy_player in enumerate((copy_player_1, copy_player_2)):
+        copy_round = Round(
+            round_id=uuid4(),
+            player_id=copy_player.player_id,
+            round_type="copy",
+            status="submitted",
+            created_at=now - timedelta(days=i),
+            expires_at=now - timedelta(days=i) + timedelta(minutes=5),
+            cost=90,
+            copy_phrase=f"Copy phrase {i}",
+            original_phrase="Original phrase",
+        )
+        db_session.add(copy_round)
+        copy_rounds.append(copy_round)
+
+    await db_session.commit()
+
     phrasesets = []
     for i in range(2):
         phraseset = Phraseset(
             phraseset_id=uuid4(),
             prompt_round_id=prompt_rounds[i].round_id,  # Link to actual prompt round
-            copy_round_1_id=uuid4(),
-            copy_round_2_id=uuid4(),
+            copy_round_1_id=copy_rounds[0].round_id,
+            copy_round_2_id=copy_rounds[1].round_id,
             prompt_text=f"Test prompt {i}",
             original_phrase=f"Original {i}",
             copy_phrase_1=f"Copy 1 {i}",

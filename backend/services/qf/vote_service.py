@@ -40,6 +40,8 @@ class QFVoteService:
 
     _finalization_lock: asyncio.Lock | None = None
     _last_finalization_check: float = 0.0
+    _ACCEPTING_VOTE_STATUSES = ("open", "active", "closing")
+    _OPEN_VOTE_STATUSES = ("open", "active")
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -81,7 +83,7 @@ class QFVoteService:
                 Phraseset.copy_round_1_id,
                 Phraseset.copy_round_2_id,
             )
-            .where(Phraseset.status.in_(["open", "closing"]))
+            .where(Phraseset.status.in_(self._ACCEPTING_VOTE_STATUSES))
             .where(missing_relationships_clause)
         )
         for phraseset_id, prompt_round_id, copy_round_1_id, copy_round_2_id in missing_relationships.all():
@@ -119,7 +121,7 @@ class QFVoteService:
 
         result = await self.db.execute(
             select(Phraseset)
-            .where(Phraseset.status.in_(["open", "closing"]))
+            .where(Phraseset.status.in_(self._ACCEPTING_VOTE_STATUSES))
             .where(~missing_relationships_clause)
             .where(~contributor_exists)
             .where(~already_voted_exists)
@@ -163,6 +165,73 @@ class QFVoteService:
             select(Round.player_id).where(Round.round_id.in_(round_ids))
         )
         return {row[0] for row in result.all()}
+
+    async def _ensure_vote_round_is_still_open(self, round_object: Round, phraseset: Phraseset) -> None:
+        """Refresh and validate that a vote round is still submit-able."""
+
+        await self.db.refresh(round_object)
+        await self.db.refresh(phraseset)
+
+        if round_object.status != "active":
+            raise RoundExpiredError("Round is no longer active")
+
+        if phraseset.status not in self._ACCEPTING_VOTE_STATUSES:
+            raise RoundExpiredError("Phraseset is no longer accepting votes")
+
+    async def _refund_active_vote_rounds(
+        self,
+        phraseset: Phraseset,
+        transaction_service: TransactionService,
+    ) -> int:
+        """Refund active vote rounds interrupted by finalization.
+
+        Only rounds still within their grace window are refunded — rounds
+        whose timer has already expired past the grace period have forfeited
+        their entry fee (matching the timeout/abandon forfeit policy) and must
+        not receive a refund here.
+        """
+        result = await self.db.execute(
+            select(Round)
+            .where(Round.phraseset_id == phraseset.phraseset_id)
+            .where(Round.round_type == "vote")
+            .where(Round.status == "active")
+        )
+        active_vote_rounds = list(result.scalars().all())
+        if not active_vote_rounds:
+            return 0
+
+        now = datetime.now(UTC)
+        refunded_count = 0
+        for active_round in active_vote_rounds:
+            active_round.status = "expired"
+
+            player_data = await self.db.get(QFPlayerData, active_round.player_id)
+            if player_data and player_data.active_round_id == active_round.round_id:
+                player_data.active_round_id = None
+
+            # Skip refund for rounds past their grace window — those have already
+            # forfeited their fee (same as handle_timeout / abandon_round for votes).
+            expires_at_aware = ensure_utc(active_round.expires_at) if active_round.expires_at else None
+            grace_cutoff = (
+                expires_at_aware + timedelta(seconds=settings.grace_period_seconds)
+                if expires_at_aware
+                else None
+            )
+            within_grace = grace_cutoff is None or now <= grace_cutoff
+
+            if within_grace and active_round.cost > 0:
+                await transaction_service.create_transaction(
+                    active_round.player_id,
+                    active_round.cost,
+                    "refund",
+                    active_round.round_id,
+                    auto_commit=False,
+                    skip_lock=True,
+                )
+                refunded_count += 1
+
+        await self.db.flush()
+        return refunded_count
 
     async def _create_result_view_for_player(
         self,
@@ -254,7 +323,7 @@ class QFVoteService:
             # Only load phrasesets that have met finalization prerequisites
             result = await self.db.execute(
                 select(Phraseset)
-                .where(Phraseset.status.in_(["open", "closing"]))
+                .where(Phraseset.status.in_(self._ACCEPTING_VOTE_STATUSES))
                 .where(
                     or_(
                         Phraseset.vote_count >= settings.vote_max_votes,
@@ -379,7 +448,7 @@ class QFVoteService:
             if fifth_vote_at:
                 phraseset.fifth_vote_at = ensure_utc(fifth_vote_at)
                 # Ensure the phraseset is marked as closing when the 5th vote is reached
-                if phraseset.status == "open":
+                if phraseset.status in self._OPEN_VOTE_STATUSES:
                     phraseset.status = "closing"
                 if not phraseset.closes_at:
                     phraseset.closes_at = ensure_utc(fifth_vote_at) + timedelta(
@@ -500,6 +569,10 @@ class QFVoteService:
             ValueError: If phrase is not valid
             AlreadyVotedError: If player already voted on this phraseset
         """
+        await self.db.refresh(phraseset)
+        if phraseset.status not in self._ACCEPTING_VOTE_STATUSES:
+            raise RoundExpiredError("Phraseset is no longer accepting votes")
+
         contributor_ids = await self._get_contributor_ids(phraseset)
 
         if player.player_id in contributor_ids:
@@ -627,6 +700,8 @@ class QFVoteService:
 
         All operations are performed in a single atomic transaction to ensure consistency.
         """
+        await self._ensure_vote_round_is_still_open(round, phraseset)
+
         # Check grace period
         current_time = datetime.now(UTC)
         grace_cutoff = ensure_utc(round.expires_at) + timedelta(seconds=settings.grace_period_seconds)
@@ -848,11 +923,13 @@ class QFVoteService:
             auto_commit: If True, commits the changes. If False, caller is responsible for commit.
         """
         should_finalize = False
+        finalization_reason: str | None = None
         current_time = datetime.now(UTC)
 
         # Max votes reached
         if phraseset.vote_count >= settings.vote_max_votes:
             should_finalize = True
+            finalization_reason = "max_votes"
             logger.info(f"Phraseset {phraseset.phraseset_id} reached max votes ({settings.vote_max_votes})")
 
         # Closing threshold+ votes and closing window elapsed
@@ -860,6 +937,7 @@ class QFVoteService:
             elapsed = (current_time - ensure_utc(phraseset.fifth_vote_at)).total_seconds()
             if elapsed >= settings.vote_closing_window_minutes * 60:
                 should_finalize = True
+                finalization_reason = "closing_window_expired"
                 logger.info(
                     f"{phraseset.phraseset_id=} 5th vote closing window expired "
                     f"({elapsed=} >= {settings.vote_closing_window_minutes * 60}s)"
@@ -870,19 +948,26 @@ class QFVoteService:
             elapsed = (current_time - ensure_utc(phraseset.third_vote_at)).total_seconds()
             if elapsed >= settings.vote_minimum_window_minutes * 60:
                 should_finalize = True
+                finalization_reason = "minimum_window_expired"
                 logger.info(
                     f"{phraseset.phraseset_id=} 3rd vote minimum window expired "
                     f"({elapsed=} >= {settings.vote_minimum_window_minutes * 60}s)"
                 )
 
         if should_finalize:
-            await self._finalize_phraseset(phraseset, transaction_service, auto_commit=auto_commit)
+            await self._finalize_phraseset(
+                phraseset,
+                transaction_service,
+                auto_commit=auto_commit,
+                finalization_reason=finalization_reason,
+            )
 
     async def _finalize_phraseset(
         self,
         phraseset: Phraseset,
         transaction_service: TransactionService,
         auto_commit: bool = True,
+        finalization_reason: str | None = None,
     ) -> None:
         """
         Finalize phraseset.
@@ -951,9 +1036,13 @@ class QFVoteService:
                     skip_lock=False,  # Acquire lock for thread-safe balance updates
                 )
 
+        refunded_vote_rounds = await self._refund_active_vote_rounds(phraseset, transaction_service)
+
         # Update phraseset status
         phraseset.status = "finalized"
         phraseset.finalized_at = datetime.now(UTC)
+        phraseset.finalization_reason = finalization_reason
+        phraseset.payouts_completed_at = datetime.now(UTC)
 
         prompt_round = await self.db.get(Round, phraseset.prompt_round_id)
         if prompt_round:
@@ -965,6 +1054,8 @@ class QFVoteService:
             metadata={
                 "total_votes": phraseset.vote_count,
                 "total_pool": phraseset.total_pool,
+                "finalization_reason": finalization_reason,
+                "refunded_vote_rounds": refunded_vote_rounds,
             },
         )
 

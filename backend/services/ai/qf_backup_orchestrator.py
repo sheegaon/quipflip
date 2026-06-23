@@ -177,26 +177,54 @@ class QFBackupOrchestrator:
                     # Generate AI copy phrase with proper validation context
                     copy_phrase = await self.ai_service.get_impostor_phrase(quip_round)
 
-                    # Create copy round for AI player
                     from backend.services import QFRoundService
+                    from backend.services import TransactionService
                     round_service = QFRoundService(self.db)
+                    transaction_service = TransactionService(self.db, game_type=GameType.QF)
 
                     # Get or create AI copy player (within transaction)
                     ai_impostor_player = await self.ai_service.get_or_create_ai_player(AIPlayerType.QF_IMPOSTOR)
 
-                    # Start copy round for AI player
+                    current_slot = None
+                    if quip_round.copy1_player_id is None:
+                        current_slot = "copy1"
+                    elif quip_round.copy2_player_id is None:
+                        current_slot = "copy2"
+
+                    if current_slot is None:
+                        logger.info(
+                            f"Skipping prompt {quip_round.round_id} - copy slots were filled while AI was generating"
+                        )
+                        QFQueueService.add_prompt_round_to_queue(quip_round.round_id)
+                        continue
+
+                    copy_cost, _, system_contribution = round_service._calculate_copy_round_cost()
+                    copy_slot = await round_service.determine_copy_slot(quip_round.round_id)
+                    copy_round_id = uuid.uuid4()
+
+                    await transaction_service.create_transaction(
+                        ai_impostor_player.player_id,
+                        -copy_cost,
+                        "copy_entry",
+                        reference_id=copy_round_id,
+                        auto_commit=False,
+                        skip_lock=True,
+                    )
+
+                    # Create copy round for AI player
                     copy_round = Round(
-                        round_id=uuid.uuid4(),
+                        round_id=copy_round_id,
                         player_id=ai_impostor_player.player_id,
                         round_type='copy',
                         status='submitted',
                         created_at=datetime.now(UTC),
                         expires_at=datetime.now(UTC) + timedelta(minutes=3),  # Standard copy round time
-                        cost=0,  # AI doesn't pay
+                        cost=copy_cost,
                         prompt_round_id=quip_round.round_id,
                         original_phrase=quip_round.submitted_phrase,
                         copy_phrase=copy_phrase.upper(),
-                        system_contribution=0,  # AI contributions are free
+                        system_contribution=system_contribution,
+                        copy_slot=copy_slot,
                     )
 
                     self.db.add(copy_round)
@@ -204,10 +232,10 @@ class QFBackupOrchestrator:
                     await self.db.flush()
 
                     # Update prompt round copy assignment
-                    if quip_round.copy1_player_id is None:
+                    if current_slot == "copy1":
                         quip_round.copy1_player_id = ai_impostor_player.player_id
                         quip_round.phraseset_status = "waiting_copy1"
-                    elif quip_round.copy2_player_id is None:
+                    else:
                         quip_round.copy2_player_id = ai_impostor_player.player_id
                         # Check if we now have both copies and can create phraseset
                         if quip_round.copy1_player_id is not None:
@@ -250,7 +278,7 @@ class QFBackupOrchestrator:
 
             phraseset_result = await self.db.execute(
                 select(Phraseset)
-                .where(Phraseset.status.in_(["open", "closing"]))
+                .where(Phraseset.status.in_(["open", "active", "closing"]))
                 .where(Phraseset.created_at <= cutoff_time)
                 .where(Phraseset.phraseset_id.in_(human_vote_phrasesets_subquery))
                 .options(

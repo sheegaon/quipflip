@@ -31,6 +31,8 @@ class Round(VersionedBase, Base):
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     cost = Column(Integer, nullable=False)
     party_round_id = get_uuid_column(nullable=True, index=True)
+    assignment_token = get_uuid_column(nullable=False, default=uuid.uuid4)
+    command_id = get_uuid_column(nullable=True)
 
     # Quip/prompt-specific fields (nullable for non-prompt rounds)
     prompt_id = get_uuid_column(ForeignKey("qf_prompts.prompt_id"), nullable=True)
@@ -45,6 +47,7 @@ class Round(VersionedBase, Base):
     original_phrase = Column(String(100), nullable=True)  # Phrase to copy
     copy_phrase = Column(String(100), nullable=True)  # Copy player's submitted phrase
     system_contribution = Column(Integer, default=0, nullable=False)  # 0 or 10
+    copy_slot = Column(Integer, nullable=True)
 
     # Vote-specific fields (nullable for non-vote rounds)
     phraseset_id = get_uuid_column(ForeignKey("qf_phrasesets.phraseset_id"), nullable=True, index=True)
@@ -69,12 +72,41 @@ class Round(VersionedBase, Base):
             "phraseset_status IN ('waiting_copies', 'waiting_copy1', 'active', 'finalized', 'abandoned', 'flagged_pending', 'flagged_removed', 'closed', 'closing', 'voting') OR phraseset_status IS NULL",
             name="valid_phraseset_status",
         ),
+        CheckConstraint("copy_slot IN (1, 2) OR copy_slot IS NULL", name="ck_qf_rounds_copy_slot"),
         Index(
             "uq_qf_rounds_active_player",
             "player_id",
             unique=True,
             sqlite_where=text("status = 'active'"),
             postgresql_where=text("status = 'active'"),
+        ),
+        Index(
+            "uq_qf_rounds_assignment_token",
+            "assignment_token",
+            unique=True,
+        ),
+        Index(
+            "uq_qf_active_solo_round_per_player",
+            "player_id",
+            unique=True,
+            sqlite_where=text("status = 'active' AND party_round_id IS NULL"),
+            postgresql_where=text("status = 'active' AND party_round_id IS NULL"),
+        ),
+        Index(
+            "uq_qf_live_copy_slot",
+            "prompt_round_id",
+            "copy_slot",
+            unique=True,
+            sqlite_where=text("round_type = 'copy' AND status IN ('active', 'submitted') AND party_round_id IS NULL"),
+            postgresql_where=text("round_type = 'copy' AND status IN ('active', 'submitted') AND party_round_id IS NULL"),
+        ),
+        Index(
+            "uq_qf_solo_start_command",
+            "player_id",
+            "command_id",
+            unique=True,
+            sqlite_where=text("command_id IS NOT NULL AND party_round_id IS NULL"),
+            postgresql_where=text("command_id IS NOT NULL AND party_round_id IS NULL"),
         ),
         Index('ix_rounds_status_created', 'status', 'created_at'),
         Index('ix_rounds_phraseset_status', 'phraseset_status'),
