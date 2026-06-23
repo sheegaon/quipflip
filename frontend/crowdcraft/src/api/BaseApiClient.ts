@@ -113,7 +113,6 @@ export class BaseApiClient {
     if (!this.isDev) return;
     const emoji = status === 'start' ? '📤' : status === 'success' ? '✅' : '❌';
     const message = `${emoji} API [${method.toUpperCase()} ${endpoint}]`;
-    // eslint-disable-next-line no-console
     if (details) {
       console.log(message, details);
     } else {

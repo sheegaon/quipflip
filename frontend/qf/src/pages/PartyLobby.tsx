@@ -243,7 +243,7 @@ export const PartyLobby: React.FC = () => {
             <CircleIcon className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-ccl-navy">Party Lobby</h1>
           </div>
-          <p className="text-ccl-teal">Players are marked ready whenever they're in this lobby.</p>
+          <p className="text-ccl-teal">Players join first, then mark ready when they’re set.</p>
         </div>
 
         <div className="space-y-6">

@@ -16,7 +16,7 @@ alembic==1.18.4
 pgvector==0.4.2
 
 # Redis (optional, for production)
-redis==8.0.0
+redis==6.4.0
 
 # Configuration and validation
 pydantic==2.13.4
@@ -24,7 +24,7 @@ pydantic-settings==2.14.2
 python-dotenv==1.2.2
 
 # Testing
-pytest==8.4.2
+pytest==9.1.1
 pytest-asyncio==1.4.0
 httpx==0.28.1
 faker==37.11.0
@@ -33,7 +33,7 @@ faker==37.11.0
 python-dateutil==2.9.0.post0
 
 # OpenAI API
-openai>=2.43.0
+openai==2.43.0
 
-starlette~=1.3.1
-numpy~=1.24.0
+starlette==1.3.1
+numpy==1.26.4

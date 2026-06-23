@@ -56,6 +56,23 @@ async def player_with_balance(db_session):
     return player
 
 
+async def _create_player(db_session, *, prefix: str, wallet: int = 1000, vault: int = 0) -> QFPlayer:
+    """Create a persisted player for round-owner fixtures."""
+    identifier = uuid.uuid4().hex[:8]
+    player = QFPlayer(
+        player_id=uuid.uuid4(),
+        username=f"{prefix}_{identifier}",
+        username_canonical=f"{prefix}_{identifier}",
+        email=f"{prefix}_{identifier}@test.com",
+        password_hash="hash",
+        wallet=wallet,
+        vault=vault,
+    )
+    db_session.add(player)
+    await db_session.commit()
+    return player
+
+
 @pytest.fixture
 async def test_prompt(db_session):
     """Create a test prompt."""
@@ -186,9 +203,10 @@ class TestPromptRoundCreation:
         )
 
         # Player has seen Prompt Bravo through a copy round
+        copy_source_owner = await _create_player(db_session, prefix="copy_source_owner")
         copy_source_prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=copy_source_owner.player_id,
             round_type="prompt",
             status="submitted",
             prompt_id=prompt_bravo.prompt_id,
@@ -210,9 +228,10 @@ class TestPromptRoundCreation:
         )
 
         # Player has seen Prompt Charlie through a vote round
+        vote_source_owner = await _create_player(db_session, prefix="vote_source_owner")
         vote_prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=vote_source_owner.player_id,
             round_type="prompt",
             status="submitted",
             prompt_id=prompt_charlie.prompt_id,
@@ -221,9 +240,10 @@ class TestPromptRoundCreation:
             cost=settings.prompt_cost,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
+        copy_owner_one = await _create_player(db_session, prefix="copy_owner_one")
         copy_round_one = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=copy_owner_one.player_id,
             round_type="copy",
             status="submitted",
             prompt_round_id=vote_prompt_round.round_id,
@@ -232,9 +252,10 @@ class TestPromptRoundCreation:
             cost=settings.copy_cost_normal,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
+        copy_owner_two = await _create_player(db_session, prefix="copy_owner_two")
         copy_round_two = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=copy_owner_two.player_id,
             round_type="copy",
             status="submitted",
             prompt_round_id=vote_prompt_round.round_id,
@@ -243,6 +264,18 @@ class TestPromptRoundCreation:
             cost=settings.copy_cost_normal,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
+        db_session.add_all(
+            [
+                prior_prompt_round,
+                copy_source_prompt_round,
+                player_copy_round,
+                vote_prompt_round,
+                copy_round_one,
+                copy_round_two,
+            ]
+        )
+        await db_session.commit()
+
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=vote_prompt_round.round_id,
@@ -256,6 +289,9 @@ class TestPromptRoundCreation:
             vote_count=0,
             total_pool=200,
         )
+        db_session.add(phraseset)
+        await db_session.commit()
+
         player_vote_round = Round(
             round_id=uuid.uuid4(),
             player_id=player_with_balance.player_id,
@@ -265,19 +301,7 @@ class TestPromptRoundCreation:
             cost=settings.vote_cost,
             expires_at=datetime.now(UTC) + timedelta(minutes=1),
         )
-
-        db_session.add_all(
-            [
-                prior_prompt_round,
-                copy_source_prompt_round,
-                player_copy_round,
-                vote_prompt_round,
-                copy_round_one,
-                copy_round_two,
-                phraseset,
-                player_vote_round,
-            ]
-        )
+        db_session.add(player_vote_round)
         await db_session.commit()
 
         round_obj = await round_service.start_prompt_round(
@@ -423,9 +447,10 @@ class TestCopyRoundCreation:
         transaction_service = TransactionService(db_session, GameType.QF)
 
         # Create a submitted prompt round first
+        prompt_owner = await _create_player(db_session, prefix="copy_prompt_owner")
         prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),  # Different player
+            player_id=prompt_owner.player_id,  # Different player
             round_type="prompt",
             status="submitted",
             prompt_id=test_prompt.prompt_id,
@@ -465,9 +490,10 @@ class TestCopyRoundCreation:
         round_service = QFRoundService(db_session)
         transaction_service = TransactionService(db_session, GameType.QF)
 
+        prompt_owner = await _create_player(db_session, prefix="forced_prompt_owner")
         prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=prompt_owner.player_id,
             round_type="prompt",
             status="submitted",
             prompt_id=test_prompt.prompt_id,
@@ -542,6 +568,7 @@ class TestAbandonRound:
         db_session.add(prompter)
         await db_session.commit()
 
+        prompt_owner = await _create_player(db_session, prefix="phraseset_copy_owner")
         prompt_round = Round(
             round_id=uuid.uuid4(),
             player_id=prompter.player_id,
@@ -597,7 +624,7 @@ class TestAbandonRound:
 
     @pytest.mark.asyncio
     async def test_abandon_vote_round(self, db_session, player_with_balance):
-        """Vote rounds should be abandonable with partial refund and cleared state."""
+        """Vote rounds should forfeit the full entry fee when abandoned."""
         round_service = QFRoundService(db_session)
         vote_service = QFVoteService(db_session)
         transaction_service = TransactionService(db_session, GameType.QF)
@@ -699,12 +726,114 @@ class TestAbandonRound:
 
         assert abandoned_round.status == "abandoned"
         assert abandoned_round.round_type == "vote"
-        assert refund_amount == max(settings.vote_cost - settings.abandoned_penalty, 0)
-        assert penalty_kept == settings.abandoned_penalty
+        assert refund_amount == 0
+        assert penalty_kept == settings.vote_cost
 
         await db_session.refresh(player_with_balance)
         assert player_with_balance.active_round_id is None
-        assert player_with_balance.wallet == balance_after_charge + refund_amount
+        assert player_with_balance.wallet == balance_after_charge
+
+    @pytest.mark.asyncio
+    async def test_vote_round_timeout_forfeits_entry_fee(self, db_session, player_with_balance):
+        """Timed-out vote rounds should forfeit the entry fee instead of refunding it."""
+        round_service = QFRoundService(db_session)
+        vote_service = QFVoteService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        # Create a valid phraseset for the vote round.
+        prompter = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"timeout_prompter_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"timeout_prompter_{uuid.uuid4().hex[:8]}",
+            email=f"timeout_prompter_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            wallet=1000,
+            vault=0,
+        )
+        copier_one = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"timeout_copier1_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"timeout_copier1_{uuid.uuid4().hex[:8]}",
+            email=f"timeout_copier1_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            wallet=1000,
+            vault=0,
+        )
+        copier_two = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"timeout_copier2_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"timeout_copier2_{uuid.uuid4().hex[:8]}",
+            email=f"timeout_copier2_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+            wallet=1000,
+            vault=0,
+        )
+        db_session.add_all([prompter, copier_one, copier_two])
+        await db_session.commit()
+
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompter.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_text="Timeout Prompt",
+            submitted_phrase="ORIGINAL",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_one = Round(
+            round_id=uuid.uuid4(),
+            player_id=copier_one.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY ONE",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_two = Round(
+            round_id=uuid.uuid4(),
+            player_id=copier_two.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY TWO",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add_all([prompt_round, copy_round_one, copy_round_two])
+        await db_session.commit()
+
+        phraseset = Phraseset(
+            phraseset_id=uuid.uuid4(),
+            prompt_round_id=prompt_round.round_id,
+            copy_round_1_id=copy_round_one.round_id,
+            copy_round_2_id=copy_round_two.round_id,
+            prompt_text="Timeout Prompt",
+            original_phrase="ORIGINAL",
+            copy_phrase_1="COPY ONE",
+            copy_phrase_2="COPY TWO",
+            status="open",
+            vote_count=0,
+            total_pool=200,
+        )
+        db_session.add(phraseset)
+        await db_session.commit()
+
+        vote_round, _ = await vote_service.start_vote_round(player_with_balance, transaction_service)
+        await db_session.refresh(player_with_balance)
+        balance_after_charge = player_with_balance.wallet
+
+        vote_round.expires_at = datetime.now(UTC) - timedelta(seconds=settings.grace_period_seconds + 1)
+        await db_session.commit()
+
+        await round_service.handle_timeout(vote_round.round_id, transaction_service)
+
+        await db_session.refresh(player_with_balance)
+        assert player_with_balance.active_round_id is None
+        assert player_with_balance.wallet == balance_after_charge
 
 
 class TestPhrasesetCreation:
@@ -826,6 +955,7 @@ class TestPhrasesetCreation:
         await db_session.commit()
 
         # Create prompt round with only one copy
+        prompt_owner = await _create_player(db_session, prefix="phraseset_copy_owner")
         prompt_round = Round(
             round_id=uuid.uuid4(),
             player_id=prompter.player_id,
@@ -836,7 +966,7 @@ class TestPhrasesetCreation:
             cost=settings.prompt_cost,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
-        prompt_round.copy1_player_id = uuid.uuid4()  # Only one copy assigned
+        prompt_round.copy1_player_id = prompt_owner.player_id  # Only one copy assigned
         db_session.add(prompt_round)
         await db_session.commit()
 
@@ -982,9 +1112,18 @@ class TestAIHintBackground:
         )
 
         async with test_session() as session:
+            prompt_owner = QFPlayer(
+                player_id=uuid.uuid4(),
+                username=f"background_hint_owner_{uuid.uuid4().hex[:8]}",
+                username_canonical=f"background_hint_owner_{uuid.uuid4().hex[:8]}",
+                email=f"background_hint_owner_{uuid.uuid4().hex[:8]}@test.com",
+                password_hash="hash",
+                wallet=1000,
+                vault=0,
+            )
             prompt_round = Round(
                 round_id=uuid.uuid4(),
-                player_id=uuid.uuid4(),
+                player_id=prompt_owner.player_id,
                 round_type="prompt",
                 status="submitted",
                 prompt_text="Background hint prompt",
@@ -992,7 +1131,7 @@ class TestAIHintBackground:
                 cost=settings.prompt_cost,
                 expires_at=datetime.now(UTC) + timedelta(minutes=5),
             )
-            session.add(prompt_round)
+            session.add_all([prompt_owner, prompt_round])
             await session.commit()
 
         # Ensure the background helper uses the in-memory test session

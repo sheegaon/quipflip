@@ -52,12 +52,9 @@ class PartyWebSocketManager:
         # Update participant connection status in database
         if db:
             from backend.models.qf.party_participant import PartyParticipant
-            from backend.models.qf.party_session import PartySession
 
             result = await db.execute(
-                select(PartyParticipant, PartySession)
-                .join(PartySession, PartyParticipant.session_id == PartySession.session_id)
-                .where(
+                select(PartyParticipant).where(
                     and_(
                         PartyParticipant.session_id == session_id,
                         PartyParticipant.player_id == player_id
@@ -67,24 +64,12 @@ class PartyWebSocketManager:
             row = result.first()
 
             if row:
-                participant, session = row
+                participant = row[0]
                 participant.connection_status = 'connected'
                 participant.last_activity_at = datetime.now(UTC)
                 participant.disconnected_at = None
-                if session.status == 'OPEN' and context == 'lobby':
-                    participant.status = 'READY'
-                    participant.ready_at = datetime.now(UTC)
                 await db.commit()
                 logger.info(f"Updated participant {player_id} to connected status")
-
-                if session.status == 'OPEN' and context == 'lobby':
-                    await self.notify_session_update(
-                        session_id=session_id,
-                        session_status={
-                            'reason': 'lobby_presence_changed',
-                            'message': 'player_reconnected'
-                        }
-                    )
 
         connection_count = self._websocket_service.get_connection_count(self._channel_key(session_id))
         logger.info(f"WebSocket connected for {player_id=} in {session_id=} ({connection_count=})")
@@ -105,26 +90,20 @@ class PartyWebSocketManager:
         """
         player_id_str = str(player_id)
 
-        connection_context = context
-
         channel_key = self._channel_key(session_id)
         connection = await self._websocket_service.disconnect(channel_key, player_id_str)
 
         if not connection:
             return
 
-        connection_context = connection_context or connection.context
         logger.info(f"WebSocket disconnected for {player_id=} in session {session_id}")
 
         # Update participant connection status in database
         if db:
             from backend.models.qf.party_participant import PartyParticipant
-            from backend.models.qf.party_session import PartySession
 
             result = await db.execute(
-                select(PartyParticipant, PartySession)
-                .join(PartySession, PartyParticipant.session_id == PartySession.session_id)
-                .where(
+                select(PartyParticipant).where(
                     and_(
                         PartyParticipant.session_id == session_id,
                         PartyParticipant.player_id == player_id
@@ -134,24 +113,12 @@ class PartyWebSocketManager:
             row = result.first()
 
             if row:
-                participant, session = row
+                participant = row[0]
                 participant.connection_status = 'disconnected'
                 participant.disconnected_at = datetime.now(UTC)
                 participant.last_activity_at = datetime.now(UTC)
-                if session.status == 'OPEN' and connection_context == 'lobby':
-                    participant.status = 'JOINED'
-                    participant.ready_at = None
                 await db.commit()
                 logger.info(f"Updated participant {player_id} to disconnected status")
-
-                if session.status == 'OPEN' and connection_context == 'lobby':
-                    await self.notify_session_update(
-                        session_id=session_id,
-                        session_status={
-                            'reason': 'lobby_presence_changed',
-                            'message': 'player_disconnected'
-                        }
-                    )
 
         if self._websocket_service.get_connection_count(channel_key) == 0:
             logger.info(f"Removed empty session {session_id} from connections")

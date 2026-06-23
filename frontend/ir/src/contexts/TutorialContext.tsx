@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { tutorialAPI } from '@crowdcraft/api/client.ts';
+import { tutorialAPI } from '@/api/client.ts';
 import type { IRTutorialProgress, IRTutorialStatus } from '@crowdcraft/api/types.ts';
 import { tutorialLogger } from '@crowdcraft/utils/logger.ts';
 import { getNextStep } from '@/config/tutorialSteps';

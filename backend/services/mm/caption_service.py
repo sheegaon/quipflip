@@ -89,6 +89,7 @@ class MMCaptionService:
             )
             used_free_slot = False
             cost = 0
+            caption_id = uuid4()
 
             if remaining_free > 0:
                 # Use free slot
@@ -110,13 +111,14 @@ class MMCaptionService:
                     player.player_id,
                     -cost,
                     "mm_caption_submission_fee",
+                    reference_id=caption_id,
                     auto_commit=False,
                     skip_lock=True,
                 )
 
             # Create caption
             caption = MMCaption(
-                caption_id=uuid4(),
+                caption_id=caption_id,
                 image_id=image_id,
                 author_player_id=player.player_id,
                 kind=kind,

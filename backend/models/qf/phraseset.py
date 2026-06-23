@@ -1,13 +1,14 @@
 """Phraseset model."""
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Index, CheckConstraint, UniqueConstraint, event
 from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime, UTC
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.models.versioned_base import VersionedBase
 
 
-class Phraseset(Base):
+class Phraseset(VersionedBase, Base):
     """Phraseset model for voting."""
     __tablename__ = "qf_phrasesets"
 
@@ -30,6 +31,8 @@ class Phraseset(Base):
     closes_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     finalized_at = Column(DateTime(timezone=True), nullable=True)
+    finalization_reason = Column(String(64), nullable=True)
+    payouts_completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Prize pool tracking
     total_pool = Column(Integer, default=200, nullable=False)  # Dynamic: base + vote contributions - correct payouts
@@ -54,6 +57,15 @@ class Phraseset(Base):
 
     # Indexes
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'active', 'voting', 'closing', 'closed', 'finalized', 'abandoned')",
+            name="valid_phraseset_status",
+        ),
+        CheckConstraint(
+            "status != 'finalized' OR finalized_at IS NOT NULL",
+            name="ck_qf_phrasesets_finalized_timestamp",
+        ),
+        UniqueConstraint("prompt_round_id", name="uq_phrasesets_prompt_round_id"),
         Index('ix_phrasesets_status_vote_count', 'status', 'vote_count'),
         Index('ix_phrasesets_status_fifth_vote_at', 'status', 'fifth_vote_at'),
         Index('ix_phrasesets_status_third_vote_at', 'status', 'third_vote_at'),
@@ -62,3 +74,12 @@ class Phraseset(Base):
 
     def __repr__(self):
         return f"<Phraseset(phraseset_id={self.phraseset_id}, status={self.status}, vote_count={self.vote_count})>"
+
+
+@event.listens_for(Phraseset, "before_insert")
+@event.listens_for(Phraseset, "before_update")
+def _ensure_finalized_timestamp(mapper, connection, target: Phraseset) -> None:
+    """Keep legacy direct-finalized fixtures compatible with the finalized timestamp check."""
+
+    if target.status == "finalized" and target.finalized_at is None:
+        target.finalized_at = datetime.now(UTC)

@@ -16,6 +16,7 @@ from backend.config import get_settings
 from backend.models.tl import TLPrompt, TLAnswer
 from backend.services.tl.matching_service import TLMatchingService
 from backend.services.tl.clustering_service import TLClusteringService
+from backend.utils.sqlite import configure_sqlite_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -263,6 +264,7 @@ async def cleanup_empty_prompts(db: AsyncSession):
 async def main():
     """Main entry point for manual seeding."""
     engine = create_async_engine(settings.database_url)
+    configure_sqlite_engine(engine.sync_engine)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:

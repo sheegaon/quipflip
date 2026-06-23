@@ -17,6 +17,7 @@ __all__ = [
     "OpenAIError",
     "OpenAIAPIError",
     "generate_response",
+    "generate_copy",
     "generate_embedding",
     "moderate_text",
 ]
@@ -94,6 +95,10 @@ async def generate_response(
         if isinstance(exc, OpenAIAPIError):
             raise
         raise OpenAIAPIError(f"Failed to contact OpenAI API: {exc}") from exc
+
+
+# Backwards-compatible alias used by older AIService tests and call sites.
+generate_copy = generate_response
 
 
 async def generate_embedding(

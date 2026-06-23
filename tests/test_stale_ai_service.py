@@ -43,6 +43,104 @@ def stale_ai_service(db_session):
     return StaleAIService(db_session)
 
 
+async def _create_valid_phraseset_bundle(
+    db_session,
+    *,
+    age_days: int = 4,
+    status: str = "open",
+    vote_count: int = 0,
+):
+    """Create a stale-friendly phraseset with real prompt/copy round foreign keys."""
+
+    test_id = uuid.uuid4().hex[:8]
+    players = [
+        QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"prompt_{test_id}",
+            username_canonical=f"prompt_{test_id}",
+            email=f"prompt_{test_id}@test.com",
+            password_hash="hash",
+        ),
+        QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"copy1_{test_id}",
+            username_canonical=f"copy1_{test_id}",
+            email=f"copy1_{test_id}@test.com",
+            password_hash="hash",
+        ),
+        QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"copy2_{test_id}",
+            username_canonical=f"copy2_{test_id}",
+            email=f"copy2_{test_id}@test.com",
+            password_hash="hash",
+        ),
+    ]
+    db_session.add_all(players)
+    await db_session.commit()
+
+    old_time = datetime.now(UTC) - timedelta(days=age_days)
+    prompt_round = Round(
+        round_id=uuid.uuid4(),
+        player_id=players[0].player_id,
+        round_type="prompt",
+        status="submitted",
+        created_at=old_time,
+        expires_at=old_time + timedelta(minutes=3),
+        cost=100,
+        submitted_phrase="ORIGINAL PHRASE",
+        prompt_text="Test prompt",
+    )
+    copy_round_1 = Round(
+        round_id=uuid.uuid4(),
+        player_id=players[1].player_id,
+        round_type="copy",
+        status="submitted",
+        created_at=old_time,
+        expires_at=old_time + timedelta(minutes=3),
+        cost=0,
+        prompt_round_id=prompt_round.round_id,
+        original_phrase="ORIGINAL PHRASE",
+        copy_phrase="COPY ONE",
+    )
+    copy_round_2 = Round(
+        round_id=uuid.uuid4(),
+        player_id=players[2].player_id,
+        round_type="copy",
+        status="submitted",
+        created_at=old_time,
+        expires_at=old_time + timedelta(minutes=3),
+        cost=0,
+        prompt_round_id=prompt_round.round_id,
+        original_phrase="ORIGINAL PHRASE",
+        copy_phrase="COPY TWO",
+    )
+    db_session.add_all([prompt_round, copy_round_1, copy_round_2])
+    await db_session.commit()
+
+    phraseset = Phraseset(
+        phraseset_id=uuid.uuid4(),
+        prompt_round_id=prompt_round.round_id,
+        copy_round_1_id=copy_round_1.round_id,
+        copy_round_2_id=copy_round_2.round_id,
+        prompt_text="Test prompt",
+        original_phrase="ORIGINAL PHRASE",
+        copy_phrase_1="COPY ONE",
+        copy_phrase_2="COPY TWO",
+        status=status,
+        created_at=old_time,
+        vote_count=vote_count,
+        total_pool=get_settings().prize_pool_base,
+        vote_contributions=0,
+        vote_payouts_paid=0,
+        system_contribution=0,
+    )
+    db_session.add(phraseset)
+    await db_session.commit()
+
+    return phraseset, prompt_round, copy_round_1, copy_round_2
+
+
 class TestStaleAIPlayerCreation:
     """Test stale AI player creation and management."""
 
@@ -174,43 +272,7 @@ class TestFindStalePrompts:
     @pytest.mark.asyncio
     async def test_exclude_prompts_with_phraseset(self, db_session, stale_ai_service):
         """Should exclude prompts that already have a phraseset."""
-        from backend.services import QFPlayerService
-        player_service = QFPlayerService(db_session)
-        player = await player_service.create_player(
-            username="test_user3",
-            email="test3@example.com",
-            password_hash="dummy",
-        )
-
-        # Create stale prompt
-        old_time = datetime.now(UTC) - timedelta(days=4)
-        prompt_with_phraseset = Round(
-            round_id=uuid.uuid4(),
-            player_id=player.player_id,
-            round_type="prompt",
-            status="submitted",
-            created_at=old_time,
-            expires_at=old_time + timedelta(minutes=3),
-            cost=100,
-            submitted_phrase="PROMPT WITH PHRASESET",
-        )
-        db_session.add(prompt_with_phraseset)
-        await db_session.flush()
-
-        # Create phraseset for this prompt
-        phraseset = Phraseset(
-            phraseset_id=uuid.uuid4(),
-            prompt_round_id=prompt_with_phraseset.round_id,
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
-            prompt_text="test prompt",
-            original_phrase="PROMPT WITH PHRASESET",
-            copy_phrase_1="COPY ONE",
-            copy_phrase_2="COPY TWO",
-            created_at=old_time,
-        )
-        db_session.add(phraseset)
-        await db_session.commit()
+        _, prompt_with_phraseset, _, _ = await _create_valid_phraseset_bundle(db_session)
 
         # Find stale prompts
         stale_prompts = await stale_ai_service._find_stale_prompts()
@@ -287,22 +349,7 @@ class TestFindStalePhrasesets:
     @pytest.mark.asyncio
     async def test_find_phrasesets_older_than_threshold(self, db_session, stale_ai_service):
         """Should find phrasesets older than the stale threshold."""
-        # Create stale phraseset (4 days old)
-        old_time = datetime.now(UTC) - timedelta(days=4)
-        stale_phraseset = Phraseset(
-            phraseset_id=uuid.uuid4(),
-            prompt_round_id=uuid.uuid4(),
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
-            prompt_text="test prompt",
-            original_phrase="ORIGINAL",
-            copy_phrase_1="COPY ONE",
-            copy_phrase_2="COPY TWO",
-            status="open",
-            created_at=old_time,
-        )
-        db_session.add(stale_phraseset)
-        await db_session.commit()
+        stale_phraseset, _, _, _ = await _create_valid_phraseset_bundle(db_session)
 
         # Find stale phrasesets
         stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
@@ -313,22 +360,7 @@ class TestFindStalePhrasesets:
     @pytest.mark.asyncio
     async def test_exclude_recent_phrasesets(self, db_session, stale_ai_service):
         """Should exclude phrasesets newer than the stale threshold."""
-        # Create recent phraseset (1 day old)
-        recent_time = datetime.now(UTC) - timedelta(days=1)
-        recent_phraseset = Phraseset(
-            phraseset_id=uuid.uuid4(),
-            prompt_round_id=uuid.uuid4(),
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
-            prompt_text="test prompt",
-            original_phrase="RECENT",
-            copy_phrase_1="COPY ONE",
-            copy_phrase_2="COPY TWO",
-            status="open",
-            created_at=recent_time,
-        )
-        db_session.add(recent_phraseset)
-        await db_session.commit()
+        recent_phraseset, _, _, _ = await _create_valid_phraseset_bundle(db_session, age_days=1)
 
         # Find stale phrasesets
         stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
@@ -339,22 +371,10 @@ class TestFindStalePhrasesets:
     @pytest.mark.asyncio
     async def test_exclude_closed_phrasesets(self, db_session, stale_ai_service):
         """Should exclude phrasesets that are closed or finalized."""
-        # Create closed phraseset
-        old_time = datetime.now(UTC) - timedelta(days=4)
-        closed_phraseset = Phraseset(
-            phraseset_id=uuid.uuid4(),
-            prompt_round_id=uuid.uuid4(),
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
-            prompt_text="test prompt",
-            original_phrase="CLOSED",
-            copy_phrase_1="COPY ONE",
-            copy_phrase_2="COPY TWO",
+        closed_phraseset, _, _, _ = await _create_valid_phraseset_bundle(
+            db_session,
             status="finalized",
-            created_at=old_time,
         )
-        db_session.add(closed_phraseset)
-        await db_session.commit()
 
         # Find stale phrasesets
         stale_phrasesets = await stale_ai_service._find_stale_phrasesets()
@@ -370,25 +390,14 @@ class TestFindStalePhrasesets:
             AIPlayerType.QF_VOTER
         )
 
-        # Create stale phraseset
-        old_time = datetime.now(UTC) - timedelta(days=4)
-        phraseset = Phraseset(
-            phraseset_id=uuid.uuid4(),
-            prompt_round_id=uuid.uuid4(),
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
-            prompt_text="test prompt",
-            original_phrase="ALREADY VOTED",
-            copy_phrase_1="COPY ONE",
-            copy_phrase_2="COPY TWO",
-            status="open",
-            created_at=old_time,
+        # Create stale phraseset with real round foreign keys.
+        phraseset, _, _, _ = await _create_valid_phraseset_bundle(
+            db_session,
             vote_count=3,  # Set to threshold so it's excluded
         )
-        db_session.add(phraseset)
-        await db_session.flush()
 
         # Create vote by stale AI
+        old_time = datetime.now(UTC) - timedelta(days=7)
         vote = Vote(
             vote_id=uuid.uuid4(),
             player_id=voter.player_id,

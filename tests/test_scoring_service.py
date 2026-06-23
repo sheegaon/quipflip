@@ -89,6 +89,19 @@ async def finalized_phraseset_with_votes(db_session):
     db_session.add_all([prompt_round, copy1_round, copy2_round])
     await db_session.flush()
 
+    voters = [
+        QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"voter{i}_{test_id}",
+            username_canonical=f"voter{i}_{test_id}",
+            email=f"voter{i}_{test_id}@test.com",
+            password_hash="hash",
+            wallet=5000,
+            vault=0,
+        )
+        for i in range(9)
+    ]
+
     # Create phraseset with votes
     # Voting pattern: 3 correct (ORIGINAL), 4 for COPY ONE, 2 for COPY TWO
     phraseset = Phraseset(
@@ -107,32 +120,32 @@ async def finalized_phraseset_with_votes(db_session):
         vote_payouts_paid=60,  # 3 correct * 20
         system_contribution=0,
     )
-    db_session.add(phraseset)
+    db_session.add_all([*voters, phraseset])
     await db_session.flush()
 
     # Add votes
     votes = [
         # 3 correct votes for ORIGINAL
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="ORIGINAL", correct=True, payout=20),
+             player_id=voters[0].player_id, voted_phrase="ORIGINAL", correct=True, payout=20),
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="ORIGINAL", correct=True, payout=20),
+             player_id=voters[1].player_id, voted_phrase="ORIGINAL", correct=True, payout=20),
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="ORIGINAL", correct=True, payout=20),
+             player_id=voters[2].player_id, voted_phrase="ORIGINAL", correct=True, payout=20),
         # 4 incorrect votes for COPY ONE
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="COPY ONE", correct=False, payout=0),
+             player_id=voters[3].player_id, voted_phrase="COPY ONE", correct=False, payout=0),
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="COPY ONE", correct=False, payout=0),
+             player_id=voters[4].player_id, voted_phrase="COPY ONE", correct=False, payout=0),
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="COPY ONE", correct=False, payout=0),
+             player_id=voters[5].player_id, voted_phrase="COPY ONE", correct=False, payout=0),
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="COPY ONE", correct=False, payout=0),
+             player_id=voters[6].player_id, voted_phrase="COPY ONE", correct=False, payout=0),
         # 2 incorrect votes for COPY TWO
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="COPY TWO", correct=False, payout=0),
+             player_id=voters[7].player_id, voted_phrase="COPY TWO", correct=False, payout=0),
         Vote(vote_id=uuid.uuid4(), phraseset_id=phraseset.phraseset_id,
-             player_id=uuid.uuid4(), voted_phrase="COPY TWO", correct=False, payout=0),
+             player_id=voters[8].player_id, voted_phrase="COPY TWO", correct=False, payout=0),
     ]
     db_session.add_all(votes)
     await db_session.commit()
@@ -209,7 +222,25 @@ class TestPayoutCalculation:
             wallet=5000,
             vault=0,
         )
-        db_session.add(prompter)
+        copy_one = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"copy_one_{test_id}",
+            username_canonical=f"copy_one_{test_id}",
+            email=f"copy_one_{test_id}@test.com",
+            password_hash="hash",
+            wallet=5000,
+            vault=0,
+        )
+        copy_two = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"copy_two_{test_id}",
+            username_canonical=f"copy_two_{test_id}",
+            email=f"copy_two_{test_id}@test.com",
+            password_hash="hash",
+            wallet=5000,
+            vault=0,
+        )
+        db_session.add_all([prompter, copy_one, copy_two])
         await db_session.commit()
 
         prompt_round = Round(
@@ -222,14 +253,39 @@ class TestPayoutCalculation:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
+        copy_round_1 = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy_one.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY ONE",
+            cost=settings.copy_cost_normal,
+            system_contribution=0,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round_2 = Round(
+            round_id=uuid.uuid4(),
+            player_id=copy_two.player_id,
+            round_type="copy",
+            status="submitted",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            copy_phrase="COPY TWO",
+            cost=settings.copy_cost_normal,
+            system_contribution=0,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
         db_session.add(prompt_round)
+        db_session.add_all([copy_round_1, copy_round_2])
         await db_session.flush()
 
         phraseset = Phraseset(
             phraseset_id=uuid.uuid4(),
             prompt_round_id=prompt_round.round_id,
-            copy_round_1_id=uuid.uuid4(),
-            copy_round_2_id=uuid.uuid4(),
+            copy_round_1_id=copy_round_1.round_id,
+            copy_round_2_id=copy_round_2.round_id,
             prompt_text="Test",
             original_phrase="ORIGINAL",
             copy_phrase_1="COPY ONE",

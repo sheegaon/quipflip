@@ -1,6 +1,7 @@
 """Party Mode service for managing party sessions."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func
+from sqlalchemy.orm.exc import StaleDataError
 from datetime import datetime, UTC, timedelta
 from typing import Optional, List, Dict
 from uuid import UUID
@@ -81,6 +82,26 @@ class PartySessionService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.settings = get_settings()
+
+    @staticmethod
+    def _next_phase(current_phase: str) -> Optional[str]:
+        """Return the next gameplay phase, if any."""
+        return {
+            'LOBBY': 'PROMPT',
+            'PROMPT': 'COPY',
+            'COPY': 'VOTE',
+            'VOTE': 'RESULTS',
+        }.get(current_phase)
+
+    def _phase_duration_seconds(self, phase: str) -> Optional[int]:
+        """Return the configured duration for a timed party phase."""
+        if phase == 'PROMPT':
+            return self.settings.prompt_round_seconds
+        if phase == 'COPY':
+            return self.settings.copy_round_seconds
+        if phase == 'VOTE':
+            return self.settings.vote_round_seconds
+        return None
 
     @staticmethod
     def _is_ai_player(player: QFPlayer | None) -> bool:
@@ -357,10 +378,9 @@ class PartySessionService:
             participant_id=uuid.uuid4(),
             session_id=session_id,
             player_id=player_id,
-            status='READY',
+            status='JOINED',
             is_host=False,
             joined_at=now,
-            ready_at=now,
             last_activity_at=now,
         )
 
@@ -375,6 +395,7 @@ class PartySessionService:
         self,
         session_id: UUID,
         host_player_id: UUID,
+        game_type: GameType | None = None,
     ) -> PartyParticipant:
         """Add an AI player to the session (host only, lobby only).
 
@@ -391,6 +412,8 @@ class PartySessionService:
             SessionAlreadyStartedError: If session has already started
             SessionFullError: If session is at max capacity
         """
+        _ = game_type
+
         # Get session
         session = await self.get_session_by_id(session_id)
         if not session:
@@ -418,7 +441,10 @@ class PartySessionService:
                 QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
         )
         active_pool_players = list({row.player_id for row in result.fetchall()})
-        ai_player = await AIService(self.db).get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
+        ai_player = await AIService(self.db, allow_no_provider=True).get_or_create_ai_player(
+            AIPlayerType.QF_PARTY,
+            excluded=active_pool_players,
+        )
 
         # Create participant
         participant = PartyParticipant(
@@ -447,11 +473,12 @@ class PartySessionService:
         session_id: UUID,
         player_id: UUID,
     ) -> bool:
-        """Remove a player from the session.
+        """Remove a player from the lobby.
 
-        Players can leave at any time, including during active games.
-        If the host leaves, another participant is automatically promoted.
-        Session is deleted when the last HUMAN player leaves (AI players don't keep session alive).
+        Mid-game leave is intentionally rejected until the Party forfeiture policy
+        is explicitly approved. If the host leaves, another participant is
+        automatically promoted. Session is deleted when the last HUMAN player
+        leaves (AI players don't keep session alive).
 
         Args:
             session_id: UUID of the session
@@ -467,6 +494,9 @@ class PartySessionService:
         session = await self.get_session_by_id(session_id)
         if not session:
             raise SessionNotFoundError(f"Session {session_id} not found")
+
+        if session.status != 'OPEN':
+            raise SessionAlreadyStartedError("Cannot leave session that has already started")
 
         # Get participant
         participant = await self.get_participant(session_id, player_id)
@@ -563,142 +593,17 @@ class PartySessionService:
             logger.info(f"Deleted empty party session {session_id}")
 
     async def remove_inactive_participants(self, session_id: UUID) -> List[Dict]:
-        """Remove participants who have been inactive for more than 5 minutes.
+        """Retain inactive participants so reconnect can restore them.
 
-        A participant is considered inactive if:
-        - connection_status is 'disconnected' AND
-        - last_activity_at is more than 5 minutes ago
-
-        Uses batch operations for efficiency and atomicity.
-
-        Args:
-            session_id: UUID of the session to check
-
-        Returns:
-            List[Dict]: List of removed participants with their info
+        This method now only preserves the historical contract for callers that
+        still expect a list-like return value. Inactive participant cleanup is
+        intentionally disabled in Party Mode.
         """
-        from backend.services.qf.party_websocket_manager import get_party_websocket_manager
-
-        # Calculate cutoff time (5 minutes ago)
-        cutoff_time = datetime.now(UTC) - timedelta(minutes=5)
-
-        # Fetch all inactive participants with player info in a single query
-        result = await self.db.execute(
-            select(
-                PartyParticipant.participant_id,
-                PartyParticipant.player_id,
-                PartyParticipant.is_host,
-                QFPlayer.username,
-            )
-            .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
-            .where(
-                and_(
-                    PartyParticipant.session_id == session_id,
-                    PartyParticipant.connection_status == 'disconnected',
-                    PartyParticipant.last_activity_at < cutoff_time
-                )
-            )
+        logger.info(
+            "Inactive participant cleanup is disabled for session %s; reconnect should restore membership",
+            session_id,
         )
-        inactive_rows = result.all()
-
-        if not inactive_rows:
-            return []
-
-        # Process in memory to prepare for batch operations
-        removed_participants = []
-        participant_ids_to_delete = []
-        any_host_removed = False
-
-        for row in inactive_rows:
-            participant_ids_to_delete.append(row.participant_id)
-            removed_participants.append({
-                'player_id': str(row.player_id),
-                'username': row.username,
-                'was_host': row.is_host,
-            })
-            if row.is_host:
-                any_host_removed = True
-
-        # Batch delete all inactive participants in a single operation
-        if participant_ids_to_delete:
-            await self.db.execute(
-                select(PartyParticipant)
-                .where(PartyParticipant.participant_id.in_(participant_ids_to_delete))
-            )
-            # Use delete() with synchronize_session=False for better performance
-            from sqlalchemy import delete as sql_delete
-            await self.db.execute(
-                sql_delete(PartyParticipant)
-                .where(PartyParticipant.participant_id.in_(participant_ids_to_delete))
-                .execution_options(synchronize_session=False)
-            )
-
-        # Check if session is now empty
-        remaining_count = await self._get_participant_count(session_id)
-
-        if remaining_count == 0:
-            # Session is empty - delete it
-            await self._delete_empty_session(session_id)
-            # Don't commit yet - _delete_empty_session handles its own commit
-            logger.info(f"Removed {len(removed_participants)} inactive participants from session {session_id} (session deleted)")
-            return removed_participants
-
-        # Handle host reassignment if needed
-        new_host_info = None
-        if any_host_removed:
-            # Reassign host to oldest remaining participant
-            await self._reassign_host(session_id)
-
-            # Get new host info for notification
-            new_host_result = await self.db.execute(
-                select(
-                    PartyParticipant.player_id,
-                    QFPlayer.username,
-                )
-                .join(QFPlayer, PartyParticipant.player_id == QFPlayer.player_id)
-                .where(
-                    and_(
-                        PartyParticipant.session_id == session_id,
-                        PartyParticipant.is_host == True
-                    )
-                )
-            )
-            new_host_row = new_host_result.first()
-            if new_host_row:
-                new_host_info = {
-                    'player_id': str(new_host_row.player_id),
-                    'username': new_host_row.username,
-                }
-
-        # Commit all database changes in a single transaction
-        await self.db.commit()
-
-        logger.info(f"Removed {len(removed_participants)} inactive participants from session {session_id}")
-
-        # Send WebSocket notifications after successful commit
-        ws_manager = get_party_websocket_manager()
-
-        for participant in removed_participants:
-            await ws_manager.notify_player_left(
-                session_id=session_id,
-                player_id=UUID(participant['player_id']),
-                username=participant['username'],
-                participant_count=remaining_count,
-            )
-
-        # Send host change notification if applicable
-        if new_host_info:
-            await ws_manager.notify_session_update(
-                session_id=session_id,
-                session_status={
-                    'new_host_player_id': new_host_info['player_id'],
-                    'new_host_username': new_host_info['username'],
-                    'reason': 'inactive_player_removed',
-                    'message': f"{new_host_info['username']} is now the host"
-                }
-            )
-
-        return removed_participants
+        return []
 
     async def cleanup_inactive_sessions(self) -> Dict[str, int]:
         """Clean up inactive participants across all open sessions."""
@@ -752,8 +657,16 @@ class PartySessionService:
         if not participant:
             raise PartyModeError(f"Player {player_id} not in session")
 
+        if participant.status == 'READY':
+            participant.last_activity_at = datetime.now(UTC)
+            await self.db.commit()
+            await self.db.refresh(participant)
+            logger.info(f"Player {player_id} already ready in session {session_id}")
+            return participant
+
         participant.status = 'READY'
         participant.ready_at = datetime.now(UTC)
+        participant.last_activity_at = datetime.now(UTC)
         await self.db.commit()
         await self.db.refresh(participant)
 
@@ -788,19 +701,26 @@ class PartySessionService:
         if not host_participant or not host_participant.is_host:
             raise NotHostError("Only the host can start the session")
 
-        # Check minimum player count
-        participant_count = await self._get_participant_count(session_id)
-        if participant_count < session.min_players:
+        # Check minimum ready player count
+        ready_count_result = await self.db.execute(
+            select(func.count(PartyParticipant.participant_id))
+            .where(PartyParticipant.session_id == session_id)
+            .where(PartyParticipant.status == 'READY')
+        )
+        ready_count = ready_count_result.scalar() or 0
+        if ready_count < session.min_players:
             raise NotEnoughPlayersError(
-                f"Need at least {session.min_players} players (currently {participant_count})"
+                f"Need at least {session.min_players} ready players (currently {ready_count})"
             )
 
+        now = datetime.now(UTC)
         # Start session
         session.status = 'IN_PROGRESS'
         session.current_phase = 'PROMPT'
-        session.started_at = datetime.now(UTC)
-        session.locked_at = datetime.now(UTC)
-        session.phase_started_at = datetime.now(UTC)
+        session.started_at = now
+        session.locked_at = now
+        session.phase_started_at = now
+        session.phase_expires_at = now + timedelta(seconds=self._phase_duration_seconds('PROMPT') or 0)
 
         # Update all participants to ACTIVE
         await self.db.execute(
@@ -812,7 +732,7 @@ class PartySessionService:
         await self.db.commit()
         await self.db.refresh(session)
 
-        logger.info(f"Started session {session_id} with {participant_count} players")
+        logger.info(f"Started session {session_id} with {ready_count} ready players")
         return session
 
     async def advance_phase(self, session_id: UUID) -> PartySession:
@@ -834,30 +754,25 @@ class PartySessionService:
             raise SessionNotFoundError(f"Session {session_id} not found")
 
         # Determine next phase
-        phase_progression = {
-            'LOBBY': 'PROMPT',
-            'PROMPT': 'COPY',
-            'COPY': 'VOTE',
-            'VOTE': 'RESULTS',
-            'RESULTS': 'COMPLETED',
-        }
-
-        new_phase = phase_progression.get(session.current_phase)
+        new_phase = self._next_phase(session.current_phase)
         if not new_phase:
             logger.warning(f"Cannot advance from phase {session.current_phase}")
             return session
 
+        now = datetime.now(UTC)
         # Update session
         session.current_phase = new_phase
-        session.phase_started_at = datetime.now(UTC)
+        session.phase_started_at = now
 
-        # If moving to RESULTS, mark session as completed
-        if new_phase == 'RESULTS':
-            session.completed_at = datetime.now(UTC)
-
-        # If moving to COMPLETED, update status
-        if new_phase == 'COMPLETED':
+        if new_phase in {'PROMPT', 'COPY', 'VOTE'}:
+            duration = self._phase_duration_seconds(new_phase)
+            session.status = 'IN_PROGRESS'
+            session.phase_expires_at = now + timedelta(seconds=duration) if duration else None
+            session.completed_at = None
+        else:
             session.status = 'COMPLETED'
+            session.phase_expires_at = None
+            session.completed_at = now
 
         # If moving to VOTE, mark all party phrasesets as available for voting
         if new_phase == 'VOTE':
@@ -938,11 +853,7 @@ class PartySessionService:
         return False
 
     async def advance_phase_atomic(self, session_id: UUID) -> Optional[PartySession]:
-        """Advance phase with lock to prevent race conditions.
-
-        This method wraps advance_phase with a distributed lock to ensure
-        only one concurrent caller can advance the phase, even when multiple
-        AI players finish simultaneously.
+        """Advance phase with optimistic concurrency.
 
         Args:
             session_id: UUID of the session
@@ -953,17 +864,42 @@ class PartySessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
-        from backend.utils import lock_client
+        session = await self.get_session_by_id(session_id)
+        if not session:
+            raise SessionNotFoundError(f"Session {session_id} not found")
 
-        lock_name = f"advance_phase:{session_id}"
-        async with lock_client.lock(lock_name, timeout=10):
-            # Double-check if phase can advance (might have been advanced by another caller)
-            if await self.can_advance_phase(session_id):
-                logger.info(f"Advancing phase atomically for session {session_id}")
-                return await self.advance_phase(session_id)
-            else:
-                logger.debug(f"Phase already advanced or not ready for session {session_id}")
+        if not await self.can_advance_phase(session_id):
+            logger.debug(f"Phase already advanced or not ready for session {session_id}")
+            return None
+
+        original_phase = session.current_phase
+        original_version = session.version
+
+        try:
+            advanced_session = await self.advance_phase(session_id)
+            logger.info(
+                "Advanced party session %s atomically from %s at version %s",
+                session_id,
+                original_phase,
+                original_version,
+            )
+            return advanced_session
+        except StaleDataError:
+            await self.db.rollback()
+            current_session = await self.get_session_by_id(session_id)
+            if current_session and current_session.current_phase != original_phase:
+                logger.debug(
+                    "Party session %s already advanced to %s by another writer",
+                    session_id,
+                    current_session.current_phase,
+                )
                 return None
+            logger.debug(
+                "Party session %s stale during phase advance at version %s",
+                session_id,
+                original_version,
+            )
+            return None
 
     async def get_participant(
         self,
@@ -1088,6 +1024,7 @@ class PartySessionService:
                 'is_ai': self._is_ai_player(player),
                 'is_host': participant.is_host,
                 'status': participant.status,
+                'connection_status': participant.connection_status,
                 'prompts_submitted': participant.prompts_submitted,
                 'copies_submitted': participant.copies_submitted,
                 'votes_submitted': participant.votes_submitted,
@@ -1096,6 +1033,8 @@ class PartySessionService:
                 'votes_required': session.votes_per_player,
                 'joined_at': participant.joined_at.isoformat() if participant.joined_at else None,
                 'ready_at': participant.ready_at.isoformat() if participant.ready_at else None,
+                'last_activity_at': participant.last_activity_at.isoformat() if participant.last_activity_at else None,
+                'disconnected_at': participant.disconnected_at.isoformat() if participant.disconnected_at else None,
             })
 
         # Calculate progress
@@ -1121,9 +1060,11 @@ class PartySessionService:
             'host_player_id': str(session.host_player_id),
             'status': session.status,
             'current_phase': session.current_phase,
+            'version': session.version,
             'min_players': session.min_players,
             'max_players': session.max_players,
             'phase_started_at': session.phase_started_at.isoformat() if session.phase_started_at else None,
+            'phase_expires_at': session.phase_expires_at.isoformat() if session.phase_expires_at else None,
             'created_at': session.created_at.isoformat() if session.created_at else None,
             'started_at': session.started_at.isoformat() if session.started_at else None,
             'completed_at': session.completed_at.isoformat() if session.completed_at else None,
@@ -1271,17 +1212,19 @@ class PartySessionService:
         return party_phraseset
 
     async def remove_player_from_all_sessions(self, player_id: UUID) -> int:
-        """Remove a player from all active party sessions.
+        """Record that a player disconnected from all active party sessions.
 
-        Called during logout to clean up stale sessions. This prevents the player
-        from being blocked from creating/joining new parties.
+        Logout should not implicitly leave a party session. Presence changes are
+        durable hints only; membership remains intact so reconnect can restore it.
 
         Args:
             player_id: UUID of the player to remove
 
         Returns:
-            int: Number of sessions the player was removed from
+            int: Number of sessions whose presence state was updated
         """
+        now = datetime.now(UTC)
+
         # Find all active participants for this player
         result = await self.db.execute(
             select(PartyParticipant.participant_id, PartyParticipant.session_id)
@@ -1295,41 +1238,31 @@ class PartySessionService:
 
         for participant_id, session_id in participants:
             try:
-                # Try to leave the session gracefully
-                await self.leave_session(session_id, player_id)
+                participant = await self.db.get(PartyParticipant, participant_id)
+                if not participant:
+                    continue
+
+                participant.connection_status = 'disconnected'
+                participant.disconnected_at = now
+                participant.last_activity_at = now
                 session_count += 1
             except Exception as e:
-                logger.warning(
-                    f"Error removing {player_id=} from session {session_id}: {e}"
-                )
-                # Even if graceful leave fails, delete the participant record
-                try:
-                    delete_stmt = (
-                        select(PartyParticipant)
-                        .where(PartyParticipant.participant_id == participant_id)
-                    )
-                    result = await self.db.execute(delete_stmt)
-                    participant_to_delete = result.scalar_one_or_none()
-                    if participant_to_delete:
-                        await self.db.delete(participant_to_delete)
-                    await self.db.commit()
-                    session_count += 1
-                except Exception as delete_error:
-                    logger.error(
-                        f"Failed to delete participant {participant_id}: {delete_error}"
-                    )
+                logger.warning(f"Error updating presence for {player_id=} in session {session_id}: {e}")
 
         if session_count > 0:
-            logger.info(f"Removed {player_id=} from {session_count} party session(s)")
+            await self.db.commit()
+
+        if session_count > 0:
+            logger.info(f"Updated presence for {player_id=} in {session_count} party session(s)")
 
         return session_count
 
     async def cleanup_expired_sessions(
         self, max_session_age_hours: int = 24
     ) -> dict[str, int]:
-        """Clean up stale/expired party sessions.
+        """Mark stale/expired party sessions as abandoned.
 
-        Removes sessions that:
+        Marks sessions that:
         - Are in OPEN status and haven't been started for too long
         - Are in IN_PROGRESS status and haven't been updated for too long
 
@@ -1358,23 +1291,13 @@ class PartySessionService:
 
             for session in open_sessions:
                 try:
-                    # Remove all participants from the session
-                    part_result = await self.db.execute(
-                        select(PartyParticipant)
-                        .where(PartyParticipant.session_id == session.session_id)
-                    )
-                    participants = part_result.scalars().all()
-                    for participant in participants:
-                        await self.db.delete(participant)
-                        stats['removed_participants'] += 1
-
-                    # Mark session as expired
-                    session.status = 'EXPIRED'
+                    session.status = 'ABANDONED'
+                    session.phase_expires_at = None
                     session.updated_at = datetime.now(UTC)
                     stats['expired_open_sessions'] += 1
 
                     logger.info(
-                        f"Expired OPEN session {session.party_code} "
+                        f"Abandoned OPEN session {session.party_code} "
                         f"(created {(datetime.now(UTC) - session.created_at).total_seconds() / 3600:.1f}h ago)"
                     )
                 except Exception as e:
@@ -1390,24 +1313,14 @@ class PartySessionService:
 
             for session in in_progress_sessions:
                 try:
-                    # Remove all participants from the session
-                    part_result = await self.db.execute(
-                        select(PartyParticipant)
-                        .where(PartyParticipant.session_id == session.session_id)
-                    )
-                    participants = part_result.scalars().all()
-                    for participant in participants:
-                        await self.db.delete(participant)
-                        stats['removed_participants'] += 1
-
-                    # Mark session as expired
                     last_updated = session.updated_at or session.created_at
-                    session.status = 'EXPIRED'
+                    session.status = 'ABANDONED'
+                    session.phase_expires_at = None
                     session.updated_at = datetime.now(UTC)
                     stats['expired_in_progress_sessions'] += 1
 
                     logger.info(
-                        f"Expired IN_PROGRESS session {session.party_code} "
+                        f"Abandoned IN_PROGRESS session {session.party_code} "
                         f"(inactive for {(datetime.now(UTC) - last_updated).total_seconds() / 3600:.1f}h)"
                     )
                 except Exception as e:
@@ -1434,7 +1347,7 @@ class PartySessionService:
     async def cleanup_disconnected_participants(
         self, inactive_minutes: int = 30
     ) -> int:
-        """Remove participants who have been disconnected for too long.
+        """Retain disconnected participants so reconnect can restore them.
 
         Args:
             inactive_minutes: Minutes of inactivity before removal (default 30 minutes)
@@ -1442,31 +1355,7 @@ class PartySessionService:
         Returns:
             int: Number of participants removed
         """
-        cutoff_time = datetime.now(UTC) - timedelta(minutes=inactive_minutes)
-        removed_count = 0
-
-        try:
-            result = await self.db.execute(
-                select(PartyParticipant)
-                .where(PartyParticipant.connection_status == 'disconnected')
-                .where(PartyParticipant.disconnected_at < cutoff_time)
-            )
-
-            participants = result.scalars().all()
-            for participant in participants:
-                try:
-                    await self.db.delete(participant)
-                    removed_count += 1
-                except Exception as e:
-                    logger.error(f"Error removing participant {participant.participant_id}: {e}")
-
-            await self.db.commit()
-
-            if removed_count > 0:
-                logger.info(f"Cleaned up {removed_count} stale disconnected participants")
-
-        except Exception as e:
-            logger.error(f"Error during disconnected participant cleanup: {e}", exc_info=True)
-            await self.db.rollback()
-
-        return removed_count
+        logger.info(
+            "Disconnected participant cleanup is disabled; presence is preserved for reconnect",
+        )
+        return 0

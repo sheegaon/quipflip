@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Boolean,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
@@ -13,9 +14,10 @@ import uuid
 
 from backend.database import Base
 from backend.models.base import get_uuid_column
+from backend.models.versioned_base import VersionedBase
 
 
-class PartySession(Base):
+class PartySession(VersionedBase, Base):
     """Party Mode session model.
 
     Tracks the state of a party match including phase, status, and configuration.
@@ -81,6 +83,11 @@ class PartySession(Base):
         "PartyPhraseset",
         back_populates="session",
         cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        CheckConstraint("status IN ('OPEN', 'IN_PROGRESS', 'COMPLETED', 'ABANDONED')", name="valid_party_session_status"),
+        CheckConstraint("current_phase IN ('LOBBY', 'PROMPT', 'COPY', 'VOTE', 'RESULTS', 'COMPLETED')", name="valid_party_session_phase"),
     )
 
     def __repr__(self):

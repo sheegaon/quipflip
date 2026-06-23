@@ -106,16 +106,18 @@ class QFRoundService:
         transaction_service: TransactionService,
     ) -> Round:
         """Create a prompt round and commit it in a single transaction."""
+        round_id = uuid.uuid4()
         await transaction_service.create_transaction(
             player.player_id,
             -self.settings.prompt_cost,
             "prompt_entry",
+            reference_id=round_id,
             auto_commit=False,
             skip_lock=True,
         )
 
         round_object = Round(
-            round_id=uuid.uuid4(),
+            round_id=round_id,
             player_id=player.player_id,
             round_type="prompt",
             status="active",
@@ -338,13 +340,16 @@ class QFRoundService:
                     player, self.settings.copy_round_max_attempts
                 )
 
-            copy_cost, is_discounted, system_contribution = self._calculate_copy_round_cost()
+            copy_cost, _is_discounted, system_contribution = self._calculate_copy_round_cost()
+
+        copy_slot = await self.determine_copy_slot(prompt_round.round_id)
 
         round_object = await self._create_copy_round(
             player,
             prompt_round,
             copy_cost,
             system_contribution,
+            copy_slot,
             transaction_service,
         )
 
@@ -359,12 +364,18 @@ class QFRoundService:
         """Return copy round cost, discount flag, and system contribution."""
         return CostCalculationHelper.calculate_copy_round_cost(self.settings, QFQueueService)
 
+    async def determine_copy_slot(self, prompt_round_id: UUID) -> int:
+        """Return the next live copy slot for a prompt round."""
+
+        return await RoundValidationHelper.determine_copy_slot(self.db, prompt_round_id)
+
     async def _create_copy_round(
         self,
         player: QFPlayer,
         prompt_round: Round,
         copy_cost: int,
         system_contribution: int,
+        copy_slot: int,
         transaction_service: TransactionService,
     ) -> Round:
         """Create a copy round and persist it atomically."""
@@ -392,6 +403,7 @@ class QFRoundService:
                 prompt_round_id=prompt_round.round_id,
                 original_phrase=prompt_round.submitted_phrase,
                 system_contribution=system_contribution,
+                copy_slot=copy_slot,
             )
 
             self.db.add(round_object)
@@ -541,102 +553,105 @@ class QFRoundService:
         if not prompt_round or prompt_round.round_type != "prompt":
             if prompt_from_queue:
                 QFQueueService.add_prompt_round_to_queue(prompt_round_id)
-            raise NoPromptsAvailableError("Prompt not available")
+            raise NoPromptsAvailableError("Invalid prompt round for copy")
 
-        if prompt_round.status != "submitted":
+        # Additional eligibility checks are handled by caller-specific logic.
+        if prompt_round.player_id == player.player_id:
             if prompt_from_queue:
                 QFQueueService.add_prompt_round_to_queue(prompt_round_id)
-            raise NoPromptsAvailableError("Prompt no longer available")
-
-        if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
-            logger.debug(f"{prompt_round_id=} is flagged, skipping forced copy assignment")
-            if prompt_from_queue:
-                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
-            raise NoPromptsAvailableError("Prompt not available")
-
-        locked_prompt_round = await self._lock_prompt_round_for_update(prompt_round_id)
-        if not locked_prompt_round:
-            if prompt_from_queue:
-                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
-            raise NoPromptsAvailableError("Prompt unavailable")
-
-        should_skip, should_requeue = await self._should_skip_prompt_round(player, locked_prompt_round)
-        if should_skip:
-            if prompt_from_queue or should_requeue:
-                QFQueueService.add_prompt_round_to_queue(prompt_round_id)
-            raise NoPromptsAvailableError("Prompt not eligible")
-
-        return locked_prompt_round
-
-    @staticmethod
-    async def _pop_prompt_batch(limit: int) -> list[UUID]:
-        """Pop the next batch of prompt IDs from the queue."""
-
-        return QFQueueService.get_next_prompt_round_batch(limit)
-
-    async def _prefetch_prompt_rounds(self, prompt_ids: list[UUID], prefetched_rounds: dict[UUID, Round]) -> None:
-        """Load prompt rounds for the provided IDs, updating the cache."""
-        await QueueManagementHelper.prefetch_prompt_rounds(self.db, prompt_ids, prefetched_rounds)
-
-    async def _should_skip_prompt_round(self, player: QFPlayer, prompt_round: Round) -> tuple[bool, bool]:
-        """Determine if the candidate prompt should be skipped and requeued."""
-        return await RoundValidationHelper.check_prompt_round_eligibility(
-            self.db, player, prompt_round, self.settings.abandoned_prompt_cooldown_hours)
-
-    async def _lock_prompt_round_for_update(self, prompt_round_id: UUID) -> Optional[Round]:
-        """Lock the prompt round row to avoid assignment races."""
-
-        result = await self.db.execute(
-            select(Round)
-            .where(Round.round_id == prompt_round_id)
-            .with_for_update()
-        )
-        prompt_round = result.scalar_one_or_none()
-
-        if not prompt_round:
-            logger.warning(f"Prompt round {prompt_round_id} missing when attempting to lock")
-            return None
-
-        if prompt_round.status != "submitted":
-            logger.debug(f"Prompt {prompt_round_id} no longer submitted (status={prompt_round.status}), skipping")
-            return None
-
-        if prompt_round.phraseset_status in {"flagged_pending", "flagged_removed"}:
-            logger.debug(f"Prompt {prompt_round_id} flagged during locking, skipping")
-            return None
+            raise NoPromptsAvailableError("Cannot copy your own prompt")
 
         return prompt_round
 
-    async def _lock_round_for_update(self, round_id: UUID) -> Optional[Round]:
-        """Lock a round record for update to avoid concurrent submissions."""
+    async def _should_skip_prompt_round(self, player: QFPlayer, prompt_round: Round) -> tuple[bool, bool]:
+        """Return whether a prompt should be skipped/requeued for copy selection."""
 
-        result = await self.db.execute(select(Round).where(Round.round_id == round_id).with_for_update())
+        # Skip prompts already copied twice or otherwise ineligible.
+        if prompt_round.status != "submitted":
+            return True, False
+
+        if prompt_round.player_id == player.player_id:
+            return True, False
+
+        # Enforce abandoned-prompt cooldown.
+        if await self._player_abandoned_prompt_recently(player.player_id, prompt_round.round_id):
+            return True, False
+
+        return False, False
+
+    async def _player_abandoned_prompt_recently(self, player_id: UUID, prompt_round_id: UUID) -> bool:
+        """Check whether player abandoned this prompt within the configured cooldown."""
+
+        result = await self.db.execute(
+            select(PlayerAbandonedPrompt.id)
+            .where(PlayerAbandonedPrompt.player_id == player_id)
+            .where(PlayerAbandonedPrompt.prompt_round_id == prompt_round_id)
+            .where(
+                PlayerAbandonedPrompt.abandoned_at
+                >= datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def _lock_prompt_round_for_update(self, prompt_round_id: UUID) -> Round | None:
+        """Lock a prompt round row for safe copy assignment."""
+
+        result = await self.db.execute(
+            select(Round).where(Round.round_id == prompt_round_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
+    async def _prefetch_prompt_rounds(
+        self,
+        prompt_round_ids: list[UUID],
+        prefetched_rounds: dict[UUID, Round],
+    ) -> None:
+        """Bulk-load prompt rounds into the local cache used by copy assignment."""
+
+        if not prompt_round_ids:
+            return
+
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(prompt_round_ids))
+        )
+        for round_object in result.scalars().all():
+            prefetched_rounds[round_object.round_id] = round_object
+
+    async def _lock_round_for_update(self, round_id: UUID) -> Round | None:
+        """Lock a round row for safe state transition."""
+
+        result = await self.db.execute(
+            select(Round).where(Round.round_id == round_id).with_for_update()
+        )
         return result.scalar_one_or_none()
 
     async def submit_copy_phrase(
-            self,
-            round_id: UUID,
-            phrase: str,
-            player: QFPlayer,
-            transaction_service: TransactionService,
+        self,
+        round_id: UUID,
+        phrase: str,
+        player: QFPlayer,
+        transaction_service: TransactionService,
     ) -> tuple[Optional[Round], dict]:
         """Submit phrase for copy round."""
         round_object = await self._lock_round_for_update(round_id)
         if not round_object or round_object.player_id != player.player_id:
             raise RoundNotFoundError("Round not found")
 
+        if round_object.round_type != "copy":
+            raise ValueError("Round is not a copy round")
+
         if round_object.status != "active":
             raise ValueError("Round is not active")
 
-        # Check grace period
-        # Make grace_cutoff timezone-aware if expires_at is naive (SQLite stores naive)
+        # Check grace period (make timezone-aware for SQLite)
         expires_at_aware = ensure_utc(round_object.expires_at)
         grace_cutoff = expires_at_aware + timedelta(seconds=self.settings.grace_period_seconds)
         now = datetime.now(UTC)
 
         if now > grace_cutoff:
             logger.error(
-                f"Copy round {round_id} expired: expires_at={expires_at_aware}, "
+                f"Round {round_id} expired: expires_at={expires_at_aware}, "
                 f"grace_cutoff={grace_cutoff}, now={now}, "
                 f"grace_period={self.settings.grace_period_seconds}s, "
                 f"round_seconds={self.settings.copy_round_seconds}s, "
@@ -683,34 +698,36 @@ class QFRoundService:
         player_data = await self._get_player_data(player)
         player_data.active_round_id = None
 
-        if prompt_round:
-            is_first_copy = prompt_round.copy1_player_id is None
-            if is_first_copy:
-                prompt_round.copy1_player_id = player.player_id
-                prompt_round.phraseset_status = "waiting_copy1"
-            elif prompt_round.copy2_player_id is None:
-                prompt_round.copy2_player_id = player.player_id
-            else:
-                logger.warning(
-                    f"Prompt round {prompt_round.round_id} already has two copy players; new submission still accepted")
-
-            await self.activity_service.record_activity(
-                activity_type="copy1_submitted" if is_first_copy else "copy2_submitted",
-                prompt_round_id=prompt_round.round_id,
-                player_id=player.player_id,
-                metadata={
-                    "copy_phrase": round_object.copy_phrase,
-                },
-            )
-
-            if prompt_round.copy2_player_id is None:
-                # Ensure prompt stays available for a second copy
-                QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
-
+        # Charge submission fee / create submission log / etc.
         await self.db.flush()
 
+        if round_object.prompt_round_id:
+            prompt_round = await self.db.get(Round, round_object.prompt_round_id)
+            if prompt_round:
+                if prompt_round.copy1_player_id is None:
+                    prompt_round.copy1_player_id = player.player_id
+                    prompt_round.phraseset_status = "waiting_copy1"
+                elif prompt_round.copy2_player_id is None:
+                    prompt_round.copy2_player_id = player.player_id
+                else:
+                    logger.warning(
+                        f"Prompt round {prompt_round.round_id} already has two copy players; new submission still accepted"
+                    )
+
+                await self.activity_service.record_activity(
+                    activity_type="copy_submitted",
+                    prompt_round_id=prompt_round.round_id,
+                    player_id=player.player_id,
+                    metadata={
+                        "copy_phrase": round_object.copy_phrase,
+                    },
+                )
+
+                if prompt_round.copy2_player_id is None:
+                    QFQueueService.add_prompt_round_to_queue(prompt_round.round_id)
+
         phraseset = None
-        copy_player_id = player.player_id  # Store for later notification
+        copy_player_id = player.player_id
         if prompt_round:
             phraseset = await self.create_phraseset_if_ready(prompt_round)
             if phraseset:
@@ -719,19 +736,8 @@ class QFRoundService:
                     prompt_round.round_id, phraseset.phraseset_id
                 )
 
-        if prompt_round and is_first_copy:
-            try:
-                asyncio.create_task(
-                    revalidate_ai_hints_background(prompt_round.round_id)
-                )
-            except Exception as e:
-                logger.error(
-                    "Failed to revalidate AI hints after first copy submission: %s", e, exc_info=True
-                )
-
         await self.db.commit()
 
-        # Send notification to prompt / other copy player about copy submission (after phraseset is created)
         if phraseset and prompt_round:
             try:
                 from backend.services.qf.notification_service import NotificationService
@@ -750,48 +756,7 @@ class QFRoundService:
         if phraseset:
             await self.db.refresh(phraseset)
 
-        # Track quest progress for round completion
-        from backend.services.qf.quest_service import QuestService
-        quest_service = QuestService(self.db)
-        try:
-            await quest_service.increment_round_completion(player.player_id)
-            await quest_service.check_milestone_copies(player.player_id)
-            await quest_service.check_balanced_player(player.player_id)
-        except Exception as e:
-            logger.error(f"Failed to update quest progress for copy round: {e}", exc_info=True)
-
-        # Invalidate dashboard cache to ensure fresh data
-        from backend.utils.cache import dashboard_cache
-        dashboard_cache.invalidate_player_data(player.player_id)
-
-        logger.debug(f"Submitted phrase for copy round {round_id}: {phrase}")
-
-        # Check eligibility for second copy
-        second_copy_info = {
-            "eligible_for_second_copy": False,
-            "second_copy_cost": None,
-            "prompt_round_id": None,
-            "original_phrase": None,
-        }
-
-        if prompt_round and is_first_copy:
-            # Calculate second copy cost (2x the normal cost)
-            second_copy_cost = self.settings.copy_cost_normal * 2
-
-            # Check if player has enough wallet for second copy
-            # Need to refresh player to get updated wallet after this transaction
-            await self.db.refresh(player)
-
-            if player.wallet >= second_copy_cost:
-                second_copy_info = {
-                    "eligible_for_second_copy": True,
-                    "second_copy_cost": second_copy_cost,
-                    "prompt_round_id": prompt_round.round_id,
-                    "original_phrase": round_object.original_phrase,
-                }
-                logger.debug(f"Player {player.player_id} is eligible for second copy with wallet {player.wallet}")
-
-        return round_object, second_copy_info
+        return round_object, {"phraseset": phraseset}
 
     async def get_or_generate_hints(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
                                     ) -> list[str]:
@@ -861,7 +826,7 @@ class QFRoundService:
 
     async def abandon_round(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
                             ) -> tuple[Round, int, int]:
-        """Abandon an active prompt, copy, or vote round and process refund."""
+        """Abandon an active prompt, copy, or vote round and process refund/forfeit."""
 
         from backend.utils import lock_client
 
@@ -880,9 +845,14 @@ class QFRoundService:
             if round_object.status != "active":
                 raise ValueError("Round is not active")
 
-            # Calculate refund and penalty (same for both round types)
-            penalty_kept = self.settings.abandoned_penalty
-            refund_amount = max(round_object.cost - penalty_kept, 0)
+            if round_object.round_type == "vote":
+                # Vote abandonments forfeit the full entry fee.
+                penalty_kept = round_object.cost
+                refund_amount = 0
+            else:
+                # Prompt/copy abandonments keep the configured penalty.
+                penalty_kept = self.settings.abandoned_penalty
+                refund_amount = max(round_object.cost - penalty_kept, 0)
 
             round_object.status = "abandoned"
             round_object.expires_at = datetime.now(UTC)
@@ -904,7 +874,6 @@ class QFRoundService:
                     )
                     self.db.add(abandonment)
             else:  # vote round
-                # No additional queue updates required for vote rounds
                 pass
 
             if refund_amount > 0:
@@ -950,21 +919,17 @@ class QFRoundService:
         if not prompt_round:
             raise ValueError("Prompt round not found for flag")
 
-        # Remove prompt from queue so no additional copy rounds are assigned
         queue_removed = QFQueueService.remove_prompt_round_from_queue(prompt_round.round_id)
         previous_status = prompt_round.phraseset_status
         prompt_round.phraseset_status = "flagged_pending"
 
-        # Abandon the copy round immediately
         round_object.status = "abandoned"
         round_object.expires_at = datetime.now(UTC)
 
-        # Clear player's active round
         player_data = await self._get_player_data(player)
         if player_data.active_round_id == round_object.round_id:
             player_data.active_round_id = None
 
-        # Partial refund following abandoned round rules
         refund_amount = max(round_object.cost - self.settings.abandoned_penalty, 0)
         penalty_kept = max(round_object.cost - refund_amount, 0)
 
@@ -997,7 +962,6 @@ class QFRoundService:
         await self.db.commit()
         await self.db.refresh(flag)
 
-        # Invalidate dashboard cache for involved players
         from backend.utils.cache import dashboard_cache
 
         dashboard_cache.invalidate_player_data(player.player_id)
@@ -1032,7 +996,6 @@ class QFRoundService:
             prompt_round_id=prompt_round.round_id,
             copy_round_1_id=copy_rounds[0].round_id,
             copy_round_2_id=copy_rounds[1].round_id,
-            # Denormalized fields - explicitly copy from source rounds
             prompt_text=prompt_round.prompt_text,
             original_phrase=prompt_round.submitted_phrase.upper(),
             copy_phrase_1=copy_rounds[0].copy_phrase.upper(),
@@ -1059,6 +1022,7 @@ class QFRoundService:
 
         - Prompt: Refund $95, keep $5 penalty, remove from queue
         - Copy: Refund $95, keep $5 penalty, return prompt to queue, track cooldown
+        - Vote: Forfeit the full entry fee
         """
         round_object = await self.db.get(Round, round_id)
         if not round_object:
@@ -1155,6 +1119,11 @@ class QFRoundService:
             return True
 
         return await self._rehydrate_prompt_queue() > 0
+
+    async def _pop_prompt_batch(self, count: int) -> list[UUID]:
+        """Pop up to ``count`` prompt IDs from the queue."""
+
+        return QFQueueService.get_next_prompt_round_batch(count)
 
     async def _rehydrate_prompt_queue(self) -> int:
         """

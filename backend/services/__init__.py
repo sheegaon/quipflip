@@ -22,6 +22,7 @@ from backend.services.ai.stale_ai_service import StaleAIService
 from backend.services.qf.player_service import QFPlayerService
 from backend.services.qf.round_service import QFRoundService
 from backend.services.qf.vote_service import QFVoteService
+from backend.services.qf.vote_choice_service import QFVoteChoiceService
 from backend.services.qf.scoring_service import QFScoringService
 from backend.services.qf.queue_service import QFQueueService, PROMPT_QUEUE, PHRASESET_QUEUE
 from backend.services.qf.cleanup_service import QFCleanupService
@@ -92,6 +93,7 @@ __all__ = [
     'QFPlayerService',
     'QFRoundService',
     'QFVoteService',
+    'QFVoteChoiceService',
     'QFScoringService',
     'QFQueueService',
     'PROMPT_QUEUE',

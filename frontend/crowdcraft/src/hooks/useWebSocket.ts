@@ -1,5 +1,6 @@
 import { MutableRefObject, useCallback, useEffect, useMemo, useRef } from 'react';
 import apiClient from '../api/client.ts';
+import { resolveWebSocketUrl } from '../api/origin.ts';
 
 type ListenerRef = MutableRefObject<UseWebSocketOptions>;
 
@@ -62,14 +63,11 @@ const createBackoff = (baseDelay = 2000, maxDelay = 30000): BackoffController =>
 
 const buildWebSocketUrl = async (path: string, signal?: AbortSignal) => {
   const { token } = await apiClient.getWebsocketToken(signal);
-  const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:8000` : window.location.origin);
-  const normalizedApiUrl = apiUrl.replace(/\/$/, '');
-  const rootApiUrl = normalizedApiUrl.replace(/\/(mm|qf|tl|ir)($|\/)/, '');
-
-  const targetBase = path.startsWith('/qf/') ? rootApiUrl : normalizedApiUrl;
-  const base = targetBase.replace('http://', 'ws://').replace('https://', 'wss://') + path;
-
-  const url = new URL(base, window.location.href);
+  const url = resolveWebSocketUrl(
+    path,
+    import.meta.env.VITE_API_URL,
+    window.location.origin,
+  );
   url.searchParams.set('token', token);
 
   return url.toString();

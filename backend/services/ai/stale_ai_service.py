@@ -85,7 +85,7 @@ class StaleAIService:
 
         result = await self.db.execute(
             select(Phraseset)
-            .where(Phraseset.status.in_(["open", "closing"]))
+            .where(Phraseset.status.in_(["open", "active", "closing"]))
             .where(Phraseset.created_at <= cutoff_time)
             .where(Phraseset.vote_count < min_votes_needed)
             .options(
@@ -124,6 +124,7 @@ class StaleAIService:
             stats["stale_prompts_found"] = len(stale_prompts)
 
             round_service = QFRoundService(self.db)
+            copy_transaction_service = TransactionService(self.db, game_type=GameType.QF)
 
             # Process each stale prompt with a different AI player for each copy slot
             for prompt_round in stale_prompts:
@@ -154,20 +155,6 @@ class StaleAIService:
 
                     copy_phrase = await self.ai_service.get_impostor_phrase(prompt_round)
 
-                    copy_round = Round(
-                        round_id=uuid.uuid4(),
-                        player_id=stale_handler.player_id,
-                        round_type="copy",
-                        status="submitted",
-                        created_at=datetime.now(UTC),
-                        expires_at=datetime.now(UTC) + timedelta(minutes=3),
-                        cost=0,
-                        prompt_round_id=prompt_round.round_id,
-                        original_phrase=prompt_round.submitted_phrase,
-                        copy_phrase=copy_phrase.upper(),
-                        system_contribution=0,
-                    )
-
                     current_slot = None
                     if prompt_round.copy1_player_id is None:
                         current_slot = "copy1"
@@ -177,6 +164,34 @@ class StaleAIService:
                     if current_slot is None:
                         # Slot was taken by another participant after generation; skip saving the copy.
                         continue
+
+                    copy_cost, _, system_contribution = round_service._calculate_copy_round_cost()
+                    copy_slot = await round_service.determine_copy_slot(prompt_round.round_id)
+                    copy_round_id = uuid.uuid4()
+
+                    await copy_transaction_service.create_transaction(
+                        stale_handler.player_id,
+                        -copy_cost,
+                        "copy_entry",
+                        reference_id=copy_round_id,
+                        auto_commit=False,
+                        skip_lock=True,
+                    )
+
+                    copy_round = Round(
+                        round_id=copy_round_id,
+                        player_id=stale_handler.player_id,
+                        round_type="copy",
+                        status="submitted",
+                        created_at=datetime.now(UTC),
+                        expires_at=datetime.now(UTC) + timedelta(minutes=3),
+                        cost=copy_cost,
+                        prompt_round_id=prompt_round.round_id,
+                        original_phrase=prompt_round.submitted_phrase,
+                        copy_phrase=copy_phrase.upper(),
+                        system_contribution=system_contribution,
+                        copy_slot=copy_slot,
+                    )
 
                     self.db.add(copy_round)
                     # Flush to ensure copy_round is visible to create_phraseset_if_ready query
@@ -247,7 +262,7 @@ class StaleAIService:
                 try:
                     # Check if phraseset is still open (race condition protection)
                     await self.db.refresh(phraseset)
-                    if phraseset.status not in ["open", "closing"]:
+                    if phraseset.status not in ["open", "active", "closing"]:
                         logger.info(
                             f"Skipping phraseset {phraseset.phraseset_id} - status changed to {phraseset.status}"
                         )

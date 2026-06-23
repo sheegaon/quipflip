@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
-import { gameAPI } from '@crowdcraft/api/client.ts';
+import { gameAPI } from '@/api/client.ts';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import type { IRResultsResponse } from '@crowdcraft/api/types.ts';
 import { HomeIcon } from '../components/icons/NavigationIcons';

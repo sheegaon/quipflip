@@ -8,12 +8,13 @@ import pytest
 from datetime import datetime, timedelta, UTC
 import uuid
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select, text
 
 from backend.models.qf.player import QFPlayer
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
+from backend.models.qf.transaction import QFTransaction
 from backend.models.qf.result_view import QFResultView
 from backend.services import GameType, QFVoteService
 from backend.services import TransactionService
@@ -412,6 +413,163 @@ class TestVoteBalanceAccounting:
         # Pool should grow by vote_cost * 5 (no payouts for wrong answers)
         expected_pool = initial_pool + (settings.vote_cost * 5)
         assert phraseset.total_pool == expected_pool
+
+
+class TestVoteFinalizationRefunds:
+    """Test vote-round refunds during phraseset finalization."""
+
+    @pytest.mark.asyncio
+    async def test_active_vote_round_refunded_on_finalization(
+        self,
+        db_session,
+        test_phraseset_with_players,
+    ):
+        """Finalization should cancel active vote rounds and refund the charge."""
+
+        phraseset = test_phraseset_with_players["phraseset"]
+        voter = test_phraseset_with_players["voter"]
+
+        vote_service = QFVoteService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        initial_balance = voter.wallet + voter.vault
+
+        vote_round, _ = await vote_service.start_vote_round(voter, transaction_service)
+        await db_session.refresh(voter)
+        balance_after_charge = voter.wallet + voter.vault
+        assert balance_after_charge == initial_balance - settings.vote_cost
+
+        await vote_service._finalize_phraseset(
+            phraseset,
+            transaction_service,
+            auto_commit=False,
+            finalization_reason="test_finalization",
+        )
+        await db_session.commit()
+
+        await db_session.refresh(voter)
+        await db_session.refresh(vote_round)
+        await db_session.refresh(phraseset)
+
+        assert vote_round.status == "expired"
+        assert voter.active_round_id is None
+        assert voter.wallet + voter.vault == initial_balance
+        assert phraseset.status == "finalized"
+
+        refund_result = await db_session.execute(
+            select(QFTransaction).where(
+                QFTransaction.player_id == voter.player_id,
+                QFTransaction.type == "refund",
+                QFTransaction.reference_id == vote_round.round_id,
+            )
+        )
+        refund_txn = refund_result.scalar_one_or_none()
+        assert refund_txn is not None
+        assert refund_txn.amount == settings.vote_cost
+
+
+    @pytest.mark.asyncio
+    async def test_timed_out_vote_round_not_refunded_on_finalization(
+        self,
+        db_session,
+        test_phraseset_with_players,
+    ):
+        """A vote round that has already timed out past grace should not be refunded."""
+
+        phraseset = test_phraseset_with_players["phraseset"]
+        voter = test_phraseset_with_players["voter"]
+
+        vote_service = QFVoteService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        initial_balance = voter.wallet + voter.vault
+
+        vote_round, _ = await vote_service.start_vote_round(voter, transaction_service)
+        await db_session.refresh(voter)
+        balance_after_charge = voter.wallet + voter.vault
+        assert balance_after_charge == initial_balance - settings.vote_cost
+
+        # Backdate the round's expiry so it's fully past the grace period.
+        past_expires = datetime.now(UTC) - timedelta(seconds=settings.grace_period_seconds + 60)
+        vote_round.expires_at = past_expires
+        await db_session.flush()
+
+        await vote_service._finalize_phraseset(
+            phraseset,
+            transaction_service,
+            auto_commit=False,
+            finalization_reason="test_finalization",
+        )
+        await db_session.commit()
+
+        await db_session.refresh(voter)
+        await db_session.refresh(vote_round)
+
+        assert vote_round.status == "expired"
+        assert voter.active_round_id is None
+        # Balance must NOT be restored — entry fee was forfeited.
+        assert voter.wallet + voter.vault == initial_balance - settings.vote_cost
+
+        refund_result = await db_session.execute(
+            select(QFTransaction).where(
+                QFTransaction.player_id == voter.player_id,
+                QFTransaction.type == "refund",
+                QFTransaction.reference_id == vote_round.round_id,
+            )
+        )
+        assert refund_result.scalar_one_or_none() is None
+
+
+class TestFinalizationWithMissingContributors:
+    """Test that deleted contributors are skipped during finalization."""
+
+    @pytest.mark.asyncio
+    async def test_deleted_contributor_is_left_out_of_payouts(
+        self,
+        db_session,
+        test_phraseset_with_players,
+    ):
+        """Finalization should still complete when a contributor row has been deleted."""
+
+        phraseset = test_phraseset_with_players["phraseset"]
+        deleted_copier = test_phraseset_with_players["copier2"]
+        phraseset_id = phraseset.phraseset_id
+        deleted_copier_id = deleted_copier.player_id
+        db_session.expunge_all()
+
+        vote_service = QFVoteService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        await db_session.execute(text("PRAGMA foreign_keys=OFF"))
+        await db_session.execute(
+            text("DELETE FROM players WHERE player_id = :player_id"),
+            {"player_id": deleted_copier_id.hex},
+        )
+        await db_session.execute(text("PRAGMA foreign_keys=ON"))
+        await db_session.commit()
+
+        phraseset = await db_session.get(Phraseset, phraseset_id)
+        assert phraseset is not None
+
+        await vote_service._finalize_phraseset(
+            phraseset,
+            transaction_service,
+            auto_commit=False,
+            finalization_reason="deleted_contributor",
+        )
+        await db_session.commit()
+
+        await db_session.refresh(phraseset)
+        assert phraseset.status == "finalized"
+
+        deleted_payout_result = await db_session.execute(
+            select(QFTransaction).where(
+                QFTransaction.player_id == deleted_copier_id,
+                QFTransaction.type == "prize_payout",
+                QFTransaction.reference_id == phraseset_id,
+            )
+        )
+        assert deleted_payout_result.scalar_one_or_none() is None
 
 
 class TestPhrasesetResults:

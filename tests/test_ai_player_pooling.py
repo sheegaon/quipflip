@@ -18,7 +18,13 @@ from backend.config import get_settings
 
 @pytest.fixture
 def ai_service(db_session):
-    return AIService(db_session)
+    settings = get_settings()
+    original_key = settings.openai_api_key
+    settings.openai_api_key = "test-openai-key"
+    try:
+        yield AIService(db_session)
+    finally:
+        settings.openai_api_key = original_key
 
 @pytest.fixture
 def party_service(db_session):
@@ -29,12 +35,13 @@ class TestAIPlayerPooling:
     
     async def test_party_player_pooling(self, db_session, party_service, player_factory):
         """Test that AI party players are reused when available."""
-        host = await player_factory()
-        
+        host1 = await player_factory()
+        host2 = await player_factory()
+
         # 1. Create first session and add AI player
-        session1 = await party_service.create_session(host.player_id)
+        session1 = await party_service.create_session(host1.player_id)
         ai_participant1 = await party_service.add_ai_player(
-            session1.session_id, host.player_id, GameType.QF
+            session1.session_id, host1.player_id, GameType.QF
         )
         ai_player_id = ai_participant1.player_id
         
@@ -42,22 +49,22 @@ class TestAIPlayerPooling:
         player1 = await db_session.get(QFPlayer, ai_player_id)
         assert player1.email.endswith(AI_PLAYER_EMAIL_DOMAIN)
         assert "ai_party" in player1.email
-        
+
         # 2. Create second session and add AI player (should be NEW because first is busy)
-        session2 = await party_service.create_session(host.player_id)
+        session2 = await party_service.create_session(host2.player_id)
         ai_participant2 = await party_service.add_ai_player(
-            session2.session_id, host.player_id, GameType.QF
+            session2.session_id, host2.player_id, GameType.QF
         )
         assert ai_participant2.player_id != ai_player_id
-        
+
         # 3. End first session (delete it)
         # This frees up the first AI player
         await party_service._delete_empty_session(session1.session_id)
-        
+
         # 4. Create third session and add AI player (should REUSE first player)
-        session3 = await party_service.create_session(host.player_id)
+        session3 = await party_service.create_session(host1.player_id)
         ai_participant3 = await party_service.add_ai_player(
-            session3.session_id, host.player_id, GameType.QF
+            session3.session_id, host1.player_id, GameType.QF
         )
         
         assert ai_participant3.player_id == ai_player_id
@@ -68,16 +75,19 @@ class TestAIPlayerPooling:
         # Setup settings to force backup
         with patch("backend.services.ai.ai_service.get_settings") as mock_settings:
             settings = mock_settings.return_value
-            settings.ai_backup_delay_minutes = 0
+            settings.ai_backup_delay_minutes = 1
             settings.ai_backup_batch_size = 10
             settings.openai_api_key = "sk-test"
             settings.use_phrase_validator_api = False
-            
+            ai_service.settings.ai_backup_delay_minutes = 1
+            ai_service.settings.ai_backup_batch_size = 10
+            ai_service.settings.use_phrase_validator_api = False
+
             # Mock vote generation to avoid API calls
             ai_service.generate_vote_choice = AsyncMock(return_value="PHRASE")
             
             # Mock VoteService.submit_system_vote to avoid DB side effects and focus on pooling
-            with patch("backend.services.VoteService.submit_system_vote", new_callable=AsyncMock) as mock_submit:
+            with patch("backend.services.QFVoteService.submit_system_vote", new_callable=AsyncMock) as mock_submit:
                 # Return a dummy vote object so run_backup_cycle continues successfully
                 mock_vote = MagicMock(spec=Vote)
                 mock_vote.voted_phrase = "PHRASE"
@@ -212,6 +222,15 @@ class TestAIPlayerPooling:
                     created_at=datetime.now(UTC)
                 )
                 db_session.add(vote1)
+                db_session.add(
+                    PhrasesetActivity(
+                        activity_id=uuid.uuid4(),
+                        phraseset_id=phraseset1.phraseset_id,
+                        activity_type="vote_submitted",
+                        player_id=ai_voter_id_1,
+                        created_at=datetime.now(UTC),
+                    )
+                )
                 await db_session.commit()
                 
                 # 2. Create another phraseset
@@ -236,6 +255,15 @@ class TestAIPlayerPooling:
                     created_at=datetime.now(UTC)
                 )
                 db_session.add(vote2)
+                db_session.add(
+                    PhrasesetActivity(
+                        activity_id=uuid.uuid4(),
+                        phraseset_id=phraseset2.phraseset_id,
+                        activity_type="vote_submitted",
+                        player_id=ai_voter_id_1,
+                        created_at=datetime.now(UTC),
+                    )
+                )
                 await db_session.commit()
                 
                 # 4. Run backup cycle AGAIN on phraseset1

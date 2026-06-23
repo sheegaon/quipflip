@@ -36,6 +36,7 @@ class PartyParticipantResponse(BaseSchema):
     is_ai: bool
     is_host: bool
     status: str
+    connection_status: Optional[str] = None
     prompts_submitted: int
     copies_submitted: int
     votes_submitted: int
@@ -44,6 +45,8 @@ class PartyParticipantResponse(BaseSchema):
     votes_required: int
     joined_at: Optional[datetime]
     ready_at: Optional[datetime]
+    last_activity_at: Optional[datetime] = None
+    disconnected_at: Optional[datetime] = None
 
 
 class PartySessionProgressResponse(BaseSchema):
@@ -65,9 +68,11 @@ class PartySessionResponse(BaseSchema):
     host_player_id: str
     status: str
     current_phase: str
+    version: int
     min_players: int
     max_players: int
     phase_started_at: Optional[datetime]
+    phase_expires_at: Optional[datetime] = None
     created_at: datetime
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
@@ -129,6 +134,8 @@ class StartPartySessionResponse(BaseSchema):
     current_phase: str
     phase_started_at: datetime
     locked_at: datetime
+    phase_expires_at: Optional[datetime] = None
+    version: Optional[int] = None
     participants: List[PartyParticipantResponse]
 
 
@@ -139,9 +146,11 @@ class PartySessionStatusResponse(BaseSchema):
     host_player_id: str
     status: str
     current_phase: str
+    version: int
     min_players: int
     max_players: int
     phase_started_at: Optional[datetime]
+    phase_expires_at: Optional[datetime] = None
     created_at: datetime
     started_at: Optional[datetime]
     completed_at: Optional[datetime]

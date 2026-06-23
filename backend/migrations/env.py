@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Import Base and all models
 from backend.database import Base
 from backend.config import get_settings
+from backend.utils.sqlite import configure_sqlite_engine
 # Import all models so Alembic can detect them
 # Using concrete game-type-specific models (QF = Quip Flip)
 from backend.models import (
@@ -37,7 +38,9 @@ from backend.models.tl import (
 )
 # Set database URL from config
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+configured_url = config.get_main_option("sqlalchemy.url")
+if not configured_url:
+    config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # add your model's MetaData object here for 'autogenerate' support
 target_metadata = Base.metadata
@@ -59,10 +62,30 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    is_sqlite = connection.dialect.name == "sqlite"
+    if is_sqlite:
+        # Historical SQLite batch migrations rebuild mutually-referencing tables.
+        # Enforcement is disabled only for the schema rewrite and is restored and
+        # validated before this migration connection is returned to a caller.
+        connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        connection.commit()
 
-    with context.begin_transaction():
-        context.run_migrations()
+    try:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        if is_sqlite:
+            connection.commit()
+    finally:
+        if is_sqlite:
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+
+    if is_sqlite:
+        violations = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+        if violations:
+            raise RuntimeError(
+                f"SQLite migration left foreign-key violations: {violations[:10]}"
+            )
 
 
 async def run_async_migrations() -> None:
@@ -113,6 +136,7 @@ async def run_async_migrations() -> None:
             prefix="sqlalchemy.",
             poolclass=pool.NullPool,
         )
+        configure_sqlite_engine(connectable.sync_engine)
         logger.info("Migration engine created successfully")
     except Exception as e:
         logger.error(f"Failed to create migration engine: {e}")

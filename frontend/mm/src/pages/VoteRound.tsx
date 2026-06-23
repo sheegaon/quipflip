@@ -75,6 +75,16 @@ export const VoteRound: React.FC = () => {
     try {
       const voteResult = await actions.submitVote(round.round_id, caption.caption_id);
       setResult(voteResult);
+      if (voteResult.revealed_captions?.length) {
+        setRound((current) =>
+          current
+            ? {
+                ...current,
+                captions: voteResult.revealed_captions ?? current.captions,
+              }
+            : current,
+        );
+      }
       await actions.refreshDashboard();
     } catch (err) {
       setError(extractErrorMessage(err) || 'Unable to submit your vote. Please try again.');

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { BaseApiClient, extractErrorMessage, clearStoredCredentials } from './BaseApiClient.ts';
+import { resolveApiRoot, resolveGameApiUrl } from './origin.ts';
 import type {
   ApiError,
   AuthSessionResponse,
@@ -71,13 +72,11 @@ import type {
   QFBetaSurveySubmissionResponse,
 } from './types.ts';
 
-const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin;
-const rawBaseUrl = (import.meta.env.VITE_API_URL || defaultBaseUrl).replace(/\/$/, '');
-// Ensure the root API base never includes a game-specific prefix so shared auth endpoints resolve.
-const rootApiBaseUrl = rawBaseUrl.replace(/\/(qf|mm|tl)(\/)?$/, '');
-const QF_API_BASE_URL = /\/qf($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/qf`;
-const MM_API_BASE_URL = /\/mm($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/mm`;
-const TL_API_BASE_URL = /\/tl($|\/)/.test(rawBaseUrl) ? rawBaseUrl : `${rootApiBaseUrl}/tl`;
+const configuredApiUrl = import.meta.env.VITE_API_URL;
+const rootApiBaseUrl = resolveApiRoot(configuredApiUrl, window.location.origin);
+const QF_API_BASE_URL = resolveGameApiUrl('qf', configuredApiUrl, window.location.origin);
+const MM_API_BASE_URL = resolveGameApiUrl('mm', configuredApiUrl, window.location.origin);
+const TL_API_BASE_URL = resolveGameApiUrl('tl', configuredApiUrl, window.location.origin);
 
 class CrowdcraftApiClient extends BaseApiClient {
   private readonly mmApi: BaseApiClient;
@@ -227,9 +226,13 @@ class CrowdcraftApiClient extends BaseApiClient {
     return data;
   }
 
-  async qfGetPartySessionStatus(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
-    const { data } = await this.api.get<QFPartySessionStatusResponse>(`/party/${sessionId}/status`, { signal });
+  async qfGetPartyState(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
+    const { data } = await this.api.get<QFPartySessionStatusResponse>(`/party/${sessionId}/state`, { signal });
     return data;
+  }
+
+  async qfGetPartySessionStatus(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
+    return this.qfGetPartyState(sessionId, signal);
   }
 
   async qfLeavePartySession(
@@ -284,7 +287,7 @@ class CrowdcraftApiClient extends BaseApiClient {
     const data = await this.mmStartVoteRoundRaw(signal);
     return {
       round_id: data.round_id,
-      expires_at: data.expires_at,
+      expires_at: null,
       meme: {
         meme_id: data.image_id,
         image_url: data.image_url,

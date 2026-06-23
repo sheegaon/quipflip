@@ -32,7 +32,7 @@ class SubmitGuessResponse(BaseSchema):
     """Response when submitting a guess."""
     was_match: bool
     matched_answer_count: int
-    matched_cluster_ids: List[str]
+    newly_matched_cluster_count: int
     new_strikes: int
     current_coverage: float
     round_status: str
@@ -42,11 +42,10 @@ class SubmitGuessResponse(BaseSchema):
 class RoundDetails(BaseSchema):
     """Details of an active or completed round."""
     round_id: UUID
-    prompt_id: UUID
     prompt_text: str
     snapshot_answer_count: int
     snapshot_total_weight: float
-    matched_clusters: List[str]
+    matched_cluster_count: int
     strikes: int
     status: str
     final_coverage: Optional[float]
