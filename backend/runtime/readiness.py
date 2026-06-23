@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -76,7 +77,7 @@ async def build_readiness_report(
         _runtime_config_check(settings),
         await _database_check(engine),
         await _alembic_revision_check(engine, paths.expected_revision),
-        _static_assets_check(target_static_root),
+        _static_assets_check(paths.runtime_root, target_static_root, paths.release_id),
     ]
 
     return ReadinessReport(
@@ -151,8 +152,10 @@ async def _alembic_revision_check(engine: AsyncEngine, expected_revision: str) -
 
     try:
         async with engine.begin() as conn:
-            result = await conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
-            current_revision = result.scalar_one_or_none()
+            result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+            current_revisions = {
+                version_num for version_num in result.scalars().all() if version_num
+            }
     except Exception as exc:  # pragma: no cover - exercised via failure tests
         return ReadinessCheck(
             name="alembic_revision",
@@ -160,8 +163,8 @@ async def _alembic_revision_check(engine: AsyncEngine, expected_revision: str) -
             detail=f"could not read alembic_version: {exc.__class__.__name__}",
         )
 
-    if current_revision != expected_revision:
-        found = current_revision or "none"
+    if current_revisions != {expected_revision}:
+        found = ", ".join(sorted(current_revisions)) if current_revisions else "none"
         return ReadinessCheck(
             name="alembic_revision",
             ok=False,
@@ -171,11 +174,11 @@ async def _alembic_revision_check(engine: AsyncEngine, expected_revision: str) -
     return ReadinessCheck(
         name="alembic_revision",
         ok=True,
-        detail=f"revision {current_revision}",
+        detail=f"revision {expected_revision}",
     )
 
 
-def _static_assets_check(static_root: Path) -> ReadinessCheck:
+def _static_assets_check(runtime_root: Path, static_root: Path, release_id: str) -> ReadinessCheck:
     if not static_root.exists():
         return ReadinessCheck(
             name="static_assets",
@@ -190,21 +193,64 @@ def _static_assets_check(static_root: Path) -> ReadinessCheck:
             detail=f"static root is not a directory: {static_root}",
         )
 
+    if not release_id:
+        return ReadinessCheck(
+            name="static_assets",
+            ok=False,
+            detail="release id is not configured",
+        )
+
+    expected_static_root = runtime_root / "static" / "releases" / release_id
+    resolved_static_root = static_root.resolve(strict=False)
+    if resolved_static_root != expected_static_root:
+        return ReadinessCheck(
+            name="static_assets",
+            ok=False,
+            detail=f"active release {resolved_static_root} does not match expected {expected_static_root}",
+        )
+
+    release_record_path = runtime_root / "releases" / f"{release_id}.json"
+    if not release_record_path.is_file():
+        return ReadinessCheck(
+            name="static_assets",
+            ok=False,
+            detail=f"missing release record: {release_record_path}",
+        )
+
+    try:
+        release_record = json.loads(release_record_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # pragma: no cover - exercised via failure tests
+        return ReadinessCheck(
+            name="static_assets",
+            ok=False,
+            detail=f"could not read release record: {exc.__class__.__name__}",
+        )
+
+    recorded_release_id = str(release_record.get("release_id", "") or "")
+    if recorded_release_id != release_id:
+        return ReadinessCheck(
+            name="static_assets",
+            ok=False,
+            detail=(
+                f"release record {release_record_path} reports {recorded_release_id or 'missing'}"
+            ),
+        )
+
     missing_games = [
         game
         for game in ("qf", "mm", "ir", "tl")
-        if not (static_root / game / "index.html").is_file()
+        if not (resolved_static_root / game / "index.html").is_file()
     ]
 
     if missing_games:
         return ReadinessCheck(
             name="static_assets",
             ok=False,
-            detail=f"missing built SPAs: {', '.join(missing_games)}",
+            detail=f"missing built SPAs in {resolved_static_root}: {', '.join(missing_games)}",
         )
 
     return ReadinessCheck(
         name="static_assets",
         ok=True,
-        detail=f"all built SPAs present under {static_root}",
+        detail=f"active release {release_id} present under {resolved_static_root}",
     )
