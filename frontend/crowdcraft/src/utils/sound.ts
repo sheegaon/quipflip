@@ -113,7 +113,7 @@ function getContext(): AudioContext | null {
   const Ctor: AudioContextCtor | undefined =
     window.AudioContext ?? (window as unknown as { webkitAudioContext?: AudioContextCtor }).webkitAudioContext;
   if (!Ctor) return null;
-  if (!audioContext) {
+  if (!audioContext || audioContext.state === 'closed') {
     try {
       audioContext = new Ctor();
     } catch {

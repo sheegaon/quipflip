@@ -31,6 +31,7 @@ export const PartyStartTransition: React.FC<PartyStartTransitionProps> = ({
   const [count, setCount] = useState(COUNTDOWN_START);
   const reduced = useRef(prefersReducedMotion());
   const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
 
   // Play the celebratory cue once on mount.
   useEffect(() => {
@@ -38,10 +39,14 @@ export const PartyStartTransition: React.FC<PartyStartTransitionProps> = ({
   }, []);
 
   useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
     const finish = () => {
       if (completedRef.current) return;
       completedRef.current = true;
-      onComplete();
+      onCompleteRef.current();
     };
 
     if (reduced.current) {
@@ -57,7 +62,7 @@ export const PartyStartTransition: React.FC<PartyStartTransitionProps> = ({
     timers.push(window.setTimeout(finish, COUNTDOWN_START * STEP_MS + FINALE_MS));
 
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [onComplete]);
+  }, []);
 
   return (
     <div

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
@@ -76,6 +76,7 @@ export const PartyLobby: React.FC = () => {
   // Transition to game
   const [isTransitioning, setIsTransitioning] = useState(false);
   const transitionStartedRef = useRef(false);
+  const loadSessionRequestIdRef = useRef(0);
 
   // Snapshot of participants from the previous status load, used to diff joins /
   // leaves / ready changes so activity tracking works over WebSocket *or* polling.
@@ -179,8 +180,11 @@ export const PartyLobby: React.FC = () => {
   const loadSessionStatus = useCallback(async () => {
     if (!sessionId) return;
 
+    const requestId = ++loadSessionRequestIdRef.current;
+
     try {
       const status = await apiClient.qfGetPartySessionStatus(sessionId);
+      if (requestId !== loadSessionRequestIdRef.current) return;
       setSessionStatus(status);
       reconcileActivity(status.participants);
 
@@ -195,11 +199,65 @@ export const PartyLobby: React.FC = () => {
         beginStartTransition();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load session');
+      if (requestId === loadSessionRequestIdRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load session');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === loadSessionRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [beginStartTransition, navigate, reconcileActivity, sessionId]);
+
+  const refreshSessionStatus = useCallback(() => {
+    void loadSessionStatus();
+  }, [loadSessionStatus]);
+
+  const handleSessionStarted = useCallback(() => {
+    // Start the transition immediately; REST polling keeps the count current.
+    beginStartTransition();
+    refreshSessionStatus();
+  }, [beginStartTransition, refreshSessionStatus]);
+
+  const handleHostPing = useCallback((data: { host_player_id: string; host_username: string; join_url: string }) => {
+    // The host's own broadcast echoes back - ignore it.
+    if (data.host_player_id === player?.player_id) return;
+    pushActivity('ping', `${data.host_username} pinged the lobby`);
+    // The audible ping is played once by the global notification handler so a
+    // player who has wandered off still hears it; here we add a feed entry and
+    // a background notification for the lobby view.
+    showBrowserNotification('Party ping', {
+      body: `${data.host_username} is waiting for everyone to ready up`,
+      tag: 'qf-party-ping',
+    });
+  }, [player?.player_id, pushActivity]);
+
+  const handleSessionUpdate = useCallback((data: Record<string, unknown>) => {
+    // Show host change notification
+    if (data.reason === 'inactive_player_removed' && typeof data.message === 'string') {
+      setNotification(data.message);
+      pushActivity('info', data.message);
+      setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
+    }
+    refreshSessionStatus();
+  }, [pushActivity, refreshSessionStatus]);
+
+  const partyWebSocketConfig = useMemo(() => ({
+    sessionId: sessionId ?? '',
+    pageContext: 'lobby' as const,
+    onPlayerJoined: refreshSessionStatus,
+    onPlayerLeft: refreshSessionStatus,
+    onPlayerReady: refreshSessionStatus,
+    onSessionStarted: handleSessionStarted,
+    onHostPing: handleHostPing,
+    onSessionUpdate: handleSessionUpdate,
+  }), [
+    handleHostPing,
+    handleSessionStarted,
+    handleSessionUpdate,
+    refreshSessionStatus,
+    sessionId,
+  ]);
 
   useEffect(() => {
     loadSessionStatus();
@@ -251,45 +309,7 @@ export const PartyLobby: React.FC = () => {
   const {
     connected: wsConnected,
     connecting: wsConnecting,
-  } = usePartyWebSocket({
-    sessionId: sessionId ?? '',
-    pageContext: 'lobby',
-    onPlayerJoined: () => {
-      void loadSessionStatus();
-    },
-    onPlayerLeft: () => {
-      void loadSessionStatus();
-    },
-    onPlayerReady: () => {
-      void loadSessionStatus();
-    },
-    onSessionStarted: () => {
-      // Start the transition immediately; REST polling keeps the count current.
-      beginStartTransition();
-      void loadSessionStatus();
-    },
-    onHostPing: (data) => {
-      // The host's own broadcast echoes back - ignore it.
-      if (data.host_player_id === player?.player_id) return;
-      pushActivity('ping', `${data.host_username} pinged the lobby`);
-      // The audible ping is played once by the global notification handler so a
-      // player who has wandered off still hears it; here we add a feed entry and
-      // a background notification for the lobby view.
-      showBrowserNotification('Party ping', {
-        body: `${data.host_username} is waiting for everyone to ready up`,
-        tag: 'qf-party-ping',
-      });
-    },
-    onSessionUpdate: (data) => {
-      // Show host change notification
-      if (data.reason === 'inactive_player_removed' && typeof data.message === 'string') {
-        setNotification(data.message);
-        pushActivity('info', data.message);
-        setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
-      }
-      void loadSessionStatus();
-    },
-  });
+  } = usePartyWebSocket(partyWebSocketConfig);
 
   const handleStartParty = async () => {
     if (!sessionId || !isHost || isStarting || !allHumansReady) return;
