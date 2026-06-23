@@ -1,7 +1,7 @@
 # Workstream C - QuipFlip Solo Hardening
 
 > **Document type:** Implementation plan
-> **Status:** Active
+> **Status:** Implemented baseline; remaining blueprint items tracked below
 > **Audience:** Maintainers and agents
 > **Last reviewed:** 2026-06-22
 
@@ -9,6 +9,22 @@
 
 Make QuipFlip solo assignment, submission, voting, deadlines, scoring, and money
 movement transactional, private, retry-safe, and recoverable after restart.
+
+## Implementation assessment (2026-06-23)
+
+The merged workstream established the schema constraints, versioned aggregates,
+stable vote choices, AI stale-result guards, and ledger idempotency foundation.
+The completion pass removed synchronous locks from solo start/abandon paths,
+bound every copy charge to its round, added role-scoped prize payout keys,
+validated idempotent ledger replays, and fixed availability-cache invalidation.
+The current lifecycle is documented in
+[`qf-solo-state-machine.md`](../quipflip/qf-solo-state-machine.md).
+
+Unchecked items below remain architectural targets, not claims about missing
+basic gameplay. In particular, command receipts are not yet the public API
+contract, queue-backed copy discovery has not been fully replaced by a
+database-only claim query, and the built-server/browser smoke described here is
+not part of the deterministic gate.
 
 ## Starting point
 
@@ -648,7 +664,7 @@ Gate:
 - [ ] Define the single copy-assignment command.
 - [ ] Select candidates and conditionally claim them inside the decisive
       transaction.
-- [ ] Enforce one active QF solo assignment per player in the database.
+- [x] Enforce one active QF solo assignment per player in the database.
 - [ ] Atomically write charge, ledger entry, assignment, and durable queue state.
 - [ ] Derive copy availability and discounts from durable rows.
 - [ ] Return explicit outcomes for no work, insufficient funds, duplicate command,
@@ -666,10 +682,10 @@ Gate:
 - [ ] Route prompt/copy submission through one conditional command per transition.
 - [ ] Route vote submission through one command with transactional eligibility.
 - [ ] Make timeout expiry compare expected status/version/deadline.
-- [ ] Make refunds uniquely keyed and retry-safe.
+- [x] Make refunds uniquely keyed and retry-safe.
 - [ ] Make finalization stale-safe and the only prize-distribution path.
-- [ ] Make payouts uniquely keyed and reconcile them with cached balances.
-- [ ] Persist AI-fill intent before external work and reject stale AI results.
+- [x] Make payouts uniquely keyed and reconcile them with cached balances.
+- [x] Persist AI-fill intent before external work and reject stale AI results.
 - [ ] Add duplicate, concurrent, late, stale, and restart tests for each command.
 
 Gate:

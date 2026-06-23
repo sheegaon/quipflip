@@ -7,13 +7,20 @@ from backend.services import IRVoteService
 from backend.services import IRWordService
 from backend.services import IRResultViewService
 from backend.services import IRStatisticsService
+from backend.utils.model_registry import GameType
+
+
+async def _register_ir_player(auth_service, email: str, password: str):
+    player = await auth_service.register_player(email=email, password=password)
+    access_token, _, _ = await auth_service.issue_tokens(player)
+    return player, access_token
 
 
 @pytest.mark.asyncio
 async def test_ir_complete_game_flow(db_session):
     """Test complete IR game flow from start to finish."""
     # Services
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
     set_service = IRBackronymSetService(db_session)
     vote_service = IRVoteService(db_session)
     word_service = IRWordService(db_session)
@@ -25,10 +32,8 @@ async def test_ir_complete_game_flow(db_session):
     for i in range(5):
         username = f"player{i}_{uuid.uuid4().hex[:4]}"
         email = f"player{i}{uuid.uuid4().hex[:4]}@example.com"
-        player, token = await auth_service.register(
-            username=username,
-            email=email,
-            password="TestPassword123!"
+        player, token = await _register_ir_player(
+            auth_service, email, "TestPassword123!"
         )
         players.append(player)
 
@@ -57,10 +62,8 @@ async def test_ir_complete_game_flow(db_session):
     for i in range(3):
         username = f"voter{i}_{uuid.uuid4().hex[:4]}"
         email = f"voter{i}{uuid.uuid4().hex[:4]}@example.com"
-        voter, _ = await auth_service.register(
-            username=username,
-            email=email,
-            password="TestPassword123!"
+        voter, _ = await _register_ir_player(
+            auth_service, email, "TestPassword123!"
         )
         voters.append(voter)
 
@@ -104,7 +107,7 @@ async def test_ir_complete_game_flow(db_session):
 @pytest.mark.asyncio
 async def test_ir_guest_player_flow(db_session):
     """Test IR game flow with guest player."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
     set_service = IRBackronymSetService(db_session)
     word_service = IRWordService(db_session)
 
@@ -132,7 +135,6 @@ async def test_ir_guest_player_flow(db_session):
         email,
         "NewPassword123!"
     )
-
     new_token, _, _ = await auth_service.issue_tokens(upgraded_player)
 
     assert upgraded_player.is_guest is False
@@ -151,16 +153,14 @@ async def test_ir_daily_bonus_flow(db_session):
     from backend.services import IRDailyBonusService
     from datetime import timedelta
 
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
     bonus_service = IRDailyBonusService(db_session)
 
     # 1. Register player
     username = f"bonusplayer{uuid.uuid4().hex[:4]}"
     email = f"bonus{uuid.uuid4().hex[:4]}@example.com"
-    player, _ = await auth_service.register(
-        username=username,
-        email=email,
-        password="TestPassword123!"
+    player, _ = await _register_ir_player(
+        auth_service, email, "TestPassword123!"
     )
 
     # Set created_at to at least 1 day ago so bonus is available
@@ -174,13 +174,8 @@ async def test_ir_daily_bonus_flow(db_session):
     assert bonus is not None
 
     # Verify balance increased
-    from sqlalchemy import select
-    from backend.models.player import Player
-    stmt = select(Player).where(Player.player_id == player.player_id)
-    result = await db_session.execute(stmt)
-    updated_player = result.scalars().first()
-
-    assert updated_player.wallet > initial_balance
+    await db_session.refresh(player.ir_player_data)
+    assert player.ir_player_data.wallet > initial_balance
 
     # 3. Try to claim again (should fail or return None)
     try:
@@ -201,16 +196,16 @@ async def test_ir_daily_bonus_flow(db_session):
 @pytest.mark.asyncio
 async def test_ir_self_vote_prevention(db_session):
     """Test that players cannot vote for their own entries."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
     set_service = IRBackronymSetService(db_session)
     vote_service = IRVoteService(db_session)
     word_service = IRWordService(db_session)
 
     # 1. Create player
-    player, _ = await auth_service.register(
-        username=f"player{uuid.uuid4().hex[:4]}",
-        email=f"test{uuid.uuid4().hex[:4]}@example.com",
-        password="TestPassword123!"
+    player, _ = await _register_ir_player(
+        auth_service,
+        f"test{uuid.uuid4().hex[:4]}@example.com",
+        "TestPassword123!",
     )
 
     # 2. Create set and submit entry
@@ -244,15 +239,15 @@ async def test_ir_insufficient_balance_blocking(db_session):
     from backend.models.ir.player_data import IRPlayerData
     from backend.services import GameType, TransactionService
 
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
     set_service = IRBackronymSetService(db_session)
     transaction_service = TransactionService(db_session, GameType.IR)
 
     # 1. Create player
-    player, _ = await auth_service.register(
-        username=f"player{uuid.uuid4().hex[:4]}",
-        email=f"test{uuid.uuid4().hex[:4]}@example.com",
-        password="TestPassword123!"
+    player, _ = await _register_ir_player(
+        auth_service,
+        f"test{uuid.uuid4().hex[:4]}@example.com",
+        "TestPassword123!",
     )
 
     # 2. Set balance to 50 (less than 100 entry cost)
