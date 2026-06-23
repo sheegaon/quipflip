@@ -48,7 +48,9 @@ class QFVoteChoiceService:
             )
 
         seed_source = getattr(round_object, "assignment_token", None)
-        seed = seed_source.int if seed_source is not None else round_object.round_id.int
+        if seed_source is None:
+            seed_source = round_object.round_id
+        seed = UUID(seed_source).int if isinstance(seed_source, str) else seed_source.int
         rng = random.Random(seed)
 
         choices = [

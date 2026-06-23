@@ -187,10 +187,8 @@ class Player(Base):
     @property
     def consecutive_incorrect_votes(self) -> int:
         """Proxy guest lockout counters to the Quipflip-specific player data."""
-
-        source = self._wallet_source()
-        if source is not None and hasattr(source, "consecutive_incorrect_votes"):
-            return source.consecutive_incorrect_votes
+        if "qf_player_data" in self.__dict__ and self.qf_player_data:
+            return self.qf_player_data.consecutive_incorrect_votes
         return 0
 
     @consecutive_incorrect_votes.setter
@@ -203,10 +201,8 @@ class Player(Base):
     @property
     def vote_lockout_until(self):
         """Proxy guest vote lockout timestamps to the Quipflip-specific player data."""
-
-        source = self._wallet_source()
-        if source is not None and hasattr(source, "vote_lockout_until"):
-            return source.vote_lockout_until
+        if "qf_player_data" in self.__dict__ and self.qf_player_data:
+            return self.qf_player_data.vote_lockout_until
         return None
 
     @vote_lockout_until.setter
