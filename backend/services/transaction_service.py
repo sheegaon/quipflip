@@ -78,11 +78,17 @@ class TransactionService:
         )
         return result.scalar_one_or_none()
 
-    async def _resolve_ir_set_id(self, reference_id: UUID | None) -> UUID | None:
+    async def _resolve_ir_set_id(self, reference_id: UUID | str | None) -> UUID | None:
         """Resolve an IR reference to a real backronym set when possible."""
 
         if reference_id is None:
             return None
+
+        if isinstance(reference_id, str):
+            try:
+                reference_id = UUID(reference_id)
+            except ValueError:
+                return None
 
         from backend.models.ir.backronym_set import BackronymSet
 

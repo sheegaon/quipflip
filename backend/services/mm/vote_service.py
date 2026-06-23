@@ -433,6 +433,8 @@ class MMVoteService:
         if result.rowcount != 1:
             return False
 
+        caption.first_vote_awarded = True
+
         # This is the first vote! Award bonus to the voter
         bonus_amount = await self.config_service.get_config_value("mm_first_vote_bonus_amount", default=2)
 

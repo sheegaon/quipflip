@@ -104,7 +104,7 @@ def upgrade() -> None:
             sa.text(
                 """
                 UPDATE ir_transactions
-                SET transaction_type = type
+                SET transaction_type = "type"
                 WHERE transaction_type IS NULL
                 """
             )

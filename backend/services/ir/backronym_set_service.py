@@ -409,6 +409,7 @@ class BackronymSetService:
                 )
                 raise BackronymSetError(f"Failed to finalize set: {exc}") from exc
 
+            await self.db.commit()
             await self.db.refresh(set_obj)
             await self.queue_service.dequeue_voting_set(set_id)
 
