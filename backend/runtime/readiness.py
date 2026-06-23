@@ -101,6 +101,14 @@ async def _database_check(engine: AsyncEngine) -> ReadinessCheck:
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
+            if engine.dialect.name == "sqlite":
+                pragma_errors = await _check_sqlite_pragmas(conn)
+                if pragma_errors:
+                    return ReadinessCheck(
+                        name="database",
+                        ok=False,
+                        detail="; ".join(pragma_errors),
+                    )
     except Exception as exc:  # pragma: no cover - exercised via failure tests
         return ReadinessCheck(
             name="database",
@@ -109,6 +117,28 @@ async def _database_check(engine: AsyncEngine) -> ReadinessCheck:
         )
 
     return ReadinessCheck(name="database", ok=True, detail="database connection ok")
+
+
+async def _check_sqlite_pragmas(conn: Any) -> list[str]:
+    errors: list[str] = []
+
+    fk = (await conn.execute(text("PRAGMA foreign_keys"))).scalar()
+    if fk != 1:
+        errors.append(f"PRAGMA foreign_keys={fk!r}, expected 1")
+
+    jm = (await conn.execute(text("PRAGMA journal_mode"))).scalar()
+    if (jm or "").lower() != "wal":
+        errors.append(f"PRAGMA journal_mode={jm!r}, expected 'wal'")
+
+    bt = (await conn.execute(text("PRAGMA busy_timeout"))).scalar()
+    if (bt or 0) < 5000:
+        errors.append(f"PRAGMA busy_timeout={bt!r}, expected >=5000")
+
+    sync = (await conn.execute(text("PRAGMA synchronous"))).scalar()
+    if sync != 2:
+        errors.append(f"PRAGMA synchronous={sync!r}, expected 2 (FULL)")
+
+    return errors
 
 
 async def _alembic_revision_check(engine: AsyncEngine, expected_revision: str) -> ReadinessCheck:
