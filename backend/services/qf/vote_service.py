@@ -166,13 +166,13 @@ class QFVoteService:
         )
         return {row[0] for row in result.all()}
 
-    async def _ensure_vote_round_is_still_open(self, round: Round, phraseset: Phraseset) -> None:
+    async def _ensure_vote_round_is_still_open(self, round_object: Round, phraseset: Phraseset) -> None:
         """Refresh and validate that a vote round is still submit-able."""
 
-        await self.db.refresh(round)
+        await self.db.refresh(round_object)
         await self.db.refresh(phraseset)
 
-        if round.status != "active":
+        if round_object.status != "active":
             raise RoundExpiredError("Round is no longer active")
 
         if phraseset.status not in self._ACCEPTING_VOTE_STATUSES:
@@ -183,8 +183,13 @@ class QFVoteService:
         phraseset: Phraseset,
         transaction_service: TransactionService,
     ) -> int:
-        """Refund any still-active vote rounds when a phraseset finalizes."""
+        """Refund active vote rounds interrupted by finalization.
 
+        Only rounds still within their grace window are refunded — rounds
+        whose timer has already expired past the grace period have forfeited
+        their entry fee (matching the timeout/abandon forfeit policy) and must
+        not receive a refund here.
+        """
         result = await self.db.execute(
             select(Round)
             .where(Round.phraseset_id == phraseset.phraseset_id)
@@ -199,13 +204,22 @@ class QFVoteService:
         refunded_count = 0
         for active_round in active_vote_rounds:
             active_round.status = "expired"
-            active_round.expires_at = now
 
             player_data = await self.db.get(QFPlayerData, active_round.player_id)
             if player_data and player_data.active_round_id == active_round.round_id:
                 player_data.active_round_id = None
 
-            if active_round.cost > 0:
+            # Skip refund for rounds past their grace window — those have already
+            # forfeited their fee (same as handle_timeout / abandon_round for votes).
+            expires_at_aware = ensure_utc(active_round.expires_at) if active_round.expires_at else None
+            grace_cutoff = (
+                expires_at_aware + timedelta(seconds=settings.grace_period_seconds)
+                if expires_at_aware
+                else None
+            )
+            within_grace = grace_cutoff is None or now <= grace_cutoff
+
+            if within_grace and active_round.cost > 0:
                 await transaction_service.create_transaction(
                     active_round.player_id,
                     active_round.cost,
@@ -214,7 +228,7 @@ class QFVoteService:
                     auto_commit=False,
                     skip_lock=True,
                 )
-            refunded_count += 1
+                refunded_count += 1
 
         await self.db.flush()
         return refunded_count

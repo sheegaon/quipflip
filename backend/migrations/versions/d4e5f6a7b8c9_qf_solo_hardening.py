@@ -129,7 +129,7 @@ def _backfill_round_tokens_and_slots(bind: sa.Connection) -> None:
                 f"Cannot backfill qf_rounds.copy_slot for prompt_round_id={prompt_round_id}: "
                 f"{len(copies)} live copy rounds found"
             )
-        copies.sort(key=lambda item: (str(item["created_at"]), str(item["round_id"])))
+        copies.sort(key=lambda item: (item["created_at"], str(item["round_id"])))
         for slot, row in enumerate(copies, start=1):
             bind.execute(
                 sa.text(
@@ -147,7 +147,7 @@ def _backfill_round_tokens_and_slots(bind: sa.Connection) -> None:
             sa.text(
                 "UPDATE qf_rounds SET assignment_token = :assignment_token WHERE round_id = :round_id"
             ),
-            {"assignment_token": uuid4().hex, "round_id": row["round_id"]},
+            {"assignment_token": str(uuid4()), "round_id": row["round_id"]},
         )
 
 

@@ -186,6 +186,7 @@ async def start_vote_round(
 
         vote_choice_service = QFVoteChoiceService(db)
         choices = await vote_choice_service.get_or_create_vote_choices(round_object, phraseset)
+        await db.commit()
         phrases = [choice.displayed_phrase for choice in choices]
 
         return StartVoteRoundResponse(

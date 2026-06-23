@@ -468,6 +468,58 @@ class TestVoteFinalizationRefunds:
         assert refund_txn.amount == settings.vote_cost
 
 
+    @pytest.mark.asyncio
+    async def test_timed_out_vote_round_not_refunded_on_finalization(
+        self,
+        db_session,
+        test_phraseset_with_players,
+    ):
+        """A vote round that has already timed out past grace should not be refunded."""
+
+        phraseset = test_phraseset_with_players["phraseset"]
+        voter = test_phraseset_with_players["voter"]
+
+        vote_service = QFVoteService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        initial_balance = voter.wallet + voter.vault
+
+        vote_round, _ = await vote_service.start_vote_round(voter, transaction_service)
+        await db_session.refresh(voter)
+        balance_after_charge = voter.wallet + voter.vault
+        assert balance_after_charge == initial_balance - settings.vote_cost
+
+        # Backdate the round's expiry so it's fully past the grace period.
+        past_expires = datetime.now(UTC) - timedelta(seconds=settings.grace_period_seconds + 60)
+        vote_round.expires_at = past_expires
+        await db_session.flush()
+
+        await vote_service._finalize_phraseset(
+            phraseset,
+            transaction_service,
+            auto_commit=False,
+            finalization_reason="test_finalization",
+        )
+        await db_session.commit()
+
+        await db_session.refresh(voter)
+        await db_session.refresh(vote_round)
+
+        assert vote_round.status == "expired"
+        assert voter.active_round_id is None
+        # Balance must NOT be restored — entry fee was forfeited.
+        assert voter.wallet + voter.vault == initial_balance - settings.vote_cost
+
+        refund_result = await db_session.execute(
+            select(QFTransaction).where(
+                QFTransaction.player_id == voter.player_id,
+                QFTransaction.type == "refund",
+                QFTransaction.reference_id == vote_round.round_id,
+            )
+        )
+        assert refund_result.scalar_one_or_none() is None
+
+
 class TestFinalizationWithMissingContributors:
     """Test that deleted contributors are skipped during finalization."""
 

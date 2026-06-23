@@ -32,7 +32,12 @@ class QFVoteChoiceService:
         return list(result.scalars().all())
 
     async def get_or_create_vote_choices(self, round_object: Round, phraseset: Phraseset) -> list[QFVoteChoice]:
-        """Return a stable vote-choice order for the round, creating it once if missing."""
+        """Return a stable vote-choice order for the round, creating it once if missing.
+
+        The newly created rows are flushed but not committed; the caller owns the
+        transaction boundary and is responsible for committing so the persisted
+        order survives across reconnects.
+        """
 
         existing = await self._load_choices(round_object.round_id)
         if len(existing) == 3:
@@ -73,7 +78,6 @@ class QFVoteChoiceService:
                 round_object.round_id,
             )
 
-        await self.db.commit()
         persisted = await self._load_choices(round_object.round_id)
         if len(persisted) != 3:
             raise RuntimeError(

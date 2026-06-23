@@ -353,6 +353,7 @@ async def _get_current_round(player: Player, db: AsyncSession) -> CurrentRoundRe
 
             vote_choice_service = QFVoteChoiceService(db)
             choices = await vote_choice_service.get_or_create_vote_choices(round, phraseset)
+            await db.commit()
             state.update({
                 "phraseset_id": str(phraseset.phraseset_id),
                 "prompt_text": phraseset.prompt_text,
