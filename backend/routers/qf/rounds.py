@@ -290,6 +290,8 @@ async def submit_phrase(
                 "party_context": {
                     "session_id": str(party_round.session_id),
                     "current_phase": session.current_phase,
+                    "version": session.version,
+                    "phase_expires_at": session.phase_expires_at.isoformat() if session.phase_expires_at else None,
                     "your_progress": {
                         "prompts_submitted": participant.prompts_submitted,
                         "prompts_required": session.prompts_per_player,
