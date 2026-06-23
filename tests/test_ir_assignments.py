@@ -25,6 +25,14 @@ async def _create_player(db_session):
     )
 
 
+def _valid_words(set_obj):
+    dictionary = PhraseValidator().dictionary
+    return [
+        next(word for word in dictionary if word.startswith(letter) and len(word) >= 2)
+        for letter in set_obj.word
+    ]
+
+
 @pytest.mark.asyncio
 async def test_start_reuses_durable_assignment(db_session):
     player = await _create_player(db_session)
@@ -47,11 +55,7 @@ async def test_submit_requires_assignment_token_and_moves_money_once(db_session)
     starting_wallet = await db_session.scalar(
         select(IRPlayerData.wallet).where(IRPlayerData.player_id == player.player_id)
     )
-    dictionary = PhraseValidator().dictionary
-    words = [
-        next(word for word in dictionary if word.startswith(letter) and len(word) >= 2)
-        for letter in set_obj.word
-    ]
+    words = _valid_words(set_obj)
 
     with pytest.raises(IRAssignmentError, match="assignment_not_found"):
         await service.submit(
@@ -62,9 +66,9 @@ async def test_submit_requires_assignment_token_and_moves_money_once(db_session)
         )
 
     entry, submitted_set = await service.submit(
-        player.player_id,
-        set_obj.set_id,
-        assignment.assignment_token,
+        str(player.player_id),
+        str(set_obj.set_id),
+        str(assignment.assignment_token),
         words,
     )
     assert submitted_set.set_id == set_obj.set_id
@@ -86,3 +90,56 @@ async def test_submit_requires_assignment_token_and_moves_money_once(db_session)
     assert ending_wallet == starting_wallet - service.settings.ir_backronym_entry_cost
     assert await db_session.scalar(select(func.count(BackronymEntry.entry_id))) == 1
     assert await db_session.scalar(select(func.count(IRTransaction.transaction_id))) == 1
+
+
+@pytest.mark.asyncio
+async def test_assignment_rejects_invalid_uuid_parameters(db_session):
+    player = await _create_player(db_session)
+    service = IRAssignmentService(db_session)
+    assignment, set_obj = await service.assign(player.player_id)
+
+    assert await service.get_active_assignment("not-a-uuid") is None
+    with pytest.raises(IRAssignmentError, match="invalid_uuid_parameter"):
+        await service.submit(
+            player.player_id,
+            "not-a-uuid",
+            assignment.assignment_token,
+            _valid_words(set_obj),
+        )
+
+
+@pytest.mark.asyncio
+async def test_assign_reserves_at_most_five_players_per_open_set(db_session):
+    players = [await _create_player(db_session) for _ in range(6)]
+    service = IRAssignmentService(db_session)
+
+    assignments = [await service.assign(player.player_id) for player in players]
+    first_set_id = assignments[0][1].set_id
+
+    assert all(set_obj.set_id == first_set_id for _, set_obj in assignments[:5])
+    assert assignments[5][1].set_id != first_set_id
+    assert await db_session.scalar(
+        select(func.count(IRAssignment.assignment_id)).where(
+            IRAssignment.set_id == first_set_id,
+            IRAssignment.status == "assigned",
+        )
+    ) == 5
+
+
+@pytest.mark.asyncio
+async def test_transition_expires_unsubmitted_assignments(db_session):
+    players = [await _create_player(db_session) for _ in range(2)]
+    service = IRAssignmentService(db_session)
+    first, set_obj = await service.assign(players[0].player_id)
+    second, _ = await service.assign(players[1].player_id)
+    set_obj.entry_count = 5
+    await db_session.commit()
+
+    await service.set_service.transition_to_voting(set_obj.set_id)
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+
+    assert first.status == "expired"
+    assert second.status == "expired"
+    assert first.expired_at is not None
+    assert await service.get_active_assignment(players[0].player_id) is None

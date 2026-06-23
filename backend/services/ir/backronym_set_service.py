@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime, UTC, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, update
+from sqlalchemy import func, select, and_, or_, update
 
 from backend.config import get_settings
 from backend.models.ir.backronym_set import BackronymSet
@@ -108,15 +108,26 @@ class BackronymSetService:
             BackronymSet or None if no available sets
         """
         try:
+            from backend.models.ir.assignment import IRAssignment
+
             # Find open sets that are not too old
             age_limit = datetime.now(UTC) - timedelta(
                 minutes=self.settings.ir_rapid_entry_timeout_minutes * 2
+            )
+            reserved_assignments = (
+                select(func.count(IRAssignment.assignment_id))
+                .where(
+                    IRAssignment.set_id == BackronymSet.set_id,
+                    IRAssignment.status.in_(("assigned", "submitting")),
+                )
+                .correlate(BackronymSet)
+                .scalar_subquery()
             )
             stmt = select(BackronymSet).where(
                 and_(
                     BackronymSet.status == SetStatus.OPEN,
                     BackronymSet.created_at >= age_limit,
-                    BackronymSet.entry_count < 5,  # Not full
+                    BackronymSet.entry_count + reserved_assignments < 5,
                 )
             )
 
@@ -255,6 +266,20 @@ class BackronymSetService:
 
             # Set timer for when AI will fill remaining votes
             now = datetime.now(UTC)
+            from backend.models.ir.assignment import IRAssignment
+
+            await self.db.execute(
+                update(IRAssignment)
+                .where(
+                    IRAssignment.set_id == set_obj.set_id,
+                    IRAssignment.status.in_(("assigned", "submitting")),
+                )
+                .values(
+                    status="expired",
+                    expired_at=now,
+                    version=IRAssignment.version + 1,
+                )
+            )
             if set_obj.mode == Mode.RAPID:
                 set_obj.voting_finalized_at = now + timedelta(
                     minutes=self.settings.ir_rapid_voting_timer_minutes

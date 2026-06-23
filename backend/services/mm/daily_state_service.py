@@ -1,5 +1,6 @@
 """Manage per-player daily state for Meme Mint."""
 
+import uuid
 from datetime import UTC, datetime
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -16,27 +17,40 @@ class MMPlayerDailyStateService:
         self.db = db
         self.config_service = config_service or MMSystemConfigService(db)
 
-    async def _get_or_create_state(self, player_id: str) -> MMPlayerDailyState:
+    @staticmethod
+    def _player_uuid(player_id: uuid.UUID | str) -> uuid.UUID:
+        return uuid.UUID(str(player_id))
+
+    async def _get_or_create_state(
+        self, player_id: uuid.UUID | str
+    ) -> MMPlayerDailyState:
+        player_uuid = self._player_uuid(player_id)
         today = datetime.now(UTC).date()
         result = await self.db.execute(
             select(MMPlayerDailyState)
-            .where(MMPlayerDailyState.player_id == player_id)
+            .where(MMPlayerDailyState.player_id == player_uuid)
             .where(MMPlayerDailyState.date == today)
             .with_for_update()
         )
         state = result.scalar_one_or_none()
         if state is None:
-            state = MMPlayerDailyState(player_id=player_id, date=today, free_captions_used=0)
+            state = MMPlayerDailyState(
+                player_id=player_uuid,
+                date=today,
+                free_captions_used=0,
+            )
             self.db.add(state)
             await self.db.flush()
         return state
 
-    async def get_remaining_free_captions(self, player_id: str) -> int:
+    async def get_remaining_free_captions(self, player_id: uuid.UUID | str) -> int:
         state = await self._get_or_create_state(player_id)
         allowance = await self.config_service.get_config_value("mm_free_captions_per_day", default=0)
         return max(allowance - state.free_captions_used, 0)
 
-    async def consume_free_caption(self, player_id: str) -> MMPlayerDailyState:
+    async def consume_free_caption(
+        self, player_id: uuid.UUID | str
+    ) -> MMPlayerDailyState:
         state = await self._get_or_create_state(player_id)
         allowance = await self.config_service.get_config_value("mm_free_captions_per_day", default=0)
         if state.free_captions_used < allowance:
@@ -45,9 +59,10 @@ class MMPlayerDailyStateService:
         await self.db.refresh(state)
         return state
 
-    async def try_consume_free_caption(self, player_id: str) -> bool:
+    async def try_consume_free_caption(self, player_id: uuid.UUID | str) -> bool:
         """Atomically claim one daily free-caption slot without committing."""
 
+        player_uuid = self._player_uuid(player_id)
         today = datetime.now(UTC).date()
         allowance = await self.config_service.get_config_value(
             "mm_free_captions_per_day",
@@ -60,7 +75,7 @@ class MMPlayerDailyStateService:
             async with self.db.begin_nested():
                 self.db.add(
                     MMPlayerDailyState(
-                        player_id=player_id,
+                        player_id=player_uuid,
                         date=today,
                         free_captions_used=0,
                     )
@@ -72,7 +87,7 @@ class MMPlayerDailyStateService:
         result = await self.db.execute(
             update(MMPlayerDailyState)
             .where(
-                MMPlayerDailyState.player_id == player_id,
+                MMPlayerDailyState.player_id == player_uuid,
                 MMPlayerDailyState.date == today,
                 MMPlayerDailyState.free_captions_used < allowance,
             )

@@ -12,11 +12,30 @@ from backend.models.mm.caption_submission import MMCaptionSubmission
 from backend.models.mm.image import MMImage
 from backend.models.mm.player_daily_state import MMPlayerDailyState
 from backend.models.mm.vote_round import MMVoteRound
+from backend.schemas.mm_round import RoundDetails
 from backend.services.mm.caption_service import MMCaptionService
 from backend.services.mm.player_service import MMPlayerService
 from backend.services.transaction_service import TransactionService
 from backend.utils.model_registry import GameType
 from backend.utils.passwords import hash_password
+
+
+def test_round_details_preserves_submitted_caption_fields():
+    caption_id = uuid.uuid4()
+    details = RoundDetails(
+        round_id=uuid.uuid4(),
+        type="vote",
+        status="captioned",
+        image_id=uuid.uuid4(),
+        image_url="https://example.com/image.jpg",
+        cost=5,
+        submitted_caption_id=caption_id,
+        submitted_caption_text="A submitted caption",
+    )
+
+    payload = details.model_dump()
+    assert payload["submitted_caption_id"] == caption_id
+    assert payload["submitted_caption_text"] == "A submitted caption"
 
 
 @pytest.mark.asyncio

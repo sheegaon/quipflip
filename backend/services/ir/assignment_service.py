@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,13 +36,26 @@ class IRAssignmentService:
         self,
         player_id: uuid.UUID | str,
     ) -> IRAssignment | None:
+        try:
+            player_uuid = uuid.UUID(str(player_id))
+        except (TypeError, ValueError):
+            return None
+
         result = await self.db.execute(
             select(IRAssignment)
             .join(BackronymSet, BackronymSet.set_id == IRAssignment.set_id)
             .where(
-                IRAssignment.player_id == player_id,
-                IRAssignment.status.in_(self.ACTIVE_STATUSES),
-                BackronymSet.status != SetStatus.FINALIZED,
+                IRAssignment.player_id == player_uuid,
+                or_(
+                    and_(
+                        IRAssignment.status.in_(("assigned", "submitting")),
+                        BackronymSet.status == SetStatus.OPEN,
+                    ),
+                    and_(
+                        IRAssignment.status == "submitted",
+                        BackronymSet.status != SetStatus.FINALIZED,
+                    ),
+                ),
             )
             .order_by(IRAssignment.assigned_at.desc())
             .limit(1)
@@ -56,14 +69,19 @@ class IRAssignmentService:
     ) -> tuple[IRAssignment, BackronymSet]:
         """Return the player's current assignment or create one."""
 
-        existing = await self.get_active_assignment(player_id)
+        try:
+            player_uuid = uuid.UUID(str(player_id))
+        except (TypeError, ValueError) as exc:
+            raise IRAssignmentError("invalid_player_id") from exc
+
+        existing = await self.get_active_assignment(player_uuid)
         if existing:
             set_obj = await self.set_service.get_set_by_id(existing.set_id)
             if set_obj:
                 return existing, set_obj
 
         set_obj = await self.set_service.get_available_set_for_entry(
-            exclude_player_id=str(player_id)
+            exclude_player_id=str(player_uuid)
         )
         if not set_obj:
             set_obj = await self.set_service.create_set(mode=mode)
@@ -71,7 +89,7 @@ class IRAssignmentService:
         assignment = IRAssignment(
             assignment_id=uuid.uuid4(),
             assignment_token=uuid.uuid4(),
-            player_id=player_id,
+            player_id=player_uuid,
             set_id=set_obj.set_id,
             status="assigned",
             assigned_at=datetime.now(UTC),
@@ -84,7 +102,7 @@ class IRAssignmentService:
             return assignment, set_obj
         except IntegrityError:
             await self.db.rollback()
-            existing = await self.get_active_assignment(player_id)
+            existing = await self.get_active_assignment(player_uuid)
             if not existing:
                 raise IRAssignmentError("assignment_conflict")
             existing_set = await self.set_service.get_set_by_id(existing.set_id)
@@ -102,14 +120,16 @@ class IRAssignmentService:
         """Claim an assignment once and atomically charge and persist its entry."""
 
         try:
+            player_uuid = uuid.UUID(str(player_id))
+            set_uuid = uuid.UUID(str(set_id))
             token = uuid.UUID(str(assignment_token))
-        except ValueError as exc:
-            raise IRAssignmentError("invalid_assignment_token") from exc
+        except (TypeError, ValueError) as exc:
+            raise IRAssignmentError("invalid_uuid_parameter") from exc
 
         result = await self.db.execute(
             select(IRAssignment).where(
-                IRAssignment.player_id == player_id,
-                IRAssignment.set_id == set_id,
+                IRAssignment.player_id == player_uuid,
+                IRAssignment.set_id == set_uuid,
                 IRAssignment.assignment_token == token,
             )
         )
@@ -121,7 +141,7 @@ class IRAssignmentService:
         if assignment.status != "assigned":
             raise IRAssignmentError("assignment_not_claimable")
 
-        set_obj = await self.set_service.get_set_by_id(set_id)
+        set_obj = await self.set_service.get_set_by_id(set_uuid)
         if not set_obj or set_obj.status != SetStatus.OPEN:
             raise IRAssignmentError("assignment_set_not_open")
         is_valid, error = PhraseValidator().validate_backronym_words(
@@ -150,15 +170,15 @@ class IRAssignmentService:
         transaction_service = TransactionService(self.db, GameType.IR)
         try:
             await transaction_service.debit_wallet(
-                player_id=uuid.UUID(str(player_id)),
+                player_id=player_uuid,
                 amount=self.settings.ir_backronym_entry_cost,
                 transaction_type=transaction_service.ENTRY_CREATION,
-                reference_id=uuid.UUID(str(set_id)),
+                reference_id=set_uuid,
                 auto_commit=False,
             )
             entry = await self.set_service.add_entry(
-                set_id=set_id,
-                player_id=player_id,
+                set_id=set_uuid,
+                player_id=player_uuid,
                 backronym_text=words,
                 is_ai=False,
                 auto_commit=False,
@@ -174,8 +194,8 @@ class IRAssignmentService:
             await self.db.rollback()
             raise
 
-        set_obj = await self.set_service.get_set_by_id(set_id)
+        set_obj = await self.set_service.get_set_by_id(set_uuid)
         if set_obj and set_obj.entry_count >= 5 and set_obj.status == SetStatus.OPEN:
-            set_obj = await self.set_service.transition_to_voting(set_id)
+            set_obj = await self.set_service.transition_to_voting(set_uuid)
 
         return entry, set_obj
