@@ -18,6 +18,7 @@ import {
 import apiClient from '../api/client.ts';
 import { NotificationStreamMessage, QFOnlineUser } from '../api/types.ts';
 import useWebSocket from '../hooks/useWebSocket.ts';
+import { playSound } from '../utils/sound.ts';
 
 export interface NotificationMessage {
   id: string;
@@ -181,6 +182,9 @@ export const createNotificationContext = () => {
           };
 
           setPingMessages((prev) => [...prev, ping]);
+          // Audible nudge so a player who has navigated away from the lobby
+          // still notices the host's ping (respects the global mute setting).
+          playSound('ping');
         }
       } catch (err) {
         // Silently ignore malformed messages
