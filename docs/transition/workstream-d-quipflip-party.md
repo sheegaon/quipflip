@@ -1,7 +1,7 @@
 # Workstream D - QuipFlip Party Mode
 
 > **Document type:** Implementation plan
-> **Status:** Active
+> **Status:** Implemented baseline; remaining blueprint items tracked below
 > **Audience:** Maintainers and agents
 > **Last reviewed:** 2026-06-22
 
@@ -9,6 +9,20 @@
 
 Make Party Mode a server-authoritative, deadline-driven, reconnect-safe
 multi-client lifecycle with stale-command rejection and deterministic tests.
+
+## Implementation assessment (2026-06-23)
+
+The merged Party slice made disconnect a presence-only event, preserved durable
+membership for reconnect, exposed lifecycle versions and phase deadlines, made
+phase advancement stale-safe through optimistic versioning, removed the broken
+synchronous lock path, and added member-only reconnect projections. This
+completion pass also made the `VOTE` transition and phraseset availability one
+database commit.
+
+Unchecked items below remain larger protocol/module targets. Party still uses the
+existing coordination/session services rather than the proposed command-receipt
+and durable AI-job module layout, and the multi-client built-server/browser smoke
+has not been implemented.
 
 ## Starting point
 
@@ -674,13 +688,13 @@ Gate:
 
 ## Phase D1 - Phase/version and deadline model
 
-- [ ] Add an authoritative phase and monotonic lifecycle version.
-- [ ] Persist an authoritative deadline for every timed phase.
+- [x] Add an authoritative phase and monotonic lifecycle version.
+- [x] Persist an authoritative deadline for every timed phase.
 - [ ] Define valid command/phase/version combinations.
-- [ ] Implement conditional phase advancement with one winner.
-- [ ] Make duplicate and stale advancement explicit no-ops or typed conflicts.
-- [ ] Replace broken synchronous lock usage in async paths.
-- [ ] Ensure socket presence never advances or rewinds lifecycle state.
+- [x] Implement conditional phase advancement with one winner.
+- [x] Make duplicate and stale advancement explicit no-ops or typed conflicts.
+- [x] Replace broken synchronous lock usage in async paths.
+- [x] Ensure socket presence never advances or rewinds lifecycle state.
 - [ ] Add database constraints for session membership and per-round assignment
       uniqueness.
 
@@ -709,10 +723,10 @@ Gate:
 ## Phase D3 - Reconnect and private projections
 
 - [ ] Define explicit host, participant, spectator, and reconnect projections.
-- [ ] Restore the same participant identity after reconnect.
+- [x] Restore the same participant identity after reconnect.
 - [ ] Restore assignment, submission, counters, vote state, allowances, phase, and
       deadline.
-- [ ] Keep disconnect/reconnect presence separate from lifecycle eligibility.
+- [x] Keep disconnect/reconnect presence separate from lifecycle eligibility.
 - [ ] Prevent duplicate joins and duplicate commands after reconnect.
 - [ ] Assert hidden prompts, authorship, and original-entry identity remain private.
 - [ ] Reject stale client phase/status updates.

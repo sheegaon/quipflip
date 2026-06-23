@@ -7,13 +7,12 @@ from backend.services import IRVoteService
 from backend.services import IRWordService
 from backend.services import IRResultViewService
 from backend.services import IRStatisticsService
-from backend.models.ir.player_data import IRPlayerData
 
 
-async def _register_ir_player(auth_service, email, password="TestPassword123!"):
+async def _register_ir_player(auth_service, email: str, password: str):
     player = await auth_service.register_player(email=email, password=password)
-    token, _ = auth_service.create_access_token(player)
-    return player, token
+    access_token, _, _ = await auth_service.issue_tokens(player)
+    return player, access_token
 
 
 @pytest.mark.asyncio
@@ -33,8 +32,7 @@ async def test_ir_complete_game_flow(db_session):
         username = f"player{i}_{uuid.uuid4().hex[:4]}"
         email = f"player{i}{uuid.uuid4().hex[:4]}@example.com"
         player, token = await _register_ir_player(
-            auth_service,
-            email=email,
+            auth_service, email, "TestPassword123!"
         )
         players.append(player)
 
@@ -64,8 +62,7 @@ async def test_ir_complete_game_flow(db_session):
         username = f"voter{i}_{uuid.uuid4().hex[:4]}"
         email = f"voter{i}{uuid.uuid4().hex[:4]}@example.com"
         voter, _ = await _register_ir_player(
-            auth_service,
-            email=email,
+            auth_service, email, "TestPassword123!"
         )
         voters.append(voter)
 
@@ -138,7 +135,7 @@ async def test_ir_guest_player_flow(db_session):
         email,
         "NewPassword123!"
     )
-    new_token, _ = auth_service.create_access_token(upgraded_player)
+    new_token, _, _ = await auth_service.issue_tokens(upgraded_player)
 
     assert upgraded_player.is_guest is False
     assert upgraded_player.email == email
@@ -163,8 +160,7 @@ async def test_ir_daily_bonus_flow(db_session):
     username = f"bonusplayer{uuid.uuid4().hex[:4]}"
     email = f"bonus{uuid.uuid4().hex[:4]}@example.com"
     player, _ = await _register_ir_player(
-        auth_service,
-        email=email,
+        auth_service, email, "TestPassword123!"
     )
 
     # Set created_at to at least 1 day ago so bonus is available
@@ -178,12 +174,8 @@ async def test_ir_daily_bonus_flow(db_session):
     assert bonus is not None
 
     # Verify balance increased
-    from sqlalchemy import select
-    stmt = select(IRPlayerData).where(IRPlayerData.player_id == player.player_id)
-    result = await db_session.execute(stmt)
-    updated_player = result.scalars().first()
-
-    assert updated_player.wallet > initial_balance
+    await db_session.refresh(player.ir_player_data)
+    assert player.ir_player_data.wallet > initial_balance
 
     # 3. Try to claim again (should fail or return None)
     try:
@@ -212,7 +204,8 @@ async def test_ir_self_vote_prevention(db_session):
     # 1. Create player
     player, _ = await _register_ir_player(
         auth_service,
-        email=f"test{uuid.uuid4().hex[:4]}@example.com",
+        f"test{uuid.uuid4().hex[:4]}@example.com",
+        "TestPassword123!",
     )
 
     # 2. Create set and submit entry
@@ -253,7 +246,8 @@ async def test_ir_insufficient_balance_blocking(db_session):
     # 1. Create player
     player, _ = await _register_ir_player(
         auth_service,
-        email=f"test{uuid.uuid4().hex[:4]}@example.com",
+        f"test{uuid.uuid4().hex[:4]}@example.com",
+        "TestPassword123!",
     )
 
     # 2. Set balance to 50 (less than 100 entry cost)

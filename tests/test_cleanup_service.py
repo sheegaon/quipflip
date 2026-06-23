@@ -327,7 +327,7 @@ class TestTestPlayerCleanup:
         cleanup_service = QFCleanupService(db_session)
 
         # Create test player with unique identifier to avoid conflicts
-        unique_id = str(uuid4().int % 100_000_000).zfill(8)
+        unique_id = f"{uuid4().int % 100_000_000:08d}"
         test_player = Player(
             player_id=uuid4(),
             username=f"testplayer{unique_id}_999",
@@ -514,50 +514,10 @@ class TestInactiveGuestCleanup:
         db_session.add(active_guest)
         await db_session.flush()
 
-        owner = Player(
-            player_id=uuid4(),
-            username="PhrasesetOwner",
-            username_canonical="phrasesetowner",
-            email="phrasesetowner@example.com",
-            password_hash=hash_password("password123"),
-        )
-        db_session.add(owner)
-        await db_session.flush()
-
-        round_ids = [uuid4() for _ in range(3)]
-        db_session.add_all([
-            Round(
-                round_id=round_id,
-                player_id=owner.player_id,
-                round_type="prompt" if index == 0 else "copy",
-                status="submitted",
-                cost=100,
-                expires_at=datetime.now(UTC) + timedelta(minutes=3),
-            )
-            for index, round_id in enumerate(round_ids)
-        ])
-        await db_session.flush()
-
-        # Create a phraseset backed by valid rounds.
-        phraseset = Phraseset(
-            phraseset_id=uuid4(),
-            prompt_round_id=round_ids[0],
-            copy_round_1_id=round_ids[1],
-            copy_round_2_id=round_ids[2],
-            prompt_text="Test prompt",
-            original_phrase="TEST",
-            copy_phrase_1="COPY1",
-            copy_phrase_2="COPY2",
-            created_at=datetime.now(UTC),
-        )
-        db_session.add(phraseset)
-        await db_session.flush()
-
         # Add phraseset activity for this guest
         activity = PhrasesetActivity(
             activity_id=uuid4(),
             player_id=active_guest.player_id,
-            phraseset_id=phraseset.phraseset_id,
             activity_type="vote",
             created_at=datetime.now(UTC) - timedelta(days=5),
         )
@@ -808,6 +768,7 @@ class TestRunAllCleanupTasks:
         )
         db_session.add(expired_token)
 
+        # Orphaned round
         # Old inactive guest
         old_guest = Player(
             player_id=uuid4(),

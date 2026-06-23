@@ -5,6 +5,13 @@ from backend.services import AuthService, GameType
 from backend.services import IRPlayerService
 from backend.utils.passwords import hash_password, verify_password
 from backend.services import UsernameService
+from backend.utils.model_registry import GameType
+
+
+async def _register_ir_player(auth_service, email: str, password: str):
+    player = await auth_service.register_player(email=email, password=password)
+    access_token, refresh_token, _ = await auth_service.issue_tokens(player)
+    return player, access_token, refresh_token
 
 
 @pytest.mark.asyncio
@@ -149,8 +156,7 @@ async def test_ir_auth_registration(db_session):
     email = f"authtest{uuid.uuid4().hex[:8]}@example.com"
     password = "TestPassword123!"
 
-    player = await auth_service.register_player(email=email, password=password)
-    token, _ = auth_service.create_access_token(player)
+    player, token, _ = await _register_ir_player(auth_service, email, password)
 
     assert player is not None
     assert player.email == email
@@ -168,14 +174,13 @@ async def test_ir_auth_login(db_session):
     password = "TestPassword123!"
 
     # Register first
-    player = await auth_service.register_player(email=email, password=password)
+    player, _, _ = await _register_ir_player(auth_service, email, password)
 
     # Login
     logged_in_player = await auth_service.authenticate_player_by_username(
-        username=player.username,
-        password=password,
+        player.username, password
     )
-    token, _ = auth_service.create_access_token(logged_in_player)
+    token, _, _ = await auth_service.issue_tokens(logged_in_player)
 
     assert logged_in_player.player_id == player.player_id
     assert token is not None
@@ -189,8 +194,7 @@ async def test_ir_auth_invalid_login(db_session):
     # Try to login with non-existent username
     with pytest.raises(Exception):  # Should raise IRAuthError
         await auth_service.authenticate_player_by_username(
-            username="nonexistent",
-            password="password"
+            "nonexistent", "password"
         )
 
 
@@ -204,13 +208,12 @@ async def test_ir_auth_wrong_password(db_session):
     password = "TestPassword123!"
 
     # Register
-    player = await auth_service.register_player(email=email, password=password)
+    player, _, _ = await _register_ir_player(auth_service, email, password)
 
     # Try to login with wrong password
     with pytest.raises(Exception):  # Should raise IRAuthError
         await auth_service.authenticate_player_by_username(
-            username=player.username,
-            password="WrongPassword123!"
+            player.username, "WrongPassword123!"
         )
 
 
@@ -224,10 +227,9 @@ async def test_ir_auth_refresh_token(db_session):
     password = "TestPassword123!"
 
     # Register
-    player = await auth_service.register_player(email=email, password=password)
-
-    # Create refresh token
-    _, refresh_token, _ = await auth_service.issue_tokens(player)
+    player, _, refresh_token = await _register_ir_player(
+        auth_service, email, password
+    )
     assert refresh_token is not None
     assert len(refresh_token) > 0
 
@@ -249,8 +251,7 @@ async def test_ir_auth_verify_access_token(db_session):
     password = "TestPassword123!"
 
     # Register
-    player = await auth_service.register_player(email=email, password=password)
-    token, _ = auth_service.create_access_token(player)
+    player, token, _ = await _register_ir_player(auth_service, email, password)
 
     # Verify token
     player_id = auth_service.decode_access_token(token)["sub"]
