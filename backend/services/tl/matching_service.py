@@ -327,7 +327,7 @@ class TLMatchingService:
             # Find matches above threshold
             matches = []
             for i, (answer, similarity) in enumerate(zip(snapshot_answers, similarities)):
-                if similarity >= threshold:
+                if similarity > threshold:
                     matches.append({
                         "answer_id": answer["answer_id"],
                         "text": answer["text"],

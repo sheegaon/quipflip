@@ -195,7 +195,7 @@ async def submit_guess(
         return SubmitGuessResponse(
             was_match=result["was_match"],
             matched_answer_count=result["matched_answer_count"],
-            matched_cluster_ids=result["matched_cluster_ids"],
+            newly_matched_cluster_count=result["newly_matched_cluster_count"],
             new_strikes=result["new_strikes"],
             current_coverage=result["current_coverage"],
             round_status=result["round_status"],
@@ -216,10 +216,7 @@ async def abandon_round(
     db: AsyncSession = Depends(get_db),
     round_service: TLRoundService = Depends(get_round_service),
 ):
-    """Abandon an active round with partial refund.
-
-    Refund: entry_cost - 5 penalty (95 coins default with 100 entry cost)
-    """
+    """Abandon an active round by completing it with the current score."""
     try:
         logger.info(f"🚪 Player {player.player_id} abandoning round {round_id}...")
 
@@ -236,8 +233,6 @@ async def abandon_round(
                 raise HTTPException(status_code=403, detail="unauthorized")
             elif error == "round_not_active":
                 raise HTTPException(status_code=400, detail="round_not_active")
-            elif error == "round_has_guesses":
-                raise HTTPException(status_code=400, detail="round_has_guesses")
             else:
                 raise HTTPException(status_code=500, detail="abandon_failed")
 
@@ -245,7 +240,7 @@ async def abandon_round(
         await db.commit()
 
         logger.info(
-            f"✅ Round abandoned: refund={result['refund_amount']} coins"
+            f"✅ Round completed via abandon: refund={result['refund_amount']} coins"
         )
 
         return AbandonRoundResponse(
@@ -391,11 +386,10 @@ async def get_round(
 
         return RoundDetails(
             round_id=round_obj.round_id,
-            prompt_id=round_obj.prompt_id,
             prompt_text=round_obj.prompt.text if round_obj.prompt else "",
             snapshot_answer_count=len(round_obj.snapshot_answer_ids or []),
             snapshot_total_weight=round_obj.snapshot_total_weight,
-            matched_clusters=round_obj.matched_clusters or [],
+            matched_cluster_count=len(round_obj.matched_clusters or []),
             strikes=round_obj.strikes,
             status=round_obj.status,
             final_coverage=round_obj.final_coverage,

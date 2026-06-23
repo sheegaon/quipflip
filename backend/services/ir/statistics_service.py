@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
 from backend.models.ir.transaction import IRTransaction
-from backend.models.ir.player import IRPlayer
+from backend.models.player import Player
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class IRStatisticsService:
         """
         try:
             # Get player
-            player_stmt = select(IRPlayer).where(IRPlayer.player_id == player_id)
+            player_stmt = select(Player).where(Player.player_id == player_id)
             player_result = await self.db.execute(player_stmt)
             player = player_result.scalars().first()
 
@@ -124,9 +124,9 @@ class IRStatisticsService:
         try:
             # Get players ranked by vault
             stmt = (
-                select(IRPlayer)
-                .where(IRPlayer.is_ai == False)
-                .order_by(IRPlayer.vault.desc())
+                select(Player)
+                .where(Player.is_guest == False)
+                .order_by(Player.vault.desc())
                 .limit(limit)
             )
             result = await self.db.execute(stmt)
@@ -192,7 +192,7 @@ class IRStatisticsService:
 
             for rank, (player_id, vote_count) in enumerate(voters, 1):
                 # Get player info
-                player_stmt = select(IRPlayer).where(IRPlayer.player_id == player_id)
+                player_stmt = select(Player).where(Player.player_id == player_id)
                 player_result = await self.db.execute(player_stmt)
                 player = player_result.scalars().first()
 

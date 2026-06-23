@@ -92,6 +92,8 @@ export interface Caption {
   caption_id: string;
   text: string;
   author_username?: string | null;
+  kind?: 'original' | 'riff' | null;
+  parent_caption_id?: string | null;
   is_ai?: boolean;
   is_bot?: boolean;
   is_system?: boolean;
@@ -186,7 +188,7 @@ export interface TLSubmitGuessRequest {
 export interface TLSubmitGuessResponse {
   was_match: boolean;
   matched_answer_count: number;
-  matched_cluster_ids: string[];
+  newly_matched_cluster_count: number;
   new_strikes: number;
   current_coverage: number;
   round_status: string;
@@ -195,11 +197,10 @@ export interface TLSubmitGuessResponse {
 
 export interface TLRoundDetails {
   round_id: string;
-  prompt_id: string;
   prompt_text: string;
   snapshot_answer_count: number;
   snapshot_total_weight: number;
-  matched_clusters: string[];
+  matched_cluster_count: number;
   strikes: number;
   status: string;
   final_coverage?: number | null;
@@ -2007,7 +2008,6 @@ export interface MMVoteRoundState {
   thumbnail_url?: string | null;
   attribution_text?: string | null;
   captions: Caption[];
-  expires_at: string;
   cost: number;
 }
 
@@ -2016,8 +2016,12 @@ export interface MMVoteResult {
   success: boolean;
   chosen_caption_id: string;
   payout: number;
+  payout_wallet?: number | null;
+  payout_vault?: number | null;
   refund_amount?: number;
-  correct: boolean;
+  first_vote_bonus?: boolean;
+  local_crowd_favorite_bonus?: boolean;
+  revealed_captions?: Caption[] | null;
   new_wallet: number;
   new_vault: number;
 }

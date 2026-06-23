@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.models.ir.daily_bonus import IRDailyBonus
-from backend.models.ir.player import IRPlayer
+from backend.models.player import Player
 from backend.services.transaction_service import TransactionService
 from backend.utils.model_registry import GameType
 from backend.utils.exceptions import InsufficientBalanceError
@@ -29,7 +29,7 @@ class IRDailyBonusService:
         today = datetime.now(UTC).date()
 
         player_result = await self.db.execute(
-            select(IRPlayer).where(IRPlayer.player_id == player_id)
+            select(Player).where(Player.player_id == player_id)
         )
         player = player_result.scalars().first()
         if not player:
@@ -55,7 +55,7 @@ class IRDailyBonusService:
 
         try:
             player_result = await self.db.execute(
-                select(IRPlayer).where(IRPlayer.player_id == player_id)
+                select(Player).where(Player.player_id == player_id)
             )
             player = player_result.scalars().first()
             if not player:
@@ -75,7 +75,7 @@ class IRDailyBonusService:
 
             bonus = IRDailyBonus(
                 player_id=player_id,
-                bonus_amount=self.settings.ir_daily_bonus_amount,
+                amount=self.settings.ir_daily_bonus_amount,
                 claimed_at=today,
                 date=bonus_date,
             )

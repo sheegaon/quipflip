@@ -389,8 +389,26 @@ class BackronymSetService:
             if not set_obj:
                 raise BackronymSetError("set_not_found")
 
+            if set_obj.status == SetStatus.FINALIZED:
+                return set_obj
+
             set_obj.status = SetStatus.FINALIZED
             set_obj.finalized_at = datetime.now(UTC)
+
+            try:
+                from backend.services.ir.scoring_service import IRScoringService
+
+                scoring_service = IRScoringService(self.db)
+                await scoring_service.process_payouts(set_id)
+            except Exception as exc:
+                await self.db.rollback()
+                logger.warning(
+                    "IR payout processing failed for set %s during finalization: %s",
+                    set_id,
+                    exc,
+                )
+                raise BackronymSetError(f"Failed to finalize set: {exc}") from exc
+
             await self.db.commit()
             await self.db.refresh(set_obj)
             await self.queue_service.dequeue_voting_set(set_id)

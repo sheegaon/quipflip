@@ -360,34 +360,35 @@ class TLRoundService:
             should_finalize = False
 
             if round.strikes >= self.max_strike_count:
-                # Round ended due to strikes
-                round.status = 'completed'  # Change from 'abandoned' to 'completed'
                 should_finalize = True
                 logger.info(f"🏁 Round ended - 3 strikes reached, finalizing...")
-            elif current_coverage >= 0.95:  # 95% coverage threshold for auto-completion
+            elif current_coverage >= 1.0:
                 # Round completed due to high coverage
-                round.status = 'completed'
                 should_finalize = True
                 logger.info(f"🎉 Round completed - high coverage achieved ({current_coverage:.1%}), finalizing...")
 
             # Finalize round if completion conditions are met
             if should_finalize:
-                await self.finalize_round(db, round, current_coverage, player_id)
+                finalized = await self.finalize_round(db, round, current_coverage, player_id)
+                if finalized:
+                    round.status = 'completed'
+
+            round_status = round.status
 
             return {
                 "was_match": was_match,
                 "matched_answer_count": len(matches),
-                "matched_cluster_ids": matched_cluster_ids,
+                "newly_matched_cluster_count": len(matched_cluster_ids),
                 "new_strikes": new_strikes,
                 "current_coverage": current_coverage,
-                "round_status": round.status,
+                "round_status": round_status,
             }, None, None
 
         except Exception as e:
             logger.exception(f"❌ Submit guess failed: {e}")
             return {}, "submit_failed", None
 
-    async def finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> None:
+    async def finalize_round(self, db: AsyncSession, round: TLRound, coverage: float, player_id: str) -> bool:
         """Finalize a completed round with payouts and statistics.
 
         Args:
@@ -401,23 +402,25 @@ class TLRoundService:
             wallet_award, vault_award, gross_payout = self.scoring_svc.calculate_payout(coverage)
 
             # Finalize the round using the scoring service (handles wallet/vault via transactions)
-            await self.scoring_svc.finalize_round(
+            finalized = await self.scoring_svc.finalize_round(
                 db, round, wallet_award, vault_award, gross_payout, coverage
             )
+
+            if not finalized:
+                return False
 
             logger.info(
                 f"✅ Round finalized: {round.round_id} | coverage={coverage:.1%} | "
                 f"wallet_award={wallet_award} | vault_award={vault_award} | gross={gross_payout}"
             )
+            return True
 
         except Exception as e:
             logger.error(f"❌ Round finalization failed: {e}")
             raise
 
     async def abandon_round(self, db: AsyncSession, round_id: str, player_id: str) -> Tuple[Dict, Optional[str]]:
-        """Abandon an active round with partial refund.
-
-        Refund: entry_cost - 5 (95 coins)
+        """Abandon an active round by scoring and completing it.
 
         Args:
             db: Database session
@@ -451,43 +454,15 @@ class TLRoundService:
             if round.status != 'active':
                 return {}, "round_not_active"
 
-            # Disallow abandoning once any guess has been submitted
-            guess_present = await db.execute(
-                select(TLGuess.guess_id).where(TLGuess.round_id == round_id).limit(1)
-            )
-            if guess_present.first():
-                logger.debug(f"⏭️  Abandon blocked: guesses already submitted | {round_id=} {player_id=}")
-                return {}, "round_has_guesses"
+            coverage = await self.scoring_svc.calculate_coverage(db, round)
+            finalized = await self.finalize_round(db, round, coverage, player_id)
+            if not finalized:
+                return {}, "round_not_active"
 
-            # Calculate refund (entry_cost - 5 penalty = 95 coins)
-            penalty = 5
-            refund_amount = self.entry_cost - penalty
-
-            # Update round
-            round.status = 'abandoned'
-            round.ended_at = datetime.now(UTC)
-
-            # Refund to player
-            player = await db.get(Player, player_id)
-            if player and player.tl_player_data:
-                player.tl_player_data.wallet += refund_amount
-
-            # Log transaction
-            transaction = TLTransaction(
-                player_id=player_id,
-                amount=refund_amount,
-                transaction_type='round_abandon_refund',
-                round_id=str(round.round_id),
-                description=f'Abandoned round - refund ({penalty} coin penalty)',
-            )
-            db.add(transaction)
-            await db.flush()
-
-            logger.debug(f"✅ Round abandoned: refund {refund_amount} coins")
             return {
                 "round_id": str(round.round_id),
-                "status": "abandoned",
-                "refund_amount": refund_amount,
+                "status": "completed",
+                "refund_amount": 0,
             }, None
 
         except Exception as e:

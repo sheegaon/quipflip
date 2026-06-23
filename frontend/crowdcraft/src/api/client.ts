@@ -287,7 +287,7 @@ class CrowdcraftApiClient extends BaseApiClient {
     const data = await this.mmStartVoteRoundRaw(signal);
     return {
       round_id: data.round_id,
-      expires_at: data.expires_at,
+      expires_at: null,
       meme: {
         meme_id: data.image_id,
         image_url: data.image_url,
