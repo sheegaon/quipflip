@@ -9,6 +9,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from backend.utils.exceptions import (
     NoPhrasesetsAvailableError,
@@ -16,6 +17,7 @@ from backend.utils.exceptions import (
     RoundExpiredError,
     InvalidPhraseError,
     SelfVotingError,
+    AlreadyInRoundError,
 )
 from backend.utils.datetime_helpers import ensure_utc
 
@@ -486,40 +488,56 @@ class QFVoteService:
 
         All operations are performed in a single atomic transaction.
         """
+        player_id = player.player_id
         # Database constraints revalidate the selected candidate at write time.
-        phraseset = await self.get_available_phrasesets_for_player(player.player_id)
+        phraseset = await self.get_available_phrasesets_for_player(player_id)
         if not phraseset:
             raise NoPhrasesetsAvailableError("No quips available for voting")
 
         round_id = uuid.uuid4()
-        await transaction_service.create_transaction(
-            player.player_id,
-            -settings.vote_cost,
-            "vote_entry",
-            reference_id=round_id,
-            auto_commit=False,
-            skip_lock=True,
-        )
+        try:
+            round = Round(
+                round_id=round_id,
+                player_id=player_id,
+                round_type="vote",
+                status="active",
+                cost=settings.vote_cost,
+                expires_at=datetime.now(UTC) + timedelta(seconds=settings.vote_round_seconds),
+                phraseset_id=phraseset.phraseset_id,
+            )
 
-        round = Round(
-            round_id=round_id,
-            player_id=player.player_id,
-            round_type="vote",
-            status="active",
-            cost=settings.vote_cost,
-            expires_at=datetime.now(UTC) + timedelta(seconds=settings.vote_round_seconds),
-            phraseset_id=phraseset.phraseset_id,
-        )
+            self.db.add(round)
+            await self.db.flush()
 
-        self.db.add(round)
-        await self.db.flush()
+            # Claim the active-round slot before touching the ledger so a
+            # duplicate-start loser cannot persist a debit through SQLite's
+            # savepoint behavior.
+            await transaction_service.create_transaction(
+                player_id,
+                -settings.vote_cost,
+                "vote_entry",
+                reference_id=round_id,
+                auto_commit=False,
+                skip_lock=True,
+            )
 
-        player_data = await self._get_player_data(player)
-        player_data.active_round_id = round.round_id
-        await self.db.flush([player_data])
+            player_data = await self._get_player_data(player)
+            player_data.active_round_id = round.round_id
+            await self.db.flush([player_data])
 
-        await self.db.commit()
-        await self.db.refresh(round)
+            await self.db.commit()
+            await self.db.refresh(round)
+        except IntegrityError as exc:
+            await self.db.rollback()
+            active_round = await self.db.execute(
+                select(Round.round_id)
+                .where(Round.player_id == player_id)
+                .where(Round.status == "active")
+                .limit(1)
+            )
+            if active_round.scalar_one_or_none() is not None:
+                raise AlreadyInRoundError("active_round_exists") from exc
+            raise
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache

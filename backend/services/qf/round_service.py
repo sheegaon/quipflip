@@ -1,6 +1,7 @@
 """Round service for managing prompt, copy, and vote rounds."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, UTC, timedelta
 import asyncio
 from typing import Optional
@@ -28,6 +29,7 @@ from backend.utils.exceptions import (
     RoundExpiredError,
     NoPromptsAvailableError,
     InsufficientBalanceError,
+    AlreadyInRoundError,
 )
 from backend.services.ai.ai_service import AIServiceError
 from backend.services.qf.round_service_helpers import (
@@ -86,8 +88,21 @@ class QFRoundService:
 
         Database uniqueness and the caller-owned transaction select the winner.
         """
+        player_id = player.player_id
         prompt = await self._select_prompt_for_player(player)
-        round_object = await self._create_prompt_round(player, prompt, transaction_service)
+        try:
+            round_object = await self._create_prompt_round(player, prompt, transaction_service)
+        except IntegrityError as exc:
+            await self.db.rollback()
+            active_round = await self.db.execute(
+                select(Round.round_id)
+                .where(Round.player_id == player_id)
+                .where(Round.status == "active")
+                .limit(1)
+            )
+            if active_round.scalar_one_or_none() is not None:
+                raise AlreadyInRoundError("active_round_exists") from exc
+            raise
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
@@ -103,15 +118,6 @@ class QFRoundService:
     ) -> Round:
         """Create a prompt round and commit it in a single transaction."""
         round_id = uuid.uuid4()
-        await transaction_service.create_transaction(
-            player.player_id,
-            -self.settings.prompt_cost,
-            "prompt_entry",
-            reference_id=round_id,
-            auto_commit=False,
-            skip_lock=True,
-        )
-
         round_object = Round(
             round_id=round_id,
             player_id=player.player_id,
@@ -128,6 +134,18 @@ class QFRoundService:
         # Must flush Round before setting FK reference to satisfy foreign key constraint
         # Only flush the Round object, not the entire session (to minimize lock contention)
         await self.db.flush([round_object])
+
+        # Claim the active-round slot before touching the ledger. On SQLite,
+        # the ledger's nested savepoint can otherwise outlive a later unique
+        # constraint failure when the outer transaction has not written yet.
+        await transaction_service.create_transaction(
+            player.player_id,
+            -self.settings.prompt_cost,
+            "prompt_entry",
+            reference_id=round_id,
+            auto_commit=False,
+            skip_lock=True,
+        )
 
         player_data = await self._get_player_data(player)
         player_data.active_round_id = round_object.round_id
@@ -593,7 +611,9 @@ class QFRoundService:
         """Reload a prompt round; SQLite constraints arbitrate the claim."""
 
         result = await self.db.execute(
-            select(Round).where(Round.round_id == prompt_round_id)
+            select(Round)
+            .where(Round.round_id == prompt_round_id)
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
 
@@ -617,7 +637,9 @@ class QFRoundService:
         """Reload a versioned round before applying a state transition."""
 
         result = await self.db.execute(
-            select(Round).where(Round.round_id == round_id)
+            select(Round)
+            .where(Round.round_id == round_id)
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
 
@@ -822,10 +844,7 @@ class QFRoundService:
     async def abandon_round(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
                             ) -> tuple[Round, int, int]:
         """Abandon an active prompt, copy, or vote round and process refund/forfeit."""
-        result = await self.db.execute(
-            select(Round).where(Round.round_id == round_id)
-        )
-        round_object = result.scalar_one_or_none()
+        round_object = await self._lock_round_for_update(round_id)
 
         if not round_object or round_object.player_id != player.player_id:
             raise RoundNotFoundError("Round not found")
@@ -840,22 +859,43 @@ class QFRoundService:
             penalty_kept = self.settings.abandoned_penalty
             refund_amount = max(round_object.cost - penalty_kept, 0)
 
-        round_object.status = "abandoned"
-        round_object.expires_at = datetime.now(UTC)
+        expected_version = round_object.version
+        prompt_round_id = (
+            round_object.prompt_round_id
+            if round_object.round_type == "copy"
+            else None
+        )
+        update_values = {
+            "status": "abandoned",
+            "expires_at": datetime.now(UTC),
+            "version": expected_version + 1,
+        }
+        if round_object.round_type == "prompt":
+            update_values["phraseset_status"] = "abandoned"
+
+        transition = await self.db.execute(
+            update(Round)
+            .where(Round.round_id == round_id)
+            .where(Round.player_id == player.player_id)
+            .where(Round.status == "active")
+            .where(Round.version == expected_version)
+            .values(**update_values)
+            .execution_options(synchronize_session=False)
+        )
+        if transition.rowcount != 1:
+            await self.db.rollback()
+            raise ValueError("Round is not active")
 
         player_data = await self._get_player_data(player)
         if player_data.active_round_id == round_id:
             player_data.active_round_id = None
 
-        if round_object.round_type == "prompt":
-            round_object.phraseset_status = "abandoned"
-        elif round_object.round_type == "copy" and round_object.prompt_round_id:
-            QFQueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
+        if round_object.round_type == "copy" and prompt_round_id:
             self.db.add(
                 PlayerAbandonedPrompt(
                     id=uuid.uuid4(),
                     player_id=player.player_id,
-                    prompt_round_id=round_object.prompt_round_id,
+                    prompt_round_id=prompt_round_id,
                 )
             )
 
@@ -872,6 +912,9 @@ class QFRoundService:
         await self.db.flush()
         await self.db.commit()
         await self.db.refresh(round_object)
+
+        if prompt_round_id:
+            QFQueueService.add_prompt_round_to_queue(prompt_round_id)
 
         from backend.utils.cache import dashboard_cache
 

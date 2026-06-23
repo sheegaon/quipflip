@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
@@ -24,6 +25,7 @@ from backend.services import TransactionService
 from backend.services import QFQueueService
 from backend.services import QFVoteService
 from backend.utils.exceptions import (
+    AlreadyInRoundError,
     RoundExpiredError,
     InvalidPhraseError,
     NoPromptsAvailableError,
@@ -131,6 +133,75 @@ class TestPromptRoundCreation:
 
         await db_session.refresh(player_with_balance)
         assert player_with_balance.active_round_id == round_obj.round_id
+
+    @pytest.mark.asyncio
+    async def test_start_prompt_round_reports_active_round_constraint_cleanly(
+        self, db_session, player_with_balance, test_prompt
+    ):
+        """A concurrent-start loser should roll back its charge and return a domain error."""
+        active_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="vote",
+            status="active",
+            cost=settings.vote_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add(active_round)
+        player_with_balance.active_round_id = active_round.round_id
+        await db_session.commit()
+        player_id = player_with_balance.player_id
+        initial_balance = player_with_balance.wallet
+
+        round_service = QFRoundService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        with pytest.raises(AlreadyInRoundError, match="active_round_exists"):
+            await round_service.start_prompt_round(
+                player_with_balance,
+                transaction_service,
+            )
+
+        player_data = await db_session.get(QFPlayerData, player_id)
+        assert player_data.wallet == initial_balance
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "loader_name",
+        ["_lock_prompt_round_for_update", "_lock_round_for_update"],
+    )
+    async def test_round_reload_ignores_stale_identity_map(
+        self, db_session, player_with_balance, loader_name
+    ):
+        """Transition reads should refresh an object already cached by the session."""
+        round_object = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="prompt",
+            status="active",
+            prompt_text="Fresh state test",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add(round_object)
+        await db_session.commit()
+        original_version = round_object.version
+
+        await db_session.execute(
+            update(Round)
+            .where(Round.round_id == round_object.round_id)
+            .values(status="submitted", version=original_version + 1)
+            .execution_options(synchronize_session=False)
+        )
+        await db_session.commit()
+        assert round_object.status == "active"
+
+        service = QFRoundService(db_session)
+        reloaded = await getattr(service, loader_name)(round_object.round_id)
+
+        assert reloaded is round_object
+        assert reloaded.status == "submitted"
+        assert reloaded.version == original_version + 1
 
     @pytest.mark.asyncio
     async def test_start_prompt_round_creates_expiration(self, db_session, player_with_balance, test_prompt):
@@ -687,6 +758,114 @@ class TestAbandonRound:
             )
         )
         assert result.scalar_one_or_none() is not None
+
+    @pytest.mark.asyncio
+    async def test_duplicate_copy_abandon_does_not_refund_or_requeue(
+        self, db_session, player_with_balance
+    ):
+        """A stale duplicate abandon must observe the committed winner and do no work."""
+        prompt_owner = await _create_player(db_session, prefix="duplicate_abandon_owner")
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompt_owner.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_text="Duplicate abandon prompt",
+            submitted_phrase="ORIGINAL",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="copy",
+            status="active",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            cost=settings.copy_cost_normal,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add_all([prompt_round, copy_round])
+        player_with_balance.active_round_id = copy_round.round_id
+        await db_session.commit()
+        original_version = copy_round.version
+
+        await db_session.execute(
+            update(Round)
+            .where(Round.round_id == copy_round.round_id)
+            .values(status="abandoned", version=original_version + 1)
+            .execution_options(synchronize_session=False)
+        )
+        await db_session.commit()
+        assert copy_round.status == "active"
+
+        drain_prompt_queue()
+        round_service = QFRoundService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        with pytest.raises(ValueError, match="Round is not active"):
+            await round_service.abandon_round(
+                copy_round.round_id,
+                player_with_balance,
+                transaction_service,
+            )
+
+        assert QFQueueService.remove_prompt_round_from_queue(prompt_round.round_id) is False
+        refund = await db_session.execute(
+            select(QFTransaction).where(
+                QFTransaction.type == "refund",
+                QFTransaction.reference_id == copy_round.round_id,
+            )
+        )
+        assert refund.scalar_one_or_none() is None
+
+    @pytest.mark.asyncio
+    async def test_copy_abandon_requeues_only_after_commit(
+        self, db_session, player_with_balance, monkeypatch
+    ):
+        """A failed commit must not publish a copy prompt to the process queue."""
+        prompt_owner = await _create_player(db_session, prefix="failed_abandon_owner")
+        prompt_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=prompt_owner.player_id,
+            round_type="prompt",
+            status="submitted",
+            prompt_text="Failed abandon prompt",
+            submitted_phrase="ORIGINAL",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        copy_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=player_with_balance.player_id,
+            round_type="copy",
+            status="active",
+            prompt_round_id=prompt_round.round_id,
+            original_phrase="ORIGINAL",
+            cost=settings.abandoned_penalty,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add_all([prompt_round, copy_round])
+        player_with_balance.active_round_id = copy_round.round_id
+        await db_session.commit()
+
+        drain_prompt_queue()
+        queue_add = patch.object(QFQueueService, "add_prompt_round_to_queue")
+        commit = AsyncMock(side_effect=RuntimeError("commit failed"))
+        monkeypatch.setattr(db_session, "commit", commit)
+        round_service = QFRoundService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        with queue_add as add_to_queue:
+            with pytest.raises(RuntimeError, match="commit failed"):
+                await round_service.abandon_round(
+                    copy_round.round_id,
+                    player_with_balance,
+                    transaction_service,
+                )
+            add_to_queue.assert_not_called()
+
+        await db_session.rollback()
 
     @pytest.mark.asyncio
     async def test_abandon_vote_round(self, db_session, player_with_balance):
