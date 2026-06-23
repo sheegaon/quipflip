@@ -387,9 +387,9 @@ async def lifespan(app_instance: FastAPI):
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
     logger.info("=" * 60)
 
-    from backend.runtime.config import validate_runtime_settings
+    from backend.runtime.config import validate_runtime_resources, validate_runtime_settings
 
-    runtime_errors = validate_runtime_settings(settings)
+    runtime_errors = validate_runtime_settings(settings) + validate_runtime_resources(settings)
     if runtime_errors:
         raise RuntimeError("Invalid runtime configuration: " + "; ".join(runtime_errors))
 
