@@ -180,9 +180,9 @@ class AIService:
             player_model = QFPlayer
             game_type = GameType.QF
         elif ai_player_type in [AIPlayerType.IR_PLAYER]:
-            from backend.models.ir.player import IRPlayer
+            from backend.models.player import Player
             from backend.services.ir.player_service import IRPlayerService as PlayerService
-            player_model = IRPlayer
+            player_model = Player
             game_type = GameType.IR
         else:
             raise ValueError(f"Unsupported {ai_player_type=}")

@@ -894,6 +894,7 @@ class QFRoundService:
 
         from backend.utils.cache import dashboard_cache
 
+        self.invalidate_available_prompts_cache()
         dashboard_cache.invalidate_player_data(player.player_id)
 
         logger.debug(
@@ -966,6 +967,7 @@ class QFRoundService:
 
         from backend.utils.cache import dashboard_cache
 
+        self.invalidate_available_prompts_cache()
         dashboard_cache.invalidate_player_data(player.player_id)
         if prompt_round.player_id:
             dashboard_cache.invalidate_player_data(prompt_round.player_id)
