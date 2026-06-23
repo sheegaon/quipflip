@@ -6,6 +6,7 @@ from sqlalchemy import select, func
 
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
+from backend.models.ir.player_data import IRPlayerData
 from backend.models.ir.transaction import IRTransaction
 from backend.models.player import Player
 
@@ -44,6 +45,10 @@ class IRStatisticsService:
 
             if not player:
                 return {"error": "player_not_found"}
+
+            player_data = await self.db.get(IRPlayerData, player_id)
+            wallet = player_data.wallet if player_data else 0
+            vault = player_data.vault if player_data else 0
 
             # Count entries
             entries_stmt = select(func.count(BackronymEntry.entry_id)).where(
@@ -90,9 +95,9 @@ class IRStatisticsService:
             return {
                 "player_id": str(player_id),
                 "username": player.username,
-                "wallet": player.wallet,
-                "vault": player.vault,
-                "total_balance": player.wallet + player.vault,
+                "wallet": wallet,
+                "vault": vault,
+                "total_balance": wallet + vault,
                 "is_guest": player.is_guest,
                 "created_at": player.created_at.isoformat(),
                 "last_login": player.last_login_date.isoformat()
@@ -124,17 +129,18 @@ class IRStatisticsService:
         try:
             # Get players ranked by vault
             stmt = (
-                select(Player)
+                select(Player, IRPlayerData)
+                .join(IRPlayerData, IRPlayerData.player_id == Player.player_id)
                 .where(Player.is_guest == False)
-                .order_by(Player.vault.desc())
+                .order_by(IRPlayerData.vault.desc())
                 .limit(limit)
             )
             result = await self.db.execute(stmt)
-            players = result.scalars().all()
+            players = result.all()
 
             leaderboard = []
 
-            for rank, player in enumerate(players, 1):
+            for rank, (player, player_data) in enumerate(players, 1):
                 # Count entries for this player
                 entries_stmt = select(func.count(BackronymEntry.entry_id)).where(
                     (BackronymEntry.player_id == str(player.player_id))
@@ -148,9 +154,9 @@ class IRStatisticsService:
                         "rank": rank,
                         "player_id": str(player.player_id),
                         "username": player.username,
-                        "vault": player.vault,
-                        "wallet": player.wallet,
-                        "total_balance": player.wallet + player.vault,
+                        "vault": player_data.vault,
+                        "wallet": player_data.wallet,
+                        "total_balance": player_data.wallet + player_data.vault,
                         "entries_created": entry_count,
                     }
                 )
@@ -195,16 +201,17 @@ class IRStatisticsService:
                 player_stmt = select(Player).where(Player.player_id == player_id)
                 player_result = await self.db.execute(player_stmt)
                 player = player_result.scalars().first()
+                player_data = await self.db.get(IRPlayerData, player_id)
 
-                if player:
+                if player and player_data:
                     leaderboard.append(
                         {
                             "rank": rank,
                             "player_id": str(player.player_id),
                             "username": player.username,
                             "votes_cast": vote_count,
-                            "wallet": player.wallet,
-                            "vault": player.vault,
+                            "wallet": player_data.wallet,
+                            "vault": player_data.vault,
                         }
                     )
 

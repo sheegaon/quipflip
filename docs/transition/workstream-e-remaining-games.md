@@ -406,7 +406,6 @@ repair policy is reviewed.
 
 **Implemented follow-up:** `IRAssignmentService.assign` and
 `IRAssignmentService.submit` own start/reconnect and token-claimed submission.
-
 Implement command modules under `backend/services/ir/commands/`:
 
 - `assign_backronym(player_id, mode, command_id, now)`
@@ -505,7 +504,6 @@ must not be imported by the rule module.
 **Implemented follow-up:** accepted player caption submissions are scoped to a
 unique completed vote round. Historical/import rows remain nullable so migration
 does not invent ownership.
-
 Add to `MMVoteRound`:
 
 - explicit status and lifecycle version;
@@ -538,7 +536,6 @@ ledger/cached-balance divergence.
 
 **Implemented follow-up:** caption submission claims the unique round row before
 the conditional free-slot update or idempotent fee movement.
-
 Implement:
 
 - `start_vote_round(player_id, command_id, now, rng)`

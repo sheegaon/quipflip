@@ -10,6 +10,7 @@ from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
 from backend.models.ir.backronym_observer_guard import BackronymObserverGuard
+from backend.models.ir.player_data import IRPlayerData
 from backend.models.player import Player
 from backend.models.ir.enums import SetStatus, Mode
 
@@ -70,6 +71,10 @@ class IRVoteService:
             if not player:
                 return False, "player_not_found", False
 
+            player_data = await self.db.get(IRPlayerData, player_id)
+            if not player_data:
+                return False, "player_not_found", False
+
             # Check if player is a participant (has entry in set)
             entry_stmt = select(BackronymEntry).where(
                 (BackronymEntry.set_id == set_id)
@@ -91,7 +96,7 @@ class IRVoteService:
                 ):
                     return False, "non_participant_slots_filled", False
                 vote_cost = self.settings.ir_vote_cost
-                if player.wallet < vote_cost:
+                if player_data.wallet < vote_cost:
                     return False, "insufficient_balance", False
 
                 # Enforce observer gating: non-participant voters must have accounts

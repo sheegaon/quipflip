@@ -124,8 +124,8 @@ async def submit_backronym(
         if not set_obj:
             raise HTTPException(status_code=404, detail="Set not found")
 
-        validator = PhraseValidator()
-        is_valid, error = validator.validate_backronym_words(request.words, set_obj.word)
+        async with PhraseValidator() as validator:
+            is_valid, error = await validator.validate_backronym_words(request.words, len(set_obj.word))
         if not is_valid:
             raise HTTPException(status_code=400, detail=error)
 
@@ -169,11 +169,11 @@ async def validate_backronym(
             raise HTTPException(status_code=404, detail="Set not found")
 
         normalized_words = [word.strip().upper() for word in request.words]
-        validator = PhraseValidator()
-        is_valid, error = validator.validate_backronym_words(
-            normalized_words,
-            set_obj.word,
-        )
+        async with PhraseValidator() as validator:
+            is_valid, error = await validator.validate_backronym_words(
+                normalized_words,
+                len(set_obj.word),
+            )
 
         return ValidateBackronymResponse(
             is_valid=is_valid,
