@@ -49,14 +49,29 @@ def ai_service(db_session):
 
 
 @pytest.fixture
-def mock_prompt_round():
+async def mock_prompt_round(db_session):
     """Create a mock prompt round for copy generation tests."""
-    round_obj = MagicMock(spec=Round)
-    round_obj.round_id = uuid.uuid4()
+    player = QFPlayer(
+        player_id=uuid.uuid4(),
+        username="prompt_fixture_user",
+        username_canonical="prompt_fixture_user",
+        email=f"prompt_fixture_{uuid.uuid4().hex[:8]}@test.com",
+        password_hash="hash",
+    )
+    round_obj = Round(
+        round_id=uuid.uuid4(),
+        player_id=player.player_id,
+        round_type="prompt",
+        status="submitted",
+        prompt_text="What do you say to celebrate someone's birth?",
+        submitted_phrase="happy birthday",
+        cost=100,
+        expires_at=datetime.now(UTC) + timedelta(minutes=5),
+    )
+    db_session.add_all([player, round_obj])
+    await db_session.commit()
+    await db_session.refresh(round_obj)
     round_obj.phrase = "happy birthday"
-    round_obj.submitted_phrase = "happy birthday"
-    round_obj.round_type = "prompt"
-    round_obj.prompt_text = "What do you say to celebrate someone's birth?"
     return round_obj
 
 
@@ -154,7 +169,7 @@ class TestAICopyGeneration:
             result = await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
         # Result should be one of the generated phrases
-        assert result in ["joyful celebration", "festive greeting", "happy wishes", "merry occasion", "cheerful day"]
+        assert result in ["JOYFUL CELEBRATION", "FESTIVE GREETING", "HAPPY WISHES", "MERRY OCCASION", "CHEERFUL DAY"]
         mock_openai.assert_called_once()
 
     @pytest.mark.asyncio
@@ -181,7 +196,7 @@ class TestAICopyGeneration:
             result = await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
             # Result should be one of the generated phrases
-            assert result in ["merry festivity", "joyful party", "happy times", "festive cheer", "celebration day"]
+            assert result in ["MERRY FESTIVITY", "JOYFUL PARTY", "HAPPY TIMES", "FESTIVE CHEER", "CELEBRATION DAY"]
             mock_gemini.assert_called_once()
 
     @pytest.mark.asyncio
@@ -211,7 +226,7 @@ class TestAICopyGeneration:
 
         service = AIService(db_session)
 
-        with pytest.raises(AICopyError, match="Failed to generate AI copy"):
+        with pytest.raises(AICopyError, match="AI phrase generation failed"):
             await service.get_impostor_phrase(prompt_round=mock_prompt_round)
 
 
@@ -341,9 +356,16 @@ class TestAIHintGeneration:
 
     @staticmethod
     async def _create_prompt_round(db_session) -> Round:
+        player = QFPlayer(
+            player_id=uuid.uuid4(),
+            username=f"hint_prompt_{uuid.uuid4().hex[:8]}",
+            username_canonical=f"hint_prompt_{uuid.uuid4().hex[:8]}",
+            email=f"hint_prompt_{uuid.uuid4().hex[:8]}@test.com",
+            password_hash="hash",
+        )
         prompt_round = Round(
             round_id=uuid.uuid4(),
-            player_id=uuid.uuid4(),
+            player_id=player.player_id,
             round_type="prompt",
             status="submitted",
             prompt_text="Describe a celebratory greeting.",
@@ -351,9 +373,10 @@ class TestAIHintGeneration:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=5),
         )
-        db_session.add(prompt_round)
+        db_session.add_all([player, prompt_round])
         await db_session.commit()
         await db_session.refresh(prompt_round)
+        prompt_round.phrase = "ORIGINAL PHRASE"
         return prompt_round
 
     @pytest.mark.asyncio
@@ -378,7 +401,7 @@ class TestAIHintGeneration:
         # Should get 3 hints from the cache (not uppercased - that happens in the UI)
         assert len(hints) == 3
         # All hints should be from the generated phrases (in original case)
-        possible_hints = {"Warm glow", "Festive cheer", "Joyful toast", "Happy vibes", "Merry times"}
+        possible_hints = {"WARM GLOW", "FESTIVE CHEER", "JOYFUL TOAST", "HAPPY VIBES", "MERRY TIMES"}
         for hint in hints:
             assert hint in possible_hints
 
@@ -563,7 +586,7 @@ class TestAIPlayerManagement:
                 new=AsyncMock(return_value=("AI BACKUP", "aibackup")),
             ) as mock_generate,
             patch(
-                'backend.services.qf.player_service.PlayerService.create_player',
+                'backend.services.qf.player_service.QFPlayerService.create_player',
                 new_callable=AsyncMock,
             ) as mock_create,
         ):
@@ -607,7 +630,7 @@ class TestAIPlayerManagement:
         service = AIService(db_session)
 
         with patch(
-            'backend.services.qf.player_service.PlayerService.create_player',
+            'backend.services.qf.player_service.QFPlayerService.create_player',
             new_callable=AsyncMock,
         ) as mock_create:
             player = await service.get_or_create_ai_player(AIPlayerType.QF_IMPOSTOR)
@@ -782,16 +805,16 @@ class TestAIBackupCycle:
 
         await db_session.commit()
 
-        async def fake_generate_vote_choice(self, phraseset):
+        async def fake_generate_vote_choice(self, phraseset, seed=None):
             return phraseset.original_phrase
 
         with (
             patch("backend.services.ai.ai_service.get_settings", return_value=custom_settings),
             patch.object(AIService, "generate_vote_choice", new=fake_generate_vote_choice),
-            patch(
-                "backend.services.vote_service.VoteService.submit_system_vote",
-                new_callable=AsyncMock,
-            ) as mock_submit_vote,
+                patch(
+                    "backend.services.qf.vote_service.QFVoteService.submit_system_vote",
+                    new_callable=AsyncMock,
+                ) as mock_submit_vote,
             patch("random.randint", return_value=1234),
         ):
             mock_submit_vote.return_value = MagicMock(

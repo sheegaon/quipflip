@@ -92,6 +92,7 @@ async def test_party_phase_advancement_automatic(db_session, player_factory):
         prompts_per_player=1
     )
     await party_service.add_participant(session.session_id, player2.player_id)
+    await party_service.mark_participant_ready(session.session_id, player2.player_id)
     
     # Start session
     await party_service.start_session(session.session_id, host.player_id)

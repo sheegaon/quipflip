@@ -382,17 +382,24 @@ class PhraseValidator:
 
         return True, ""
 
-    def validate_backronym_words(self, words: list[str], target_letter_count: int) -> tuple[bool, str]:
+    def validate_backronym_words(
+        self,
+        words: list[str],
+        target: int | str,
+    ) -> tuple[bool, str]:
         """
         Validate backronym words for Initial Reaction game.
 
         Args:
             words: List of words forming the backronym
-            target_letter_count: Expected number of words (should match word length)
+            target: Expected word or legacy expected letter count
 
         Returns:
             (is_valid, error_message)
         """
+        target_word = target.upper() if isinstance(target, str) else None
+        target_letter_count = len(target_word) if target_word else target
+
         # Check word count matches target
         if len(words) != target_letter_count:
             return (
@@ -403,6 +410,12 @@ class PhraseValidator:
         # Validate each word
         for i, word in enumerate(words):
             word_upper = word.strip().upper()
+
+            if target_word and not word_upper.startswith(target_word[i]):
+                return (
+                    False,
+                    f"Word '{word}' must start with '{target_word[i]}'",
+                )
 
             # Check word length (2-15 characters)
             if not (2 <= len(word_upper) <= 15):

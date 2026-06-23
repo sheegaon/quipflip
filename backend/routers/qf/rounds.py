@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-import random
 import logging
 
 from backend.database import get_db
@@ -35,6 +34,7 @@ from backend.utils.exceptions import (
     RoundNotFoundError,
     NoPhrasesetsAvailableError,
     NoPromptsAvailableError,
+    AlreadyInRoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,6 +105,8 @@ async def start_prompt_round(
             "as we add more prompts, and keep enjoying copy and vote rounds in the meantime!"
         )
         raise HTTPException(status_code=400, detail=message)
+    except AlreadyInRoundError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"Error starting prompt round: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -183,9 +185,12 @@ async def start_vote_round(
     try:
         round_object, phraseset = await vote_service.start_vote_round(player, transaction_service)
 
-        # Randomize word order per-voter
-        phrases = [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]
-        random.shuffle(phrases)
+        from backend.services.qf.vote_choice_service import QFVoteChoiceService
+
+        vote_choice_service = QFVoteChoiceService(db)
+        choices = await vote_choice_service.get_or_create_vote_choices(round_object, phraseset)
+        await db.commit()
+        phrases = [choice.displayed_phrase for choice in choices]
 
         return StartVoteRoundResponse(
             round_id=round_object.round_id,
@@ -196,6 +201,8 @@ async def start_vote_round(
         )
     except NoPhrasesetsAvailableError as e:
         raise HTTPException(status_code=400, detail="no_phrasesets_available")
+    except AlreadyInRoundError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"Error starting vote round: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -289,6 +296,8 @@ async def submit_phrase(
                 "party_context": {
                     "session_id": str(party_round.session_id),
                     "current_phase": session.current_phase,
+                    "version": session.version,
+                    "phase_expires_at": session.phase_expires_at.isoformat() if session.phase_expires_at else None,
                     "your_progress": {
                         "prompts_submitted": participant.prompts_submitted,
                         "prompts_required": session.prompts_per_player,

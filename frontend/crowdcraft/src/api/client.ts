@@ -226,9 +226,13 @@ class CrowdcraftApiClient extends BaseApiClient {
     return data;
   }
 
-  async qfGetPartySessionStatus(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
-    const { data } = await this.api.get<QFPartySessionStatusResponse>(`/party/${sessionId}/status`, { signal });
+  async qfGetPartyState(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
+    const { data } = await this.api.get<QFPartySessionStatusResponse>(`/party/${sessionId}/state`, { signal });
     return data;
+  }
+
+  async qfGetPartySessionStatus(sessionId: string, signal?: AbortSignal): Promise<QFPartySessionStatusResponse> {
+    return this.qfGetPartyState(sessionId, signal);
   }
 
   async qfLeavePartySession(

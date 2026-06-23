@@ -1,7 +1,7 @@
 """Add lifecycle invariants.
 
 Revision ID: b1d2c3e4f5a6
-Revises: tl_003_add_uuid_server_defaults
+Revises: a3f6c8d9e0b1
 Create Date: 2026-06-22 00:00:00.000000
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from backend.utils.idempotency import build_idempotency_key
 
 # revision identifiers, used by Alembic.
 revision: str = "b1d2c3e4f5a6"
-down_revision: Union[str, None] = "tl_003_add_uuid_server_defaults"
+down_revision: Union[str, None] = "a3f6c8d9e0b1"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

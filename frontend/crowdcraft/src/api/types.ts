@@ -629,6 +629,8 @@ export interface QFStartVoteResponse {
 export interface QFPartyContext {
   session_id: string;
   current_phase: string;
+  version?: number;
+  phase_expires_at?: string | null;
   your_progress: {
     prompts_submitted: number;
     prompts_required: number;
@@ -1085,6 +1087,7 @@ export interface QFPartyParticipant {
   is_ai: boolean;
   is_host: boolean;
   status: 'JOINED' | 'READY' | 'ACTIVE' | 'COMPLETED';
+  connection_status?: 'connected' | 'disconnected' | string | null;
   prompts_submitted: number;
   copies_submitted: number;
   votes_submitted: number;
@@ -1093,6 +1096,8 @@ export interface QFPartyParticipant {
   votes_required: number;
   joined_at: string | null;
   ready_at: string | null;
+  last_activity_at?: string | null;
+  disconnected_at?: string | null;
 }
 
 export interface QFPartySessionProgress {
@@ -1112,9 +1117,11 @@ export interface QFPartySession {
   host_player_id: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
   current_phase: 'LOBBY' | 'PROMPT' | 'COPY' | 'VOTE' | 'RESULTS';
+  version: number;
   min_players: number;
   max_players: number;
   phase_started_at: string | null;
+  phase_expires_at?: string | null;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -1188,6 +1195,8 @@ export interface QFStartPartySessionResponse {
   current_phase: string;
   phase_started_at: string;
   locked_at: string;
+  phase_expires_at?: string | null;
+  version?: number | null;
   participants: QFPartyParticipant[];
 }
 
@@ -1591,6 +1600,7 @@ export interface IRDashboardData {
   player: IRDashboardPlayerSummary;
   active_session: {
     set_id: string;
+    assignment_token: string;
     word: string;
     status: string;
     has_submitted_entry: boolean;
@@ -1622,6 +1632,7 @@ export interface IRUpgradeGuestRequest {
 
 export interface IRSubmitBackronymRequest {
   words: string[];
+  assignment_token: string;
 }
 
 export interface IRValidateBackronymRequest {
@@ -1656,6 +1667,7 @@ export interface IRStartSessionResponse {
   word: string;
   mode: string;
   status: string;
+  assignment_token: string;
 }
 
 export interface IRBalanceResponse {
@@ -1686,6 +1698,7 @@ export interface IRSetStatusResponse {
   set: IRBackronymSet;
   player_has_submitted: boolean;
   player_has_voted: boolean;
+  assignment_token?: string | null;
 }
 
 export interface IRResultsResponse {

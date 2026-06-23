@@ -285,7 +285,52 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         wallet=1000,
         vault=0,
     )
-    db_session.add_all([player1, player2, player3])
+    voter1 = QFPlayer(
+        player_id=uuid.uuid4(),
+        username=f"voter1_{test_id}",
+        username_canonical=f"voter1_{test_id}",
+        email=f"voter1_{test_id}@test.com",
+        password_hash="hash",
+        wallet=1000,
+        vault=0,
+    )
+    voter2 = QFPlayer(
+        player_id=uuid.uuid4(),
+        username=f"voter2_{test_id}",
+        username_canonical=f"voter2_{test_id}",
+        email=f"voter2_{test_id}@test.com",
+        password_hash="hash",
+        wallet=1000,
+        vault=0,
+    )
+    voter3 = QFPlayer(
+        player_id=uuid.uuid4(),
+        username=f"voter3_{test_id}",
+        username_canonical=f"voter3_{test_id}",
+        email=f"voter3_{test_id}@test.com",
+        password_hash="hash",
+        wallet=1000,
+        vault=0,
+    )
+    voter4 = QFPlayer(
+        player_id=uuid.uuid4(),
+        username=f"voter4_{test_id}",
+        username_canonical=f"voter4_{test_id}",
+        email=f"voter4_{test_id}@test.com",
+        password_hash="hash",
+        wallet=1000,
+        vault=0,
+    )
+    voter5 = QFPlayer(
+        player_id=uuid.uuid4(),
+        username=f"voter5_{test_id}",
+        username_canonical=f"voter5_{test_id}",
+        email=f"voter5_{test_id}@test.com",
+        password_hash="hash",
+        wallet=1000,
+        vault=0,
+    )
+    db_session.add_all([player1, player2, player3, voter1, voter2, voter3, voter4, voter5])
     await db_session.commit()
 
     # Create rounds
@@ -349,7 +394,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         Vote(
             vote_id=uuid.uuid4(),
             phraseset_id=phraseset.phraseset_id,
-            player_id=uuid.uuid4(),
+            player_id=voter1.player_id,
             voted_phrase="ORIGINAL",
             correct=True,
             payout=settings.vote_payout_correct,
@@ -357,7 +402,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         Vote(
             vote_id=uuid.uuid4(),
             phraseset_id=phraseset.phraseset_id,
-            player_id=uuid.uuid4(),
+            player_id=voter2.player_id,
             voted_phrase="ORIGINAL",
             correct=True,
             payout=settings.vote_payout_correct,
@@ -365,7 +410,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         Vote(
             vote_id=uuid.uuid4(),
             phraseset_id=phraseset.phraseset_id,
-            player_id=uuid.uuid4(),
+            player_id=voter3.player_id,
             voted_phrase="COPY ONE",
             correct=False,
             payout=0,
@@ -373,7 +418,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         Vote(
             vote_id=uuid.uuid4(),
             phraseset_id=phraseset.phraseset_id,
-            player_id=uuid.uuid4(),
+            player_id=voter4.player_id,
             voted_phrase="COPY ONE",
             correct=False,
             payout=0,
@@ -381,7 +426,7 @@ async def test_scoring_uses_dynamic_prize_pool(db_session):
         Vote(
             vote_id=uuid.uuid4(),
             phraseset_id=phraseset.phraseset_id,
-            player_id=uuid.uuid4(),
+            player_id=voter5.player_id,
             voted_phrase="COPY TWO",
             correct=False,
             payout=0,

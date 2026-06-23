@@ -15,7 +15,7 @@ except ImportError:
     genai = None  # type: ignore
     types = None  # type: ignore
 
-__all__ = ["GeminiError", "generate", "generate_response"]
+__all__ = ["GeminiError", "generate", "generate_response", "generate_copy"]
 
 settings = get_settings()
 
@@ -82,6 +82,10 @@ async def generate_response(
         if isinstance(exc, GeminiError):
             raise
         raise GeminiError(f"Failed to contact Gemini API: {exc}") from exc
+
+
+# Backwards-compatible alias used by older AIService tests and call sites.
+generate_copy = generate_response
 
 
 def generate(input_text: str) -> str:

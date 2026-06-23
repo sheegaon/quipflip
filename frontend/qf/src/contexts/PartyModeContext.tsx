@@ -14,6 +14,8 @@ interface PartyModeState {
   isPartyMode: boolean;
   sessionId: string | null;
   currentStep: PartyStep | null;
+  lifecycleVersion: number | null;
+  phaseExpiresAt: string | null;
 
   // Session configuration (set once at start, doesn't change)
   sessionConfig: SessionConfig | null;
@@ -48,12 +50,14 @@ interface PartyModeContextValue {
   actions: PartyModeActions;
 }
 
-const STORAGE_KEY = 'partyModeState';
+const STORAGE_KEY = 'partyModeSessionId';
 
 const defaultState: PartyModeState = {
   isPartyMode: false,
   sessionId: null,
   currentStep: null,
+  lifecycleVersion: null,
+  phaseExpiresAt: null,
   sessionConfig: null,
   yourProgress: null,
   sessionProgress: null,
@@ -65,8 +69,11 @@ const loadInitialState = (): PartyModeState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored) as PartyModeState;
-      return parsed;
+      return {
+        ...defaultState,
+        isPartyMode: true,
+        sessionId: stored,
+      };
     }
   } catch (err) {
     console.warn('Failed to load party mode state from storage', err);
@@ -76,7 +83,11 @@ const loadInitialState = (): PartyModeState => {
 
 const persistState = (state: PartyModeState) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (state.sessionId && state.isPartyMode) {
+      localStorage.setItem(STORAGE_KEY, state.sessionId);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   } catch (err) {
     console.warn('Failed to persist party mode state', err);
   }
@@ -92,6 +103,8 @@ export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         isPartyMode: true,
         sessionId,
         currentStep: initialStep,
+        lifecycleVersion: prev.lifecycleVersion,
+        phaseExpiresAt: prev.phaseExpiresAt,
         sessionConfig: config || prev.sessionConfig,
       };
       persistState(nextState);
@@ -155,6 +168,8 @@ export const PartyModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const nextState: PartyModeState = {
         ...prev,
+        lifecycleVersion: context.version ?? prev.lifecycleVersion,
+        phaseExpiresAt: context.phase_expires_at ?? prev.phaseExpiresAt,
         sessionConfig: nextSessionConfig,
         yourProgress: {
           prompts_submitted: context.your_progress.prompts_submitted,

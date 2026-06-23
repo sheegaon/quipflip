@@ -57,12 +57,14 @@ class AIService:
     configurable provider selection, and comprehensive metrics tracking.
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, allow_no_provider: bool = False):
         """
         Initialize AI service.
 
         Args:
             db: Database session
+            allow_no_provider: If True, permit instantiation without API keys when
+                the caller only needs AI player reuse/selection helpers.
         """
         self.db = db
         self.settings = get_settings()
@@ -72,11 +74,21 @@ class AIService:
         self._prompt_completions_cache = None  # Lazy-loaded CSV cache for quip responses
         self._impostor_completions_cache = None  # Lazy-loaded CSV cache for impostor phrases
 
-        # Determine which provider to use based on config and available API keys
-        self.provider = self._determine_provider()
+        # Determine which provider to use based on config and available API keys.
+        # Some call sites only need AI player lookup/creation and can operate
+        # without a configured provider.
+        self.provider = None
+        self.ai_model = None
+        try:
+            self.provider = self._determine_provider()
+        except AIServiceError:
+            if not allow_no_provider:
+                raise
+            logger.info("No AI provider configured; continuing with provider-less AIService")
+
         if self.provider == "openai":
             self.ai_model = self.settings.ai_openai_model
-        else:  # gemini
+        elif self.provider == "gemini":
             self.ai_model = self.settings.ai_gemini_model
 
     def _determine_provider(self) -> str:
@@ -116,16 +128,19 @@ class AIService:
 
     async def _prompt_ai(self, prompt_text: str) -> str:
         """Send a prompt to the AI provider and return the response"""
+        if not self.provider or not self.ai_model:
+            raise AIServiceError("No AI provider configured - set OPENAI_API_KEY or GEMINI_API_KEY")
+
         logger.info(f"Sending {prompt_text=} to AI provider {self.provider} {self.ai_model}")
         start_time = datetime.now(UTC)
         if self.provider == "openai":
-            from backend.services.ai.openai_api import generate_response
+            from backend.services.ai.openai_api import generate_copy
         elif self.provider == "gemini":
-            from backend.services.ai.gemini_api import generate_response
+            from backend.services.ai.gemini_api import generate_copy
         else:
             raise ValueError(f"Unknown AI provider: {self.provider}")
 
-        response = await generate_response(
+        response = await generate_copy(
             prompt_text,
             model=self.ai_model,
             timeout=self.settings.ai_timeout_seconds,
@@ -165,9 +180,9 @@ class AIService:
             player_model = QFPlayer
             game_type = GameType.QF
         elif ai_player_type in [AIPlayerType.IR_PLAYER]:
-            from backend.models.ir.player import IRPlayer
+            from backend.models.player import Player
             from backend.services.ir.player_service import IRPlayerService as PlayerService
-            player_model = IRPlayer
+            player_model = Player
             game_type = GameType.IR
         else:
             raise ValueError(f"Unsupported {ai_player_type=}")

@@ -22,6 +22,7 @@ from backend.services.ai.stale_ai_service import StaleAIService
 from backend.services.qf.player_service import QFPlayerService
 from backend.services.qf.round_service import QFRoundService
 from backend.services.qf.vote_service import QFVoteService
+from backend.services.qf.vote_choice_service import QFVoteChoiceService
 from backend.services.qf.scoring_service import QFScoringService
 from backend.services.qf.queue_service import QFQueueService, PROMPT_QUEUE, PHRASESET_QUEUE
 from backend.services.qf.cleanup_service import QFCleanupService
@@ -46,6 +47,7 @@ from backend.services.ir.result_view_service import IRResultViewService
 from backend.services.ir.statistics_service import IRStatisticsService
 from backend.services.ir.scoring_service import IRScoringService
 from backend.services.ir.daily_bonus_service import IRDailyBonusService, IRDailyBonusError
+from backend.services.ir.assignment_service import IRAssignmentError, IRAssignmentService
 
 # MM (Meme Mint) services
 from backend.services.mm.player_service import MMPlayerService
@@ -92,6 +94,7 @@ __all__ = [
     'QFPlayerService',
     'QFRoundService',
     'QFVoteService',
+    'QFVoteChoiceService',
     'QFScoringService',
     'QFQueueService',
     'PROMPT_QUEUE',
@@ -117,6 +120,8 @@ __all__ = [
     'IRScoringService',
     'IRDailyBonusService',
     'IRDailyBonusError',
+    'IRAssignmentError',
+    'IRAssignmentService',
 
     # MM services
     'MMPlayerService',

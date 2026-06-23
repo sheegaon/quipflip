@@ -225,6 +225,23 @@ class RoundValidationHelper:
 
         return True, ""
 
+    @staticmethod
+    async def determine_copy_slot(db: AsyncSession, prompt_round_id: UUID) -> int:
+        """Return the next live copy slot for a prompt round."""
+
+        result = await db.execute(
+            select(func.count())
+            .select_from(Round)
+            .where(Round.prompt_round_id == prompt_round_id)
+            .where(Round.round_type == "copy")
+            .where(Round.status.in_(["active", "submitted"]))
+            .where(Round.party_round_id.is_(None))
+        )
+        existing_live_copy_rounds = int(result.scalar_one() or 0)
+        if existing_live_copy_rounds >= 2:
+            raise ValueError("Prompt already has two live copy rounds")
+        return existing_live_copy_rounds + 1
+
 
 class CostCalculationHelper:
     """Helper class for calculating round costs and contributions."""
@@ -376,16 +393,7 @@ class RoundTimeoutHelper:
     async def handle_vote_timeout(round_object: Round, settings, transaction_service) -> int:
         """Handle timeout for vote round."""
         round_object.status = "expired"
-        refund_amount = max(round_object.cost - settings.abandoned_penalty, 0)
-
-        await transaction_service.create_transaction(
-            round_object.player_id,
-            refund_amount,
-            "refund",
-            round_object.round_id,
-        )
-        
-        return refund_amount
+        return 0
 
 
 class QueueManagementHelper:

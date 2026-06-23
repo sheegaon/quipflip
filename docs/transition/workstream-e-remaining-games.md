@@ -3,7 +3,25 @@
 > **Document type:** Implementation plan
 > **Status:** Active
 > **Audience:** Maintainers and agents
-> **Last reviewed:** 2026-06-22
+> **Last reviewed:** 2026-06-23
+
+## Post-merge IR/MM follow-up
+
+The two explicit implementation gaps left in the IR and MM state-machine pages
+were closed on 2026-06-23:
+
+- IR now persists an actor-scoped, versioned assignment with database-enforced
+  one-active-per-player and one-per-player/set constraints. Start, dashboard, and
+  status projections restore the same token; submission claims it before the
+  entry charge and insert.
+- MM caption submission now claims the completed vote round through a unique
+  `mm_caption_submissions.round_id` foreign key before consuming a daily free slot
+  or charging. Round details restore the accepted caption state.
+
+Migration `f2a3b4c5d6e7` and the focused assignment/round-claim tests are the
+acceptance evidence for this follow-up. The unchecked items below remain the
+original comprehensive architecture checklist and are not retroactively claimed
+by this focused closure.
 
 ## Objective
 
@@ -361,6 +379,10 @@ Pass `now`, configuration, and seeded tie/random inputs explicitly.
 
 ### E1.3 Durable assignment and schema migration
 
+**Implemented follow-up:** `IRAssignment` now owns the durable token and active
+assignment constraints. Existing set status/version and ledger idempotency
+constraints remain authoritative for submission.
+
 Prefer a dedicated `IRAssignment` row over treating an unpaid/unsubmitted entry as
 an assignment. The migration should add:
 
@@ -382,6 +404,8 @@ repair policy is reviewed.
 
 ### E1.4 IR lifecycle commands
 
+**Implemented follow-up:** `IRAssignmentService.assign` and
+`IRAssignmentService.submit` own start/reconnect and token-claimed submission.
 Implement command modules under `backend/services/ir/commands/`:
 
 - `assign_backronym(player_id, mode, command_id, now)`
@@ -449,7 +473,7 @@ vote state, status, and deadline.
 ### E1 gate
 
 - [ ] IR models, schemas, frontend types, and canonical rules agree.
-- [ ] Start cannot charge without creating a reconnectable assignment.
+- [x] Start cannot charge without creating a reconnectable assignment.
 - [ ] Entry/vote/finalization races produce one owner and one movement per key.
 - [ ] Queue loss and restart preserve claimable work and deadlines.
 - [ ] IR privacy, reconnect, SQLite, frontend, and smoke gates pass.
@@ -477,6 +501,9 @@ must not be imported by the rule module.
 
 ### E2.2 MM round and ledger migration
 
+**Implemented follow-up:** accepted player caption submissions are scoped to a
+unique completed vote round. Historical/import rows remain nullable so migration
+does not invent ownership.
 Add to `MMVoteRound`:
 
 - explicit status and lifecycle version;
@@ -507,6 +534,8 @@ ledger/cached-balance divergence.
 
 ### E2.3 MM commands
 
+**Implemented follow-up:** caption submission claims the unique round row before
+the conditional free-slot update or idempotent fee movement.
 Implement:
 
 - `start_vote_round(player_id, command_id, now, rng)`
@@ -602,7 +631,7 @@ reused as player projections.
 
 - [ ] Concurrent starts create one active round and one charge.
 - [ ] One vote produces one set of counters, seen rows, bonuses, and payouts.
-- [ ] Caption submission consumes at most one free slot or one fee.
+- [x] Caption submission consumes at most one free slot or one fee.
 - [ ] Authorship and circle relationships remain hidden until reveal.
 - [ ] MM money, circles, SQLite, reconnect, frontend, and smoke gates pass.
 

@@ -1,15 +1,11 @@
 """Background tasks for party session maintenance."""
 import asyncio
 import logging
-from datetime import datetime, UTC, timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import AsyncSessionLocal
 from backend.services.qf.party_session_service import PartySessionService
-from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 # Track if maintenance task is running to prevent concurrent executions
 _maintenance_task_running = False
@@ -19,8 +15,8 @@ async def run_party_maintenance() -> None:
     """Run periodic party session maintenance tasks.
 
     This function should be called periodically (e.g., every hour) to:
-    1. Clean up stale/expired party sessions
-    2. Remove disconnected participants
+    1. Mark stale/expired party sessions as abandoned
+    2. Preserve disconnected participants for reconnect
     3. Free up database resources
 
     Runs safely with task deduplication to prevent concurrent executions.
@@ -37,11 +33,11 @@ async def run_party_maintenance() -> None:
         async with AsyncSessionLocal() as db:
             party_service = PartySessionService(db)
 
-            # Clean up expired sessions (older than 24 hours)
+            # Clean up stale sessions (older than 24 hours)
             logger.info("Starting party session maintenance...")
             cleanup_stats = await party_service.cleanup_expired_sessions(max_session_age_hours=24)
 
-            # Clean up disconnected participants (disconnected for 30+ minutes)
+            # Preserve disconnected participants; this is now a no-op for reconnect safety.
             disconnected_removed = await party_service.cleanup_disconnected_participants(
                 inactive_minutes=30
             )
@@ -54,7 +50,7 @@ async def run_party_maintenance() -> None:
 
             logger.info(
                 f"Party maintenance completed: "
-                f"{total_sessions_expired} sessions expired, "
+                f"{total_sessions_expired} sessions abandoned, "
                 f"{cleanup_stats['removed_participants']} session participants removed, "
                 f"{disconnected_removed} disconnected participants removed"
             )

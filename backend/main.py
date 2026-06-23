@@ -34,6 +34,7 @@ from backend.scripts.tl.seed_prompts import seed_prompts as seed_prompts
 from backend.scripts.tl.seed_answers import seed_answers as seed_answers, cleanup_empty_prompts as cleanup_tl_prompts
 from backend.routers import qf, ir, mm, tl, auth, health, notifications, online_users
 from backend.middleware.deduplication import deduplication_middleware
+from backend.middleware.host_scope import HostScopeMiddleware
 from backend.middleware.online_user_tracking import online_user_tracking_middleware
 
 # Create logs directory if it doesn't exist
@@ -386,6 +387,12 @@ async def lifespan(app_instance: FastAPI):
     logger.info(f"Redis: {'Enabled' if settings.redis_url else 'In-Memory Fallback'}")
     logger.info("=" * 60)
 
+    from backend.runtime.config import validate_runtime_settings
+
+    runtime_errors = validate_runtime_settings(settings)
+    if runtime_errors:
+        raise RuntimeError("Invalid runtime configuration: " + "; ".join(runtime_errors))
+
     # Initialize phrase validation service using either local or remote API
     await initialize_phrase_validation()
 
@@ -512,6 +519,9 @@ app = FastAPI(
     description="Phase 3 - Multi game backend",
     version=APP_VERSION,
     lifespan=lifespan,
+    docs_url=None if settings.environment == "production" else "/docs",
+    redoc_url=None if settings.environment == "production" else "/redoc",
+    openapi_url=None if settings.environment == "production" else "/openapi.json",
 )
 
 
@@ -677,6 +687,7 @@ app.include_router(auth.router, prefix="/qf/auth")
 app.include_router(auth.router, prefix="/mm/auth")
 app.include_router(auth.router, prefix="/tl/auth")
 app.include_router(health.router)
+app.add_middleware(HostScopeMiddleware, settings=settings)
 
 
 @app.get("/")

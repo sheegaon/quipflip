@@ -70,3 +70,6 @@ class BackronymSet(VersionedBase, Base):
     result_views = relationship(
         "IRResultView", back_populates="set", cascade="all, delete-orphan"
     )
+    assignments = relationship(
+        "IRAssignment", back_populates="set", cascade="all, delete-orphan"
+    )

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import type {
   IRPlayer,
   IRBackronymSet,
@@ -13,7 +13,11 @@ import type {
   IRDashboardPlayerSummary,
 } from '@crowdcraft/api/types.ts';
 import { authAPI, playerAPI, gameAPI } from '@/api/client.ts';
-import { setActiveSetId, setPlayerId, clearGameStorage } from '../utils/gameKeys';
+import {
+  clearGameStorage,
+  setActiveSetId,
+  setPlayerId,
+} from '../utils/gameKeys';
 import { getActionErrorMessage } from '../utils/errorMessages';
 import {
   detectUserSession,
@@ -102,6 +106,7 @@ interface IRGameProviderProps {
 }
 
 export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
+  const assignmentTokenRef = useRef<string | null>(null);
   const [state, setState] = useState<IRGameState>({
     isAuthenticated: false,
     player: null,
@@ -275,6 +280,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     } catch {
       // Ignore logout errors
     } finally {
+      assignmentTokenRef.current = null;
       setState((prev) => ({
         isAuthenticated: false,
         player: null,
@@ -340,6 +346,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         loading: false,
       }));
       setActiveSetId(response.set_id);
+      assignmentTokenRef.current = response.assignment_token;
       return response;
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('start-battle', err);
@@ -353,7 +360,14 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const data: IRSubmitBackronymRequest = { words };
+      const assignmentToken = assignmentTokenRef.current;
+      if (!assignmentToken) {
+        throw new Error('assignment_not_found');
+      }
+      const data: IRSubmitBackronymRequest = {
+        words,
+        assignment_token: assignmentToken,
+      };
       await gameAPI.submitBackronym(setId, data);
       setState((prev) => ({
         ...prev,
@@ -453,8 +467,10 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
 
       if (dashboard.active_session) {
         setActiveSetId(dashboard.active_session.set_id);
+        assignmentTokenRef.current = dashboard.active_session.assignment_token;
       } else {
         setActiveSetId(null);
+        assignmentTokenRef.current = null;
       }
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('load-dashboard', err);
@@ -473,6 +489,9 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
         hasSubmittedEntry: statusResponse.player_has_submitted,
         hasVoted: statusResponse.player_has_voted,
       }));
+      if (statusResponse.assignment_token) {
+        assignmentTokenRef.current = statusResponse.assignment_token;
+      }
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('check-set-status', err);
       console.error(errorMessage, err);
