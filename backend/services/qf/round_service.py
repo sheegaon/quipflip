@@ -995,6 +995,7 @@ class QFRoundService:
         dashboard_cache.invalidate_player_data(player.player_id)
         if prompt_round.player_id:
             dashboard_cache.invalidate_player_data(prompt_round.player_id)
+        self.invalidate_available_prompts_cache()
 
         logger.debug(f"{round_id=} flagged by {player.player_id}; {prompt_round.round_id=} marked pending review")
 

@@ -1,7 +1,7 @@
 """Tests for IR authentication and player services."""
 import pytest
 import uuid
-from backend.services import AuthService
+from backend.services import AuthService, GameType
 from backend.services import IRPlayerService
 from backend.utils.passwords import hash_password, verify_password
 from backend.services import UsernameService

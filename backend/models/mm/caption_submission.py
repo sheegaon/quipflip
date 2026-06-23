@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime, UTC
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Index
+from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from backend.database import Base
@@ -21,6 +21,9 @@ class MMCaptionSubmission(Base):
     image_id = get_uuid_column(
         ForeignKey("mm_images.image_id", ondelete="CASCADE"), nullable=False
     )
+    round_id = get_uuid_column(
+        ForeignKey("mm_vote_rounds.round_id", ondelete="CASCADE"), nullable=True
+    )
     caption_id = get_uuid_column(
         ForeignKey("mm_captions.caption_id", ondelete="SET NULL"), nullable=True
     )
@@ -34,12 +37,14 @@ class MMCaptionSubmission(Base):
     player = relationship("MMPlayer", back_populates="caption_submissions")
     image = relationship("MMImage")
     caption = relationship("MMCaption")
+    round = relationship("MMVoteRound", back_populates="caption_submission")
 
     __table_args__ = (
         Index("ix_mm_caption_submission_status_created", "status", "created_at"),
         Index("ix_mm_caption_submission_player", "player_id"),
         Index("ix_mm_caption_submission_image", "image_id"),
         Index("ix_mm_caption_submission_caption", "caption_id"),
+        UniqueConstraint("round_id", name="uq_mm_caption_submission_round"),
     )
 
     def __repr__(self) -> str:

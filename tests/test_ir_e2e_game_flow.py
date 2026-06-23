@@ -1,13 +1,12 @@
 """End-to-end tests for complete IR game flows."""
 import pytest
 import uuid
-from backend.services import AuthService
+from backend.services import AuthService, GameType
 from backend.services import IRBackronymSetService
 from backend.services import IRVoteService
 from backend.services import IRWordService
 from backend.services import IRResultViewService
 from backend.services import IRStatisticsService
-from backend.utils.model_registry import GameType
 
 
 async def _register_ir_player(auth_service, email: str, password: str):
@@ -112,7 +111,8 @@ async def test_ir_guest_player_flow(db_session):
     word_service = IRWordService(db_session)
 
     # 1. Create guest player
-    guest, guest_token = await auth_service.register_guest()
+    guest, _ = await auth_service.register_guest()
+    guest_token, _ = auth_service.create_access_token(guest)
     assert guest.is_guest is True
 
     # 2. Guest can start a game
@@ -167,7 +167,7 @@ async def test_ir_daily_bonus_flow(db_session):
     player.created_at = player.created_at - timedelta(days=1)
     await db_session.commit()
 
-    initial_balance = player.wallet
+    initial_balance = player.ir_player_data.wallet
 
     # 2. Claim daily bonus
     bonus = await bonus_service.claim_bonus(player.player_id)
