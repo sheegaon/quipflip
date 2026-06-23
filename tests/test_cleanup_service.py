@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime, UTC, timedelta
 from uuid import uuid4
-from sqlalchemy import select
+from sqlalchemy import insert, select
 
 from backend.services import QFCleanupService
 from backend.models import (
@@ -21,6 +21,16 @@ from backend.models import (
     Phraseset,
 )
 from backend.utils.passwords import hash_password
+
+
+async def _insert_corrupt_rows(db_session, model, rows: list[dict]) -> None:
+    """Seed legacy FK-invalid rows on an isolated SQLite connection."""
+
+    await db_session.commit()
+    async with db_session.bind.connect() as connection:
+        await connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        await connection.execute(insert(model), rows)
+        await connection.commit()
 
 
 class TestRefreshTokenCleanup:
@@ -42,14 +52,17 @@ class TestRefreshTokenCleanup:
         db_session.add(valid_token)
 
         # Create orphaned token (non-existent player_id)
-        orphaned_token = RefreshToken(
-            token_id=uuid4(),
-            player_id=uuid4(),  # Non-existent player
-            token_hash=f"orphaned_token_hash_{uuid4().hex}",
-            expires_at=datetime.now(UTC) + timedelta(days=7),
-        )
-        db_session.add(orphaned_token)
         await db_session.commit()
+        await _insert_corrupt_rows(
+            db_session,
+            RefreshToken,
+            [{
+                "token_id": uuid4(),
+                "player_id": uuid4(),
+                "token_hash": f"orphaned_token_hash_{uuid4().hex}",
+                "expires_at": datetime.now(UTC) + timedelta(days=7),
+            }],
+        )
 
         # Cleanup should remove orphaned token
         deleted_count = await cleanup_service.cleanup_orphaned_refresh_tokens()
@@ -190,18 +203,22 @@ class TestOrphanedRoundsCleanup:
         db_session.add(valid_round)
 
         # Create orphaned rounds
-        for i in range(3):
-            orphaned_round = Round(
-                round_id=uuid4(),
-                player_id=uuid4(),  # Non-existent player
-                round_type="copy" if i < 2 else "prompt",
-                status="submitted",
-                cost=100,
-                expires_at=datetime.now(UTC) + timedelta(minutes=3),
-            )
-            db_session.add(orphaned_round)
-
         await db_session.commit()
+        await _insert_corrupt_rows(
+            db_session,
+            Round,
+            [
+                {
+                    "round_id": uuid4(),
+                    "player_id": uuid4(),
+                    "round_type": "copy" if i < 2 else "prompt",
+                    "status": "submitted",
+                    "cost": 100,
+                    "expires_at": datetime.now(UTC) + timedelta(minutes=3),
+                }
+                for i in range(3)
+            ],
+        )
 
         # Count orphaned rounds
         orphaned_count, by_type = await cleanup_service.count_orphaned_rounds()
@@ -233,16 +250,19 @@ class TestOrphanedRoundsCleanup:
         db_session.add(valid_round)
 
         # Create orphaned round
-        orphaned_round = Round(
-            round_id=uuid4(),
-            player_id=uuid4(),  # Non-existent player
-            round_type="copy",
-            status="submitted",
-            cost=100,
-            expires_at=datetime.now(UTC) + timedelta(minutes=3),
-        )
-        db_session.add(orphaned_round)
         await db_session.commit()
+        await _insert_corrupt_rows(
+            db_session,
+            Round,
+            [{
+                "round_id": uuid4(),
+                "player_id": uuid4(),
+                "round_type": "copy",
+                "status": "submitted",
+                "cost": 100,
+                "expires_at": datetime.now(UTC) + timedelta(minutes=3),
+            }],
+        )
 
         # Cleanup should remove orphaned round(s)
         deleted_count = await cleanup_service.cleanup_orphaned_rounds()
@@ -307,7 +327,7 @@ class TestTestPlayerCleanup:
         cleanup_service = QFCleanupService(db_session)
 
         # Create test player with unique identifier to avoid conflicts
-        unique_id = uuid4().hex[:8]
+        unique_id = str(uuid4().int % 100_000_000).zfill(8)
         test_player = Player(
             player_id=uuid4(),
             username=f"testplayer{unique_id}_999",
@@ -494,12 +514,36 @@ class TestInactiveGuestCleanup:
         db_session.add(active_guest)
         await db_session.flush()
 
-        # Create a phraseset
+        owner = Player(
+            player_id=uuid4(),
+            username="PhrasesetOwner",
+            username_canonical="phrasesetowner",
+            email="phrasesetowner@example.com",
+            password_hash=hash_password("password123"),
+        )
+        db_session.add(owner)
+        await db_session.flush()
+
+        round_ids = [uuid4() for _ in range(3)]
+        db_session.add_all([
+            Round(
+                round_id=round_id,
+                player_id=owner.player_id,
+                round_type="prompt" if index == 0 else "copy",
+                status="submitted",
+                cost=100,
+                expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            )
+            for index, round_id in enumerate(round_ids)
+        ])
+        await db_session.flush()
+
+        # Create a phraseset backed by valid rounds.
         phraseset = Phraseset(
             phraseset_id=uuid4(),
-            prompt_round_id=uuid4(),
-            copy_round_1_id=uuid4(),
-            copy_round_2_id=uuid4(),
+            prompt_round_id=round_ids[0],
+            copy_round_1_id=round_ids[1],
+            copy_round_2_id=round_ids[2],
             prompt_text="Test prompt",
             original_phrase="TEST",
             copy_phrase_1="COPY1",
@@ -764,17 +808,6 @@ class TestRunAllCleanupTasks:
         )
         db_session.add(expired_token)
 
-        # Orphaned round
-        orphaned_round = Round(
-            round_id=uuid4(),
-            player_id=uuid4(),  # Non-existent player
-            round_type="copy",
-            status="submitted",
-            cost=100,
-            expires_at=datetime.now(UTC) + timedelta(minutes=3),
-        )
-        db_session.add(orphaned_round)
-
         # Old inactive guest
         old_guest = Player(
             player_id=uuid4(),
@@ -787,6 +820,18 @@ class TestRunAllCleanupTasks:
         )
         db_session.add(old_guest)
         await db_session.commit()
+        await _insert_corrupt_rows(
+            db_session,
+            Round,
+            [{
+                "round_id": uuid4(),
+                "player_id": uuid4(),
+                "round_type": "copy",
+                "status": "submitted",
+                "cost": 100,
+                "expires_at": datetime.now(UTC) + timedelta(minutes=3),
+            }],
+        )
 
         # Run all cleanup tasks
         results = await cleanup_service.run_all_cleanup_tasks()

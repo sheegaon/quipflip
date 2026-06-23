@@ -3,7 +3,7 @@
 > **Document type:** Delivery roadmap
 > **Status:** Active proposal
 > **Audience:** Maintainers and agents
-> **Last reviewed:** 2026-06-22
+> **Last reviewed:** 2026-06-23
 
 ## Purpose
 
@@ -66,14 +66,14 @@ acceptance criteria.
   footprint, including solo play, practice paths, admin tools, and the separate
   Party Mode stack that still needs the reliability work called out below.
 - MemeMint is the next most mature game. The vote/caption loop, circles, and
-  leaderboard/admin pages are present, but the remaining work is around lifecycle
-  and money integrity rather than basic feature coverage.
+  leaderboard/admin pages are present. Caption creation is now uniquely scoped to
+  its completed vote round before free-slot or fee consumption.
 - ThinkLink is comparatively narrow and focused. Its client and backend cover the
   core round play, results, history, and admin corpus flows, with the main gap in
   the scoring/matching/finalization hardening work.
 - Initial Reaction is the smallest game surface. Its routing and services are
-  present, but it still has the strongest signal of build/model drift and the
-  thinnest regression coverage of the four games.
+  present, and entry start/reconnect now uses a durable actor-scoped assignment
+  token with database-enforced active ownership.
 - The shared backend shape is already established: one FastAPI app mounts the four
   game routers plus shared auth, health, notifications, and online-user routes.
 - The shared frontend library is also real, with common components, hooks,

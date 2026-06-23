@@ -14,6 +14,7 @@ class IRDashboardPlayerSummary(BaseModel):
 
 class IRDashboardActiveSession(BaseModel):
     set_id: str
+    assignment_token: str
     word: str
     status: str
     has_submitted_entry: bool

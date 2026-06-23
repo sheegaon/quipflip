@@ -1,7 +1,7 @@
 """Tests for IR authentication and player services."""
 import pytest
 import uuid
-from backend.services import AuthService
+from backend.services import AuthService, GameType
 from backend.services import IRPlayerService
 from backend.utils.passwords import hash_password, verify_password
 from backend.services import UsernameService
@@ -143,17 +143,14 @@ async def test_ir_duplicate_email_prevention(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_registration(db_session):
     """Test registering through auth service."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"authtest{uuid.uuid4().hex[:8]}@example.com"
     password = "TestPassword123!"
 
-    player, token = await auth_service.register(
-        username=username,
-        email=email,
-        password=password
-    )
+    player = await auth_service.register_player(email=email, password=password)
+    token, _ = auth_service.create_access_token(player)
 
     assert player is not None
     assert player.email == email
@@ -164,24 +161,21 @@ async def test_ir_auth_registration(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_login(db_session):
     """Test login through auth service."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"login{uuid.uuid4().hex[:8]}@example.com"
     password = "TestPassword123!"
 
     # Register first
-    player, _ = await auth_service.register(
-        username=username,
-        email=email,
-        password=password
-    )
+    player = await auth_service.register_player(email=email, password=password)
 
     # Login
-    logged_in_player, token = await auth_service.login(
-        username=username,
-        password=password
+    logged_in_player = await auth_service.authenticate_player_by_username(
+        username=player.username,
+        password=password,
     )
+    token, _ = auth_service.create_access_token(logged_in_player)
 
     assert logged_in_player.player_id == player.player_id
     assert token is not None
@@ -190,11 +184,11 @@ async def test_ir_auth_login(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_invalid_login(db_session):
     """Test that invalid login fails."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     # Try to login with non-existent username
     with pytest.raises(Exception):  # Should raise IRAuthError
-        await auth_service.login(
+        await auth_service.authenticate_player_by_username(
             username="nonexistent",
             password="password"
         )
@@ -203,23 +197,19 @@ async def test_ir_auth_invalid_login(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_wrong_password(db_session):
     """Test that wrong password fails."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"wrongpwd{uuid.uuid4().hex[:8]}@example.com"
     password = "TestPassword123!"
 
     # Register
-    await auth_service.register(
-        username=username,
-        email=email,
-        password=password
-    )
+    player = await auth_service.register_player(email=email, password=password)
 
     # Try to login with wrong password
     with pytest.raises(Exception):  # Should raise IRAuthError
-        await auth_service.login(
-            username=username,
+        await auth_service.authenticate_player_by_username(
+            username=player.username,
             password="WrongPassword123!"
         )
 
@@ -227,26 +217,24 @@ async def test_ir_auth_wrong_password(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_refresh_token(db_session):
     """Test refresh token generation and verification."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"refresh{uuid.uuid4().hex[:8]}@example.com"
     password = "TestPassword123!"
 
     # Register
-    player, _ = await auth_service.register(
-        username=username,
-        email=email,
-        password=password
-    )
+    player = await auth_service.register_player(email=email, password=password)
 
     # Create refresh token
-    refresh_token = await auth_service.create_refresh_token(player.player_id)
+    _, refresh_token, _ = await auth_service.issue_tokens(player)
     assert refresh_token is not None
     assert len(refresh_token) > 0
 
     # Use refresh token to get new access token
-    new_access_token = await auth_service.refresh_access_token(refresh_token)
+    _, new_access_token, _, _ = await auth_service.exchange_refresh_token(
+        refresh_token
+    )
     assert new_access_token is not None
     assert len(new_access_token) > 0
 
@@ -254,21 +242,18 @@ async def test_ir_auth_refresh_token(db_session):
 @pytest.mark.asyncio
 async def test_ir_auth_verify_access_token(db_session):
     """Test verifying access tokens."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     username = f"player{uuid.uuid4().hex[:8]}"
     email = f"verify{uuid.uuid4().hex[:8]}@example.com"
     password = "TestPassword123!"
 
     # Register
-    player, token = await auth_service.register(
-        username=username,
-        email=email,
-        password=password
-    )
+    player = await auth_service.register_player(email=email, password=password)
+    token, _ = auth_service.create_access_token(player)
 
     # Verify token
-    player_id = await auth_service.verify_access_token(token)
+    player_id = auth_service.decode_access_token(token)["sub"]
 
     assert player_id == str(player.player_id)
 
@@ -276,13 +261,13 @@ async def test_ir_auth_verify_access_token(db_session):
 @pytest.mark.asyncio
 async def test_ir_invalid_token_verification(db_session):
     """Test that invalid tokens are rejected."""
-    auth_service = AuthService(db_session)
+    auth_service = AuthService(db_session, GameType.IR)
 
     invalid_token = "invalid.token.here"
 
     # Should raise error for invalid token
     with pytest.raises(Exception):  # Should raise IRAuthError
-        await auth_service.verify_access_token(invalid_token)
+        auth_service.decode_access_token(invalid_token)
 
 
 @pytest.mark.asyncio

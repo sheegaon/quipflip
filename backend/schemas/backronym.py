@@ -86,12 +86,14 @@ class StartGameResponse(BaseModel):
     word: str
     mode: str
     status: str
+    assignment_token: str
 
 
 class SubmitBackronymRequest(BaseModel):
     """Request to submit a backronym entry."""
 
     words: list[str]
+    assignment_token: str
 
 
 class SubmitBackronymResponse(BaseModel):
@@ -108,6 +110,7 @@ class SetStatusResponse(BaseModel):
     set: BackronymSet
     player_has_submitted: bool
     player_has_voted: bool
+    assignment_token: str | None = None
 
 
 class SubmitVoteRequest(BaseModel):

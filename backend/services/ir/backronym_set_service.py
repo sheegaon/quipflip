@@ -1,9 +1,10 @@
 """IR Backronym Set Service - Set lifecycle management for Initial Reaction."""
 
 import logging
+import uuid
 from datetime import datetime, UTC, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, update
 
 from backend.config import get_settings
 from backend.models.ir.backronym_set import BackronymSet
@@ -144,6 +145,9 @@ class BackronymSetService:
         player_id: str,
         backronym_text: list[str],
         is_ai: bool = False,
+        *,
+        auto_commit: bool = True,
+        transition_when_full: bool = True,
     ) -> BackronymEntry:
         """Add a backronym entry to a set.
 
@@ -169,6 +173,7 @@ class BackronymSetService:
 
             # Create entry
             entry = BackronymEntry(
+                entry_id=uuid.uuid4(),
                 set_id=set_id,
                 player_id=player_id,
                 backronym_text=backronym_text,
@@ -204,15 +209,18 @@ class BackronymSetService:
                         minutes=self.settings.ir_rapid_entry_timer_minutes
                     )
 
-            await self.db.commit()
-            await self.db.refresh(entry)
+            if auto_commit:
+                await self.db.commit()
+                await self.db.refresh(entry)
+            else:
+                await self.db.flush([entry])
 
             logger.info(
                 f"Added entry {entry.entry_id} to set {set_id} from {player_id=}"
             )
 
             # Check if we should transition to voting
-            if set_obj.entry_count >= 5:
+            if transition_when_full and set_obj.entry_count >= 5:
                 await self.transition_to_voting(set_id)
 
             return entry
@@ -394,6 +402,21 @@ class BackronymSetService:
 
             set_obj.status = SetStatus.FINALIZED
             set_obj.finalized_at = datetime.now(UTC)
+
+            from backend.models.ir.assignment import IRAssignment
+
+            await self.db.execute(
+                update(IRAssignment)
+                .where(
+                    IRAssignment.set_id == set_obj.set_id,
+                    IRAssignment.status.in_(("assigned", "submitting", "submitted")),
+                )
+                .values(
+                    status="completed",
+                    completed_at=set_obj.finalized_at,
+                    version=IRAssignment.version + 1,
+                )
+            )
 
             try:
                 from backend.services.ir.scoring_service import IRScoringService

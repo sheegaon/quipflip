@@ -1600,6 +1600,7 @@ export interface IRDashboardData {
   player: IRDashboardPlayerSummary;
   active_session: {
     set_id: string;
+    assignment_token: string;
     word: string;
     status: string;
     has_submitted_entry: boolean;
@@ -1631,6 +1632,7 @@ export interface IRUpgradeGuestRequest {
 
 export interface IRSubmitBackronymRequest {
   words: string[];
+  assignment_token: string;
 }
 
 export interface IRValidateBackronymRequest {
@@ -1665,6 +1667,7 @@ export interface IRStartSessionResponse {
   word: string;
   mode: string;
   status: string;
+  assignment_token: string;
 }
 
 export interface IRBalanceResponse {
@@ -1695,6 +1698,7 @@ export interface IRSetStatusResponse {
   set: IRBackronymSet;
   player_has_submitted: boolean;
   player_has_voted: boolean;
+  assignment_token?: string | null;
 }
 
 export interface IRResultsResponse {
