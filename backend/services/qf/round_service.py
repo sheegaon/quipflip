@@ -340,13 +340,16 @@ class QFRoundService:
                     player, self.settings.copy_round_max_attempts
                 )
 
-            copy_cost, is_discounted, system_contribution = self._calculate_copy_round_cost()
+            copy_cost, _is_discounted, system_contribution = self._calculate_copy_round_cost()
+
+        copy_slot = await self.determine_copy_slot(prompt_round.round_id)
 
         round_object = await self._create_copy_round(
             player,
             prompt_round,
             copy_cost,
             system_contribution,
+            copy_slot,
             transaction_service,
         )
 
@@ -361,12 +364,18 @@ class QFRoundService:
         """Return copy round cost, discount flag, and system contribution."""
         return CostCalculationHelper.calculate_copy_round_cost(self.settings, QFQueueService)
 
+    async def determine_copy_slot(self, prompt_round_id: UUID) -> int:
+        """Return the next live copy slot for a prompt round."""
+
+        return await RoundValidationHelper.determine_copy_slot(self.db, prompt_round_id)
+
     async def _create_copy_round(
         self,
         player: QFPlayer,
         prompt_round: Round,
         copy_cost: int,
         system_contribution: int,
+        copy_slot: int,
         transaction_service: TransactionService,
     ) -> Round:
         """Create a copy round and persist it atomically."""
@@ -394,6 +403,7 @@ class QFRoundService:
                 prompt_round_id=prompt_round.round_id,
                 original_phrase=prompt_round.submitted_phrase,
                 system_contribution=system_contribution,
+                copy_slot=copy_slot,
             )
 
             self.db.add(round_object)
@@ -577,7 +587,7 @@ class QFRoundService:
             .where(PlayerAbandonedPrompt.player_id == player_id)
             .where(PlayerAbandonedPrompt.prompt_round_id == prompt_round_id)
             .where(
-                PlayerAbandonedPrompt.created_at
+                PlayerAbandonedPrompt.abandoned_at
                 >= datetime.now(UTC) - timedelta(hours=self.settings.abandoned_prompt_cooldown_hours)
             )
             .limit(1)
@@ -591,6 +601,22 @@ class QFRoundService:
             select(Round).where(Round.round_id == prompt_round_id).with_for_update()
         )
         return result.scalar_one_or_none()
+
+    async def _prefetch_prompt_rounds(
+        self,
+        prompt_round_ids: list[UUID],
+        prefetched_rounds: dict[UUID, Round],
+    ) -> None:
+        """Bulk-load prompt rounds into the local cache used by copy assignment."""
+
+        if not prompt_round_ids:
+            return
+
+        result = await self.db.execute(
+            select(Round).where(Round.round_id.in_(prompt_round_ids))
+        )
+        for round_object in result.scalars().all():
+            prefetched_rounds[round_object.round_id] = round_object
 
     async def _lock_round_for_update(self, round_id: UUID) -> Round | None:
         """Lock a round row for safe state transition."""
@@ -800,7 +826,7 @@ class QFRoundService:
 
     async def abandon_round(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
                             ) -> tuple[Round, int, int]:
-        """Abandon an active prompt, copy, or vote round and process refund."""
+        """Abandon an active prompt, copy, or vote round and process refund/forfeit."""
 
         from backend.utils import lock_client
 
@@ -819,9 +845,14 @@ class QFRoundService:
             if round_object.status != "active":
                 raise ValueError("Round is not active")
 
-            # Calculate refund and penalty (same for both round types)
-            penalty_kept = self.settings.abandoned_penalty
-            refund_amount = max(round_object.cost - penalty_kept, 0)
+            if round_object.round_type == "vote":
+                # Vote abandonments forfeit the full entry fee.
+                penalty_kept = round_object.cost
+                refund_amount = 0
+            else:
+                # Prompt/copy abandonments keep the configured penalty.
+                penalty_kept = self.settings.abandoned_penalty
+                refund_amount = max(round_object.cost - penalty_kept, 0)
 
             round_object.status = "abandoned"
             round_object.expires_at = datetime.now(UTC)
@@ -991,6 +1022,7 @@ class QFRoundService:
 
         - Prompt: Refund $95, keep $5 penalty, remove from queue
         - Copy: Refund $95, keep $5 penalty, return prompt to queue, track cooldown
+        - Vote: Forfeit the full entry fee
         """
         round_object = await self.db.get(Round, round_id)
         if not round_object:
@@ -1087,6 +1119,11 @@ class QFRoundService:
             return True
 
         return await self._rehydrate_prompt_queue() > 0
+
+    async def _pop_prompt_batch(self, count: int) -> list[UUID]:
+        """Pop up to ``count`` prompt IDs from the queue."""
+
+        return QFQueueService.get_next_prompt_round_batch(count)
 
     async def _rehydrate_prompt_queue(self) -> int:
         """

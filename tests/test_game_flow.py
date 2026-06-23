@@ -8,6 +8,7 @@ from backend.models.qf.prompt import Prompt
 from backend.models.qf.player_data import QFPlayerData
 from backend.services import QFRoundService
 from backend.services import TransactionService
+from backend.utils.exceptions import NoPromptsAvailableError
 from backend.utils.model_registry import GameType
 
 
@@ -232,7 +233,7 @@ async def test_cannot_copy_own_prompt(db_session, player_factory):
     # Try to start copy round with same player - should not give them their own prompt
     try:
         copy_round, _ = await round_service.start_copy_round(player, transaction_service)
-    except ValueError:
+    except (ValueError, NoPromptsAvailableError):
         # Acceptable outcome: system refused to start a copy round with only own prompt available
         qf_player_data = (
             await db_session.execute(

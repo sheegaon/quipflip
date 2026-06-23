@@ -138,9 +138,10 @@ async def test_get_phrasesets_and_claim(db_session):
         prompt_round,
         copy_round_1,
         copy_round_2,
-        phraseset,
-        *votes,
     ])
+    await db_session.flush()
+
+    db_session.add_all([phraseset, *votes])
     await db_session.commit()
 
     service = PhrasesetService(db_session)
@@ -230,8 +231,9 @@ async def test_phraseset_excludes_non_selected_copy_rounds(db_session):
         selected_round_1,
         selected_round_2,
         rejected_round,  # This round exists but is not in the phraseset
-        phraseset,
     ])
+    await db_session.flush()
+    db_session.add(phraseset)
     await db_session.commit()
 
     service = PhrasesetService(db_session)

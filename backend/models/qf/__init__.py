@@ -19,6 +19,10 @@ from backend.models.qf.survey_response import QFSurveyResponse
 from backend.models.qf.hint import Hint
 from backend.models.qf.ai_metric import QFAIMetric
 from backend.models.qf.ai_phrase_cache import QFAIPhraseCache
+from backend.models.qf.ai_job import QFAIJob
+from backend.models.qf.command_receipt import QFCommandReceipt
+from backend.models.qf.second_copy_offer import QFSecondCopyOffer
+from backend.models.qf.vote_choice import QFVoteChoice
 from backend.models.qf.party_session import PartySession
 from backend.models.qf.party_participant import PartyParticipant
 from backend.models.qf.party_round import PartyRound
@@ -57,6 +61,10 @@ __all__ = [
     "Hint",
     "QFAIMetric",
     "QFAIPhraseCache",
+    "QFAIJob",
+    "QFCommandReceipt",
+    "QFSecondCopyOffer",
+    "QFVoteChoice",
     "PartySession",
     "PartyParticipant",
     "PartyRound",

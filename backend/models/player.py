@@ -139,6 +139,15 @@ class Player(Base):
                 return data
         return None
 
+    def _ensure_qf_data(self):
+        """Ensure QuipFlip-specific player data exists for legacy compatibility."""
+
+        if not self.qf_player_data:
+            from backend.models.qf.player_data import QFPlayerData
+
+            self.qf_player_data = QFPlayerData(player_id=self.player_id)
+        return self.qf_player_data
+
     @property
     def wallet(self) -> int:
         source = self._wallet_source()
@@ -146,13 +155,7 @@ class Player(Base):
 
     @wallet.setter
     def wallet(self, value: int):
-        source = self._wallet_source()
-        if not source:
-            from backend.models.qf.player_data import QFPlayerData
-
-            self.qf_player_data = QFPlayerData(player_id=self.player_id)
-            source = self.qf_player_data
-        source.wallet = value
+        self._ensure_qf_data().wallet = value
 
     @property
     def vault(self) -> int:
@@ -161,13 +164,7 @@ class Player(Base):
 
     @vault.setter
     def vault(self, value: int):
-        source = self._wallet_source()
-        if not source:
-            from backend.models.qf.player_data import QFPlayerData
-
-            self.qf_player_data = QFPlayerData(player_id=self.player_id)
-            source = self.qf_player_data
-        source.vault = value
+        self._ensure_qf_data().vault = value
 
     @property
     def active_round_id(self):
@@ -179,9 +176,31 @@ class Player(Base):
 
     @active_round_id.setter
     def active_round_id(self, value):
-        if not self.qf_player_data:
-            raise AttributeError("QF player data is not loaded; cannot set active_round_id")
-        self.qf_player_data.active_round_id = value
+        self._ensure_qf_data().active_round_id = value
+
+    @property
+    def consecutive_incorrect_votes(self) -> int:
+        """Proxy guest lockout counters to the Quipflip-specific player data."""
+
+        if self.qf_player_data:
+            return self.qf_player_data.consecutive_incorrect_votes
+        return 0
+
+    @consecutive_incorrect_votes.setter
+    def consecutive_incorrect_votes(self, value: int):
+        self._ensure_qf_data().consecutive_incorrect_votes = value
+
+    @property
+    def vote_lockout_until(self):
+        """Proxy guest vote lockout timestamps to the Quipflip-specific player data."""
+
+        if self.qf_player_data:
+            return self.qf_player_data.vote_lockout_until
+        return None
+
+    @vote_lockout_until.setter
+    def vote_lockout_until(self, value):
+        self._ensure_qf_data().vote_lockout_until = value
 
     def __repr__(self):
         return (f"<Player(player_id={self.player_id}, username={self.username}, "

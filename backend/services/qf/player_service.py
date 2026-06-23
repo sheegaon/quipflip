@@ -181,7 +181,7 @@ class QFPlayerService(PlayerServiceBase):
         result = await self.db.execute(
             select(func.count(Phraseset.phraseset_id))
             .where(Phraseset.prompt_round_id.in_(select(prompt_rounds_subq)))
-            .where(Phraseset.status.in_(["open", "closing"]))
+            .where(Phraseset.status.in_(["open", "active", "closing"]))
         )
         count = result.scalar() or 0
         logger.info(f"Player {player_id} has {count} outstanding prompts")

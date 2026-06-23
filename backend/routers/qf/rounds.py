@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-import random
 import logging
 
 from backend.database import get_db
@@ -183,9 +182,11 @@ async def start_vote_round(
     try:
         round_object, phraseset = await vote_service.start_vote_round(player, transaction_service)
 
-        # Randomize word order per-voter
-        phrases = [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]
-        random.shuffle(phrases)
+        from backend.services.qf.vote_choice_service import QFVoteChoiceService
+
+        vote_choice_service = QFVoteChoiceService(db)
+        choices = await vote_choice_service.get_or_create_vote_choices(round_object, phraseset)
+        phrases = [choice.displayed_phrase for choice in choices]
 
         return StartVoteRoundResponse(
             round_id=round_object.round_id,

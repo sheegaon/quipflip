@@ -349,14 +349,14 @@ async def _get_current_round(player: Player, db: AsyncSession) -> CurrentRoundRe
         # Get phraseset for voting
         phraseset = await db.get(Phraseset, round.phraseset_id)
         if phraseset:
-            # Randomize word order per-voter
-            import random
-            phrases = [phraseset.original_phrase, phraseset.copy_phrase_1, phraseset.copy_phrase_2]
-            random.shuffle(phrases)
+            from backend.services.qf.vote_choice_service import QFVoteChoiceService
+
+            vote_choice_service = QFVoteChoiceService(db)
+            choices = await vote_choice_service.get_or_create_vote_choices(round, phraseset)
             state.update({
                 "phraseset_id": str(phraseset.phraseset_id),
                 "prompt_text": phraseset.prompt_text,
-                "phrases": phrases,
+                "phrases": [choice.displayed_phrase for choice in choices],
             })
 
     return CurrentRoundResponse(

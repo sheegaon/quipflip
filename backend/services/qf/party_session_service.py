@@ -375,6 +375,7 @@ class PartySessionService:
         self,
         session_id: UUID,
         host_player_id: UUID,
+        game_type: GameType | None = None,
     ) -> PartyParticipant:
         """Add an AI player to the session (host only, lobby only).
 
@@ -391,6 +392,8 @@ class PartySessionService:
             SessionAlreadyStartedError: If session has already started
             SessionFullError: If session is at max capacity
         """
+        _ = game_type
+
         # Get session
         session = await self.get_session_by_id(session_id)
         if not session:
@@ -418,7 +421,10 @@ class PartySessionService:
                 QFPlayer.email.like(f"ai_party_%{AI_PLAYER_EMAIL_DOMAIN}"))
         )
         active_pool_players = list({row.player_id for row in result.fetchall()})
-        ai_player = await AIService(self.db).get_or_create_ai_player(AIPlayerType.QF_PARTY, excluded=active_pool_players)
+        ai_player = await AIService(self.db, allow_no_provider=True).get_or_create_ai_player(
+            AIPlayerType.QF_PARTY,
+            excluded=active_pool_players,
+        )
 
         # Create participant
         participant = PartyParticipant(
