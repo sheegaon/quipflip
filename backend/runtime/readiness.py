@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from backend.config import get_settings
 from backend.runtime.config import resolve_runtime_paths, validate_runtime_settings
@@ -119,7 +119,7 @@ async def _database_check(engine: AsyncEngine) -> ReadinessCheck:
     return ReadinessCheck(name="database", ok=True, detail="database connection ok")
 
 
-async def _check_sqlite_pragmas(conn: Any) -> list[str]:
+async def _check_sqlite_pragmas(conn: AsyncConnection) -> list[str]:
     errors: list[str] = []
 
     fk = (await conn.execute(text("PRAGMA foreign_keys"))).scalar()

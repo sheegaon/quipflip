@@ -16,6 +16,11 @@ executable phased plan:
 - [E - MemeMint, Initial Reaction, and ThinkLink](workstream-e-remaining-games.md)
 - [F - Mac and Cloudflare deployment](workstream-f-mac-cloudflare-deployment.md)
 
+The workstream branches merged through June 22, 2026 delivered implementation
+slices, not automatic completion of every checklist item. The QuipFlip C/D plans
+now include dated implementation assessments and retain unchecked architectural
+or smoke-test work explicitly.
+
 ## How to use these plans
 
 - Complete phases in order within a workstream unless its plan explicitly permits

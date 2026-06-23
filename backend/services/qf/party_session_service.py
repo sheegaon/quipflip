@@ -785,7 +785,7 @@ class PartySessionService:
         return session
 
     async def _mark_phrasesets_available_for_voting(self, session_id: UUID) -> None:
-        """Mark all party phrasesets as available for voting.
+        """Stage Party phrasesets as available in the caller's transaction.
 
         Args:
             session_id: UUID of the session
@@ -795,7 +795,6 @@ class PartySessionService:
             .where(PartyPhraseset.session_id == session_id)
             .values(available_for_voting=True)
         )
-        await self.db.commit()
 
     async def can_advance_phase(self, session_id: UUID) -> bool:
         """Check if all participants have completed current phase.

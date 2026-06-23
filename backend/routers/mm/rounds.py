@@ -224,9 +224,6 @@ async def submit_caption(
     if not round_obj.chosen_caption_id:
         raise HTTPException(status_code=400, detail="vote_required_before_caption")
 
-    # Get the image from the round
-    image_id = round_obj.image_id
-
     # Load the captions that were shown in this round for riff detection
     caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
     stmt = select(MMCaption).where(MMCaption.caption_id.in_(caption_ids))
@@ -236,7 +233,7 @@ async def submit_caption(
     try:
         result = await caption_service.submit_caption(
             player,
-            image_id,
+            round_obj,
             request.caption_text,
             shown_captions,  # Pass captions for algorithmic riff detection
             transaction_service
@@ -346,13 +343,24 @@ async def get_round_details(
             'text': caption.text,
         })
 
+    submission = round_obj.caption_submission
+    status = (
+        "captioned"
+        if submission and submission.status == "accepted"
+        else "completed"
+        if round_obj.chosen_caption_id
+        else "active"
+    )
+
     return RoundDetails(
         round_id=round_obj.round_id,
         type="vote",
-        status="completed" if round_obj.chosen_caption_id else "active",
+        status=status,
         image_id=round_obj.image_id,
         image_url=round_obj.image.source_url,
         cost=round_obj.entry_cost,
         captions=captions,
         chosen_caption_id=round_obj.chosen_caption_id,
+        submitted_caption_id=submission.caption_id if submission else None,
+        submitted_caption_text=submission.submission_text if submission else None,
     )

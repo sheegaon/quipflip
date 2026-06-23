@@ -278,7 +278,7 @@ async def test_ir_player_insufficient_balance(db_session, ir_player_factory):
     transaction_service = TransactionService(db_session, GameType.IR)
 
     # Set balance to less than entry cost
-    player.wallet = 50
+    player.ir_player_data.wallet = 50
     await db_session.commit()
 
     # Try to debit 100 when only 50 available (should fail)
