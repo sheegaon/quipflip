@@ -70,6 +70,37 @@ class TransactionService:
     def _is_ir_ledger(self) -> bool:
         return self.game_type == GameType.IR
 
+    @staticmethod
+    def _same_reference(left: UUID | str | None, right: UUID | str | None) -> bool:
+        if left is None or right is None:
+            return left is right
+        return str(left).replace("-", "").lower() == str(right).replace("-", "").lower()
+
+    def _validate_replay(
+        self,
+        transaction: TransactionBase,
+        *,
+        player_id: UUID,
+        amount: int,
+        trans_type: str,
+        reference_id: UUID | None,
+        wallet_type: str,
+    ) -> None:
+        """Reject reuse of an idempotency key for a different movement."""
+
+        matches = (
+            str(transaction.player_id).replace("-", "").lower()
+            == str(player_id).replace("-", "").lower()
+            and transaction.amount == amount
+            and transaction.type == trans_type
+            and self._same_reference(transaction.reference_id, reference_id)
+            and transaction.wallet_type == wallet_type
+        )
+        if not matches:
+            raise RuntimeError(
+                "Transaction idempotency key conflicts with an existing movement"
+            )
+
     async def _load_player_data(self, player_id: UUID):
         result = await self.db.execute(
             select(self.player_data_model)
@@ -106,10 +137,11 @@ class TransactionService:
         auto_commit: bool = True,
         skip_lock: bool = False,  # Kept for compatibility; database constraints are authoritative.
         wallet_type: str = "wallet",
+        idempotency_key: str | None = None,
     ) -> TransactionBase:
         """Create a transaction and update player balance atomically."""
 
-        idempotency_key = self._build_idempotency_key(
+        movement_key = idempotency_key or self._build_idempotency_key(
             player_id=player_id,
             amount=amount,
             trans_type=trans_type,
@@ -118,10 +150,20 @@ class TransactionService:
         )
 
         existing = await self.db.execute(
-            select(self.transaction_model).where(self.transaction_model.idempotency_key == idempotency_key)
+            select(self.transaction_model).where(
+                self.transaction_model.idempotency_key == movement_key
+            )
         )
         existing_transaction = existing.scalar_one_or_none()
         if existing_transaction:
+            self._validate_replay(
+                existing_transaction,
+                player_id=player_id,
+                amount=amount,
+                trans_type=trans_type,
+                reference_id=reference_id,
+                wallet_type=wallet_type,
+            )
             return existing_transaction
 
         async def _create_transaction_impl() -> TransactionBase:
@@ -169,7 +211,7 @@ class TransactionService:
                     vault_contribution=amount if wallet_type == "vault" else 0,
                     entry_id=None,
                     set_id=set_id,
-                    idempotency_key=idempotency_key,
+                    idempotency_key=movement_key,
                 )
             else:
                 transaction = self.transaction_model(
@@ -181,7 +223,7 @@ class TransactionService:
                     wallet_type=wallet_type,
                     wallet_balance_after=player.wallet,
                     vault_balance_after=player.vault,
-                    idempotency_key=idempotency_key,
+                    idempotency_key=movement_key,
                 )
 
             self.db.add(transaction)
@@ -203,10 +245,20 @@ class TransactionService:
                 transaction = await _create_transaction_impl()
         except IntegrityError:
             existing = await self.db.execute(
-                select(self.transaction_model).where(self.transaction_model.idempotency_key == idempotency_key)
+                select(self.transaction_model).where(
+                    self.transaction_model.idempotency_key == movement_key
+                )
             )
             existing_transaction = existing.scalar_one_or_none()
             if existing_transaction:
+                self._validate_replay(
+                    existing_transaction,
+                    player_id=player_id,
+                    amount=amount,
+                    trans_type=trans_type,
+                    reference_id=reference_id,
+                    wallet_type=wallet_type,
+                )
                 return existing_transaction
             raise
 
@@ -323,6 +375,7 @@ class TransactionService:
         reference_id: UUID | None = None,
         auto_commit: bool = True,
         skip_lock: bool = False,  # Compatibility only.
+        idempotency_prefix: str | None = None,
     ) -> tuple[TransactionBase | None, TransactionBase | None]:
         """Create payout with a 70/30 wallet/vault split."""
 
@@ -336,6 +389,9 @@ class TransactionService:
                 auto_commit=auto_commit,
                 skip_lock=True,
                 wallet_type="wallet",
+                idempotency_key=(
+                    f"{idempotency_prefix}:wallet" if idempotency_prefix else None
+                ),
             )
             return wallet_txn, None
 
@@ -350,6 +406,9 @@ class TransactionService:
             auto_commit=False,
             skip_lock=True,
             wallet_type="wallet",
+            idempotency_key=(
+                f"{idempotency_prefix}:wallet" if idempotency_prefix else None
+            ),
         )
         vault_txn = await self.create_transaction(
             player_id=player_id,
@@ -359,6 +418,9 @@ class TransactionService:
             auto_commit=False,
             skip_lock=True,
             wallet_type="vault",
+            idempotency_key=(
+                f"{idempotency_prefix}:vault" if idempotency_prefix else None
+            ),
         )
 
         if auto_commit:

@@ -133,6 +133,73 @@ async def test_transaction_service_is_idempotent(db_session, player_factory):
 
 
 @pytest.mark.asyncio
+async def test_transaction_service_rejects_mismatched_idempotency_replay(
+    db_session,
+    player_factory,
+):
+    """One movement key cannot be reused for a different ledger movement."""
+
+    player = await player_factory()
+    service = TransactionService(db_session, GameType.QF)
+    reference_id = uuid.uuid4()
+    movement_key = f"qf:test:{reference_id}"
+
+    await service.create_transaction(
+        player.player_id,
+        10,
+        "test_credit",
+        reference_id=reference_id,
+        idempotency_key=movement_key,
+    )
+
+    with pytest.raises(RuntimeError, match="conflicts with an existing movement"):
+        await service.create_transaction(
+            player.player_id,
+            11,
+            "test_credit",
+            reference_id=reference_id,
+            idempotency_key=movement_key,
+        )
+
+    await db_session.refresh(player)
+    assert player.wallet == 5010
+
+
+@pytest.mark.asyncio
+async def test_split_payout_keys_distinguish_contributor_roles(
+    db_session,
+    player_factory,
+):
+    """One player can receive two role payouts from the same phraseset."""
+
+    player = await player_factory()
+    service = TransactionService(db_session, GameType.QF)
+    phraseset_id = uuid.uuid4()
+
+    for role in ("copy1", "copy2"):
+        await service.create_split_payout(
+            player_id=player.player_id,
+            gross_amount=20,
+            cost=10,
+            trans_type="prize_payout",
+            reference_id=phraseset_id,
+            auto_commit=False,
+            idempotency_prefix=f"qf:prize:{phraseset_id}:{role}",
+        )
+    await db_session.commit()
+
+    await db_session.refresh(player)
+    assert player.wallet + player.vault == 5040
+    count = await db_session.scalar(
+        select(func.count(QFTransaction.transaction_id)).where(
+            QFTransaction.player_id == player.player_id,
+            QFTransaction.reference_id == phraseset_id,
+        )
+    )
+    assert int(count) == 4
+
+
+@pytest.mark.asyncio
 async def test_versioned_party_session_rejects_stale_update(db_session, test_engine, player_factory):
     """Versioned lifecycle rows should reject stale concurrent writes."""
 

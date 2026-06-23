@@ -17,6 +17,7 @@ from backend.models.qf.prompt import Prompt
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.player_abandoned_prompt import PlayerAbandonedPrompt
+from backend.models.qf.transaction import QFTransaction
 from backend.services import GameType, QFRoundService
 from backend.services import AIService
 from backend.services import TransactionService
@@ -483,6 +484,71 @@ class TestCopyRoundCreation:
         # Verify balance was deducted (normal cost)
         await db_session.refresh(player_with_balance)
         assert player_with_balance.wallet == initial_balance - settings.copy_cost_normal
+
+    @pytest.mark.asyncio
+    async def test_each_copy_assignment_has_a_distinct_entry_charge(
+        self,
+        db_session,
+        player_with_balance,
+        test_prompt,
+    ):
+        """Separate copy rounds must not collapse onto one ledger movement."""
+
+        round_service = QFRoundService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+        prompt_owners = [
+            await _create_player(db_session, prefix=f"copy_charge_owner_{index}")
+            for index in range(2)
+        ]
+        prompt_rounds = []
+        for index, owner in enumerate(prompt_owners):
+            prompt_round = Round(
+                round_id=uuid.uuid4(),
+                player_id=owner.player_id,
+                round_type="prompt",
+                status="submitted",
+                prompt_id=test_prompt.prompt_id,
+                prompt_text=test_prompt.text,
+                submitted_phrase=f"ORIGINAL {index}",
+                cost=settings.prompt_cost,
+                expires_at=datetime.now(UTC) + timedelta(minutes=3),
+            )
+            db_session.add(prompt_round)
+            prompt_rounds.append(prompt_round)
+        await db_session.commit()
+
+        initial_balance = player_with_balance.wallet
+        created_rounds = []
+        for prompt_round in prompt_rounds:
+            copy_round = await round_service._create_copy_round(
+                player_with_balance,
+                prompt_round,
+                settings.copy_cost_normal,
+                0,
+                1,
+                transaction_service,
+            )
+            created_rounds.append(copy_round)
+            copy_round.status = "submitted"
+            player_with_balance.qf_player_data.active_round_id = None
+            await db_session.commit()
+
+        await db_session.refresh(player_with_balance)
+        assert player_with_balance.wallet == (
+            initial_balance - (2 * settings.copy_cost_normal)
+        )
+
+        transactions = await db_session.execute(
+            select(QFTransaction).where(
+                QFTransaction.player_id == player_with_balance.player_id,
+                QFTransaction.type == "copy_entry",
+            )
+        )
+        copy_entries = list(transactions.scalars())
+        assert len(copy_entries) == 2
+        assert {entry.reference_id for entry in copy_entries} == {
+            round_object.round_id for round_object in created_rounds
+        }
 
     @pytest.mark.asyncio
     async def test_start_copy_round_forced_prompt(self, db_session, player_with_balance, test_prompt):

@@ -48,6 +48,7 @@ class QFRoundService:
     """Service for managing game rounds."""
 
     AVAILABLE_PROMPTS_CACHE_TTL_SECONDS = 15
+    _queue_rehydration_lock: asyncio.Lock | None = None
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -83,15 +84,10 @@ class QFRoundService:
         - Randomly assign prompt
         - Create round with 3-minute timer
 
-        All operations are performed in a single atomic transaction within a distributed lock.
+        Database uniqueness and the caller-owned transaction select the winner.
         """
-        from backend.utils import lock_client
-
-        # Acquire lock for the entire transaction
-        lock_name = f"start_prompt_round:{player.player_id}"
-        with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
-            prompt = await self._select_prompt_for_player(player)
-            round_object = await self._create_prompt_round(player, prompt, transaction_service)
+        prompt = await self._select_prompt_for_player(player)
+        round_object = await self._create_prompt_round(player, prompt, transaction_service)
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
@@ -356,6 +352,7 @@ class QFRoundService:
         from backend.utils.cache import dashboard_cache
 
         dashboard_cache.invalidate_player_data(player.player_id)
+        self.invalidate_available_prompts_cache(player.player_id)
 
         logger.debug(f"Started {round_object.round_id=} for {player.player_id=}, {copy_cost=}, {is_second_copy=}")
         return round_object, is_second_copy
@@ -380,41 +377,39 @@ class QFRoundService:
     ) -> Round:
         """Create a copy round and persist it atomically."""
 
-        from backend.utils import lock_client
+        round_id = uuid.uuid4()
+        await transaction_service.create_transaction(
+            player.player_id,
+            -copy_cost,
+            "copy_entry",
+            reference_id=round_id,
+            auto_commit=False,
+            skip_lock=True,
+        )
 
-        lock_name = f"start_copy_round:{player.player_id}"
-        with lock_client.lock(lock_name, timeout=self.settings.round_lock_timeout_seconds):
-            await transaction_service.create_transaction(
-                player.player_id,
-                -copy_cost,
-                "copy_entry",
-                auto_commit=False,
-                skip_lock=True,
-            )
+        round_object = Round(
+            round_id=round_id,
+            player_id=player.player_id,
+            round_type="copy",
+            status="active",
+            cost=copy_cost,
+            expires_at=datetime.now(UTC)
+            + timedelta(seconds=self.settings.copy_round_seconds),
+            prompt_round_id=prompt_round.round_id,
+            original_phrase=prompt_round.submitted_phrase,
+            system_contribution=system_contribution,
+            copy_slot=copy_slot,
+        )
 
-            round_object = Round(
-                round_id=uuid.uuid4(),
-                player_id=player.player_id,
-                round_type="copy",
-                status="active",
-                cost=copy_cost,
-                expires_at=datetime.now(UTC)
-                + timedelta(seconds=self.settings.copy_round_seconds),
-                prompt_round_id=prompt_round.round_id,
-                original_phrase=prompt_round.submitted_phrase,
-                system_contribution=system_contribution,
-                copy_slot=copy_slot,
-            )
+        self.db.add(round_object)
+        await self.db.flush()
 
-            self.db.add(round_object)
-            await self.db.flush()
+        player_data = await self._get_player_data(player)
+        player_data.active_round_id = round_object.round_id
+        await self.db.flush([player_data])
 
-            player_data = await self._get_player_data(player)
-            player_data.active_round_id = round_object.round_id
-            await self.db.flush([player_data])
-
-            await self.db.commit()
-            await self.db.refresh(round_object)
+        await self.db.commit()
+        await self.db.refresh(round_object)
 
         return round_object
 
@@ -595,10 +590,10 @@ class QFRoundService:
         return result.scalar_one_or_none() is not None
 
     async def _lock_prompt_round_for_update(self, prompt_round_id: UUID) -> Round | None:
-        """Lock a prompt round row for safe copy assignment."""
+        """Reload a prompt round; SQLite constraints arbitrate the claim."""
 
         result = await self.db.execute(
-            select(Round).where(Round.round_id == prompt_round_id).with_for_update()
+            select(Round).where(Round.round_id == prompt_round_id)
         )
         return result.scalar_one_or_none()
 
@@ -619,10 +614,10 @@ class QFRoundService:
             prefetched_rounds[round_object.round_id] = round_object
 
     async def _lock_round_for_update(self, round_id: UUID) -> Round | None:
-        """Lock a round row for safe state transition."""
+        """Reload a versioned round before applying a state transition."""
 
         result = await self.db.execute(
-            select(Round).where(Round.round_id == round_id).with_for_update()
+            select(Round).where(Round.round_id == round_id)
         )
         return result.scalar_one_or_none()
 
@@ -827,72 +822,61 @@ class QFRoundService:
     async def abandon_round(self, round_id: UUID, player: QFPlayer, transaction_service: TransactionService
                             ) -> tuple[Round, int, int]:
         """Abandon an active prompt, copy, or vote round and process refund/forfeit."""
+        result = await self.db.execute(
+            select(Round).where(Round.round_id == round_id)
+        )
+        round_object = result.scalar_one_or_none()
 
-        from backend.utils import lock_client
+        if not round_object or round_object.player_id != player.player_id:
+            raise RoundNotFoundError("Round not found")
 
-        lock_name = f"abandon_round:{round_id}"
-        with lock_client.lock(
-            lock_name, timeout=self.settings.round_lock_timeout_seconds
-        ):
-            result = await self.db.execute(
-                select(Round).where(Round.round_id == round_id).with_for_update()
-            )
-            round_object = result.scalar_one_or_none()
+        if round_object.status != "active":
+            raise ValueError("Round is not active")
 
-            if not round_object or round_object.player_id != player.player_id:
-                raise RoundNotFoundError("Round not found")
+        if round_object.round_type == "vote":
+            penalty_kept = round_object.cost
+            refund_amount = 0
+        else:
+            penalty_kept = self.settings.abandoned_penalty
+            refund_amount = max(round_object.cost - penalty_kept, 0)
 
-            if round_object.status != "active":
-                raise ValueError("Round is not active")
+        round_object.status = "abandoned"
+        round_object.expires_at = datetime.now(UTC)
 
-            if round_object.round_type == "vote":
-                # Vote abandonments forfeit the full entry fee.
-                penalty_kept = round_object.cost
-                refund_amount = 0
-            else:
-                # Prompt/copy abandonments keep the configured penalty.
-                penalty_kept = self.settings.abandoned_penalty
-                refund_amount = max(round_object.cost - penalty_kept, 0)
+        player_data = await self._get_player_data(player)
+        if player_data.active_round_id == round_id:
+            player_data.active_round_id = None
 
-            round_object.status = "abandoned"
-            round_object.expires_at = datetime.now(UTC)
-
-            player_data = await self._get_player_data(player)
-            if player_data.active_round_id == round_id:
-                player_data.active_round_id = None
-
-            if round_object.round_type == "prompt":
-                round_object.phraseset_status = "abandoned"
-            elif round_object.round_type == "copy":
-                if round_object.prompt_round_id:
-                    QFQueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
-
-                    abandonment = PlayerAbandonedPrompt(
-                        id=uuid.uuid4(),
-                        player_id=player.player_id,
-                        prompt_round_id=round_object.prompt_round_id,
-                    )
-                    self.db.add(abandonment)
-            else:  # vote round
-                pass
-
-            if refund_amount > 0:
-                await transaction_service.create_transaction(
-                    player.player_id,
-                    refund_amount,
-                    "refund",
-                    round_object.round_id,
-                    auto_commit=False,
-                    skip_lock=True,
+        if round_object.round_type == "prompt":
+            round_object.phraseset_status = "abandoned"
+        elif round_object.round_type == "copy" and round_object.prompt_round_id:
+            QFQueueService.add_prompt_round_to_queue(round_object.prompt_round_id)
+            self.db.add(
+                PlayerAbandonedPrompt(
+                    id=uuid.uuid4(),
+                    player_id=player.player_id,
+                    prompt_round_id=round_object.prompt_round_id,
                 )
+            )
 
-            await self.db.flush()
-            await self.db.commit()
-            await self.db.refresh(round_object)
+        if refund_amount > 0:
+            await transaction_service.create_transaction(
+                player.player_id,
+                refund_amount,
+                "refund",
+                round_object.round_id,
+                auto_commit=False,
+                skip_lock=True,
+            )
+
+        await self.db.flush()
+        await self.db.commit()
+        await self.db.refresh(round_object)
 
         from backend.utils.cache import dashboard_cache
 
         dashboard_cache.invalidate_player_data(player.player_id)
+        self.invalidate_available_prompts_cache(player.player_id)
 
         logger.debug(
             f"Round {round_id} ({round_object.round_type}) abandoned by player {player.player_id}; "
@@ -967,6 +951,7 @@ class QFRoundService:
         dashboard_cache.invalidate_player_data(player.player_id)
         if prompt_round.player_id:
             dashboard_cache.invalidate_player_data(prompt_round.player_id)
+        self.invalidate_available_prompts_cache()
 
         logger.debug(f"{round_id=} flagged by {player.player_id}; {prompt_round.round_id=} marked pending review")
 
@@ -1132,11 +1117,11 @@ class QFRoundService:
         Returns:
             Number of prompts enqueued.
         """
-        from backend.utils import lock_client
+        if self.__class__._queue_rehydration_lock is None:
+            self.__class__._queue_rehydration_lock = asyncio.Lock()
 
-        # Use a shared lock so only one worker rebuilds the queue at a time.
-        logger.debug("Attempting to acquire rehydration lock")
-        with lock_client.lock("rehydrate_prompt_queue", timeout=5):
+        # This lock only avoids duplicate local work; durable rows remain authoritative.
+        async with self.__class__._queue_rehydration_lock:
             # Another worker might have already filled the queue while we were waiting.
             current_queue_length = QFQueueService.get_prompt_rounds_waiting()
             if current_queue_length > 0:

@@ -486,52 +486,40 @@ class QFVoteService:
 
         All operations are performed in a single atomic transaction.
         """
-        # Get available phraseset (outside lock - read-only)
+        # Database constraints revalidate the selected candidate at write time.
         phraseset = await self.get_available_phrasesets_for_player(player.player_id)
         if not phraseset:
             raise NoPhrasesetsAvailableError("No quips available for voting")
 
-        # Acquire lock for the entire transaction
-        from backend.utils import lock_client
-        lock_name = f"start_vote_round:{player.player_id}"
-        with lock_client.lock(lock_name, timeout=10):
-            round_id = uuid.uuid4()
-            # Create transaction
-            # Use skip_lock=True since we already have the lock
-            # Use auto_commit=False to defer commit until all operations complete
-            await transaction_service.create_transaction(
-                player.player_id,
-                -settings.vote_cost,
-                "vote_entry",
-                reference_id=round_id,
-                auto_commit=False,
-                skip_lock=True,
-            )
+        round_id = uuid.uuid4()
+        await transaction_service.create_transaction(
+            player.player_id,
+            -settings.vote_cost,
+            "vote_entry",
+            reference_id=round_id,
+            auto_commit=False,
+            skip_lock=True,
+        )
 
-            # Create round
-            round = Round(
-                round_id=round_id,
-                player_id=player.player_id,
-                round_type="vote",
-                status="active",
-                cost=settings.vote_cost,
-                expires_at=datetime.now(UTC) + timedelta(seconds=settings.vote_round_seconds),
-                # Vote-specific fields
-                phraseset_id=phraseset.phraseset_id,
-            )
+        round = Round(
+            round_id=round_id,
+            player_id=player.player_id,
+            round_type="vote",
+            status="active",
+            cost=settings.vote_cost,
+            expires_at=datetime.now(UTC) + timedelta(seconds=settings.vote_round_seconds),
+            phraseset_id=phraseset.phraseset_id,
+        )
 
-            # Add round to session BEFORE setting foreign key reference
-            self.db.add(round)
-            await self.db.flush()
+        self.db.add(round)
+        await self.db.flush()
 
-            # Set player's active round (after adding round to session)
-            player_data = await self._get_player_data(player)
-            player_data.active_round_id = round.round_id
-            await self.db.flush([player_data])
+        player_data = await self._get_player_data(player)
+        player_data.active_round_id = round.round_id
+        await self.db.flush([player_data])
 
-            # Commit all changes atomically INSIDE the lock
-            await self.db.commit()
-            await self.db.refresh(round)
+        await self.db.commit()
+        await self.db.refresh(round)
 
         # Invalidate dashboard cache to ensure fresh data
         from backend.utils.cache import dashboard_cache
@@ -629,7 +617,6 @@ class QFVoteService:
 
         # Give payout if correct (deferred commit)
         # Split payout: 70% of net to wallet, 30% to vault
-        # Note: skip_lock=False (default) to acquire player lock for balance safety
         if correct:
             await transaction_service.create_split_payout(
                 player_id=player.player_id,
@@ -638,7 +625,7 @@ class QFVoteService:
                 trans_type="vote_payout",
                 reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
-                skip_lock=False,  # Acquire lock for thread-safe balance updates
+                skip_lock=False,
             )
 
         # Update phraseset vote count and prize pool
@@ -758,7 +745,6 @@ class QFVoteService:
 
         # Give payout if correct (deferred commit)
         # Split payout: 70% of net to wallet, 30% to vault
-        # Note: skip_lock=False (default) to acquire player lock for balance safety
         if correct:
             await transaction_service.create_split_payout(
                 player_id=player.player_id,
@@ -767,7 +753,7 @@ class QFVoteService:
                 trans_type="vote_payout",
                 reference_id=vote.vote_id,
                 auto_commit=False,  # Defer commit to end of this method
-                skip_lock=False,  # Acquire lock for thread-safe balance updates
+                skip_lock=False,
             )
 
         # Track consecutive incorrect votes for guests
@@ -1025,7 +1011,6 @@ class QFVoteService:
                     continue
 
                 # Use split payout to handle wallet/vault distribution
-                # Note: skip_lock=False (default) to acquire player lock for balance safety
                 await transaction_service.create_split_payout(
                     player_id=payout_info["player_id"],
                     gross_amount=payout_info["payout"],
@@ -1033,7 +1018,10 @@ class QFVoteService:
                     trans_type="prize_payout",
                     reference_id=phraseset.phraseset_id,
                     auto_commit=False,  # Defer commit to caller
-                    skip_lock=False,  # Acquire lock for thread-safe balance updates
+                    skip_lock=False,
+                    idempotency_prefix=(
+                        f"qf:prize:{phraseset.phraseset_id}:{role}"
+                    ),
                 )
 
         refunded_vote_rounds = await self._refund_active_vote_rounds(phraseset, transaction_service)
