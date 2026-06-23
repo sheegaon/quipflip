@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime, UTC, timedelta
 from uuid import uuid4
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from backend.services import QFCleanupService
 from backend.models import (
@@ -21,6 +21,14 @@ from backend.models import (
     Phraseset,
 )
 from backend.utils.passwords import hash_password
+
+
+async def _commit_with_foreign_keys_disabled(db_session, *objects) -> None:
+    await db_session.execute(text("PRAGMA foreign_keys=OFF"))
+    db_session.add_all(objects)
+    await db_session.commit()
+    await db_session.execute(text("PRAGMA foreign_keys=ON"))
+    await db_session.commit()
 
 
 class TestRefreshTokenCleanup:
@@ -48,8 +56,7 @@ class TestRefreshTokenCleanup:
             token_hash=f"orphaned_token_hash_{uuid4().hex}",
             expires_at=datetime.now(UTC) + timedelta(days=7),
         )
-        db_session.add(orphaned_token)
-        await db_session.commit()
+        await _commit_with_foreign_keys_disabled(db_session, valid_token, orphaned_token)
 
         # Cleanup should remove orphaned token
         deleted_count = await cleanup_service.cleanup_orphaned_refresh_tokens()
@@ -190,6 +197,7 @@ class TestOrphanedRoundsCleanup:
         db_session.add(valid_round)
 
         # Create orphaned rounds
+        orphaned_rounds = []
         for i in range(3):
             orphaned_round = Round(
                 round_id=uuid4(),
@@ -199,9 +207,9 @@ class TestOrphanedRoundsCleanup:
                 cost=100,
                 expires_at=datetime.now(UTC) + timedelta(minutes=3),
             )
-            db_session.add(orphaned_round)
+            orphaned_rounds.append(orphaned_round)
 
-        await db_session.commit()
+        await _commit_with_foreign_keys_disabled(db_session, valid_round, *orphaned_rounds)
 
         # Count orphaned rounds
         orphaned_count, by_type = await cleanup_service.count_orphaned_rounds()
@@ -241,8 +249,7 @@ class TestOrphanedRoundsCleanup:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
-        db_session.add(orphaned_round)
-        await db_session.commit()
+        await _commit_with_foreign_keys_disabled(db_session, valid_round, orphaned_round)
 
         # Cleanup should remove orphaned round(s)
         deleted_count = await cleanup_service.cleanup_orphaned_rounds()
@@ -307,7 +314,7 @@ class TestTestPlayerCleanup:
         cleanup_service = QFCleanupService(db_session)
 
         # Create test player with unique identifier to avoid conflicts
-        unique_id = uuid4().hex[:8]
+        unique_id = f"{uuid4().int % 100000000:08d}"
         test_player = Player(
             player_id=uuid4(),
             username=f"testplayer{unique_id}_999",
@@ -491,10 +498,6 @@ class TestInactiveGuestCleanup:
             created_at=datetime.now(UTC) - timedelta(days=10),
             last_login_date=datetime.now(UTC) - timedelta(days=10),  # Old login
         )
-        db_session.add(active_guest)
-        await db_session.flush()
-
-        # Create a phraseset
         phraseset = Phraseset(
             phraseset_id=uuid4(),
             prompt_round_id=uuid4(),
@@ -506,8 +509,7 @@ class TestInactiveGuestCleanup:
             copy_phrase_2="COPY2",
             created_at=datetime.now(UTC),
         )
-        db_session.add(phraseset)
-        await db_session.flush()
+        await _commit_with_foreign_keys_disabled(db_session, active_guest, phraseset)
 
         # Add phraseset activity for this guest
         activity = PhrasesetActivity(
@@ -773,8 +775,6 @@ class TestRunAllCleanupTasks:
             cost=100,
             expires_at=datetime.now(UTC) + timedelta(minutes=3),
         )
-        db_session.add(orphaned_round)
-
         # Old inactive guest
         old_guest = Player(
             player_id=uuid4(),
@@ -785,8 +785,8 @@ class TestRunAllCleanupTasks:
             is_guest=True,
             created_at=datetime.now(UTC) - timedelta(days=10),
         )
-        db_session.add(old_guest)
-        await db_session.commit()
+
+        await _commit_with_foreign_keys_disabled(db_session, expired_token, orphaned_round, old_guest)
 
         # Run all cleanup tasks
         results = await cleanup_service.run_all_cleanup_tasks()

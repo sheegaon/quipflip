@@ -37,6 +37,20 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
+def _resolve_host_game_type(request: Request, game_type: GameType | None) -> GameType | None:
+    """Prefer the validated host scope over any caller-supplied game hint."""
+
+    host_scope = getattr(request.state, "host_scope", None)
+    host_game_type = getattr(host_scope, "game", None)
+
+    if host_game_type is not None:
+        if game_type is not None and game_type != host_game_type:
+            raise HTTPException(status_code=404, detail="host_game_mismatch")
+        return host_game_type
+
+    return game_type
+
+
 async def _complete_login(
     player: PlayerBase,
     response: Response,
@@ -123,16 +137,18 @@ async def _build_auth_response(
 
 @router.post("/login", response_model=AuthTokenResponse)
 async def login(
-    request: LoginRequest,
+    request: Request,
+    login_request: LoginRequest,
     response: Response,
     game_type: GameType | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> AuthTokenResponse:
     """Authenticate a player via email/password and issue JWT tokens."""
 
+    game_type = _resolve_host_game_type(request, game_type)
     auth_service = AuthService(db, game_type=game_type)
     try:
-        player = await auth_service.authenticate_player(request.email, request.password)
+        player = await auth_service.authenticate_player(login_request.email, login_request.password)
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
@@ -148,6 +164,7 @@ async def get_session(
 ) -> AuthSessionResponse:
     """Return global session information using cookies or Authorization header."""
 
+    game_type = _resolve_host_game_type(request, game_type)
     player = await get_current_player(request, game_type, authorization, db)
     player_service = PlayerService(db)
     game_snapshot = await player_service.snapshot_player_data(player, game_type)
@@ -189,16 +206,18 @@ async def get_session(
 
 @router.post("/login/username", response_model=AuthTokenResponse)
 async def login_with_username(
-    request: UsernameLoginRequest,
+    request: Request,
+    login_request: UsernameLoginRequest,
     response: Response,
     game_type: GameType | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> AuthTokenResponse:
     """Authenticate a player via username/password and issue JWT tokens."""
 
+    game_type = _resolve_host_game_type(request, game_type)
     auth_service = AuthService(db, game_type=game_type)
     try:
-        player = await auth_service.authenticate_player_by_username(request.username, request.password)
+        player = await auth_service.authenticate_player_by_username(login_request.username, login_request.password)
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
@@ -207,12 +226,14 @@ async def login_with_username(
 
 @router.get("/suggest-username", response_model=SuggestUsernameResponse)
 async def suggest_username(
+    request: Request,
     game_type: GameType | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> SuggestUsernameResponse:
     """Generate a suggested username for registration."""
     from backend.services import UsernameService
 
+    game_type = _resolve_host_game_type(request, game_type)
     username_service = UsernameService(db, game_type=game_type)
     display_name, _ = await username_service.generate_unique_username()
 
@@ -220,13 +241,18 @@ async def suggest_username(
 
 
 @router.post("/refresh", response_model=AuthTokenResponse)
-async def refresh_tokens(request: RefreshRequest, response: Response,
-                         refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_token_cookie_name),
-                         game_type: GameType | None = None,
-                         db: AsyncSession = Depends(get_db)) -> AuthTokenResponse:
+async def refresh_tokens(
+    request: Request,
+    refresh_request: RefreshRequest,
+    response: Response,
+    refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_token_cookie_name),
+    game_type: GameType | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> AuthTokenResponse:
     """Exchange a refresh token for new JWT credentials."""
 
-    token = request.refresh_token or refresh_cookie
+    game_type = _resolve_host_game_type(request, game_type)
+    token = refresh_request.refresh_token or refresh_cookie
     if not token:
         raise HTTPException(status_code=401, detail="missing_refresh_token")
 
@@ -251,7 +277,8 @@ async def refresh_tokens(request: RefreshRequest, response: Response,
 
 @router.post("/logout", status_code=204)
 async def logout(
-    request: LogoutRequest,
+    request: Request,
+    logout_request: LogoutRequest,
     response: Response,
     player: PlayerBase | None = Depends(get_optional_player),
     refresh_cookie: str | None = Cookie(
@@ -262,7 +289,8 @@ async def logout(
 ) -> None:
     """Invalidate the provided refresh token, clean up party sessions, and clear cookies."""
 
-    token = request.refresh_token or refresh_cookie
+    game_type = _resolve_host_game_type(request, game_type)
+    token = logout_request.refresh_token or refresh_cookie
     auth_service = AuthService(db, game_type=game_type)
 
     player_id = player.player_id if player else None

@@ -15,6 +15,8 @@ from backend.models.player import Player
 from backend.models.player_base import PlayerBase
 from backend.models.refresh_token import RefreshToken
 from backend.services.player_service import PlayerService, PlayerServiceError
+from backend.utils.passwords import PasswordValidationError, hash_password, validate_password_strength
+from backend.services.username_service import UsernameService
 from backend.utils.simple_jwt import (
     encode_jwt,
     decode_jwt,
@@ -60,7 +62,7 @@ class AuthService:
         Returns:
             tuple[PlayerBase, str]: The created player and the auto-generated password
         """
-        game_type = self._require_game_type()
+        game_type = self.game_type or GameType.IR
         try:
             player, guest_password = await self.player_service.register_guest(game_type)
         except PlayerServiceError as exc:
@@ -80,13 +82,30 @@ class AuthService:
         )
         return player, guest_password
 
-    async def register_player(self, email: str, password: str) -> PlayerBase:
+    async def register_player(
+        self,
+        email: str,
+        password: str,
+        username: str | None = None,
+    ) -> PlayerBase:
         """Create a new player with provided credentials."""
         game_type = self._require_game_type()
 
         try:
-            player = await self.player_service.register_player(
-                game_type=game_type, email=email, password=password
+            validate_password_strength(password)
+
+            if username is None:
+                username_service = UsernameService(self.db, game_type=game_type)
+                username, _ = await username_service.generate_unique_username()
+
+            service = self.player_service._get_player_service(game_type)
+            if service is None:
+                raise PlayerServiceError("game_type_required")
+
+            player = await service.create_player(
+                username=username,
+                email=email,
+                password_hash=hash_password(password),
             )
             logger.info(
                 f"Created {game_type.value} player {player.player_id} via credential signup"
@@ -109,12 +128,64 @@ class AuthService:
         except PlayerServiceError as exc:
             message = str(exc)
             if message == "username_taken":
-                raise AuthError("username_generation_failed") from exc
+                raise AuthError("username_generation_failed" if username is None else "username_taken") from exc
             if message == "email_taken":
                 raise AuthError("email_taken") from exc
             if message == "invalid_username":
                 raise AuthError("invalid_username") from exc
             raise AuthError(message) from exc
+        except PasswordValidationError as exc:
+            raise AuthError(str(exc)) from exc
+
+    async def register(
+        self,
+        *,
+        username: str,
+        email: str,
+        password: str,
+        game_type: GameType | None = None,
+    ) -> tuple[PlayerBase, str]:
+        """Compatibility registration helper used by older IR tests."""
+
+        effective_game_type = game_type or self.game_type or GameType.IR
+        compat_service = AuthService(
+            self.db,
+            game_type=effective_game_type,
+            player_service=self.player_service,
+        )
+        player = await compat_service.register_player(email=email, password=password, username=username)
+        access_token, _, _ = await compat_service.issue_tokens(player)
+        return player, access_token
+
+    async def login(
+        self,
+        *,
+        username: str | None = None,
+        email: str | None = None,
+        password: str,
+        game_type: GameType | None = None,
+    ) -> tuple[Player, str]:
+        """Compatibility login helper used by older IR tests."""
+
+        effective_game_type = game_type or self.game_type or GameType.IR
+        compat_service = AuthService(
+            self.db,
+            game_type=effective_game_type,
+            player_service=self.player_service,
+        )
+
+        if username:
+            player = await compat_service.authenticate_player_by_username(username, password)
+        elif email:
+            player = await compat_service.authenticate_player(email, password)
+        else:
+            raise AuthError("missing_credentials")
+
+        player.last_login_date = datetime.now(UTC)
+        await self.db.commit()
+
+        access_token, _, _ = await compat_service.issue_tokens(player)
+        return player, access_token
 
     async def upgrade_guest(self, player: Player, email: str, password: str) -> Player:
         """Upgrade a guest account to a full account.
@@ -254,6 +325,50 @@ class AuthService:
         )
         player = result.scalar_one_or_none()
         return self.player_service.apply_admin_status(player)
+
+    async def refresh_tokens(self, raw_token: str) -> Player:
+        """Compatibility helper that returns the player linked to a refresh token."""
+
+        player = await self.get_player_from_refresh_token(raw_token)
+        if not player:
+            raise AuthError("Token could not be refreshed, please log in again")
+        return player
+
+    async def create_refresh_token(self, player_id: uuid.UUID | str) -> str:
+        """Compatibility helper that persists a standalone refresh token."""
+
+        normalized_player_id: uuid.UUID | str = player_id
+        if isinstance(player_id, str):
+            try:
+                normalized_player_id = uuid.UUID(player_id)
+            except ValueError as exc:
+                raise AuthError("player_not_found") from exc
+
+        result = await self.db.execute(select(Player).where(Player.player_id == normalized_player_id))
+        player = self.player_service.apply_admin_status(result.scalar_one_or_none())
+        if not player:
+            raise AuthError("player_not_found")
+
+        raw_refresh_token = secrets.token_urlsafe(48)
+        refresh_expires_at = datetime.now(UTC) + timedelta(days=self.settings.refresh_token_exp_days)
+        await self._store_refresh_token(player, raw_refresh_token, refresh_expires_at)
+        await self.db.commit()
+        return raw_refresh_token
+
+    async def refresh_access_token(self, raw_token: str) -> str:
+        """Compatibility helper that returns a new access token for a refresh token."""
+
+        _, access_token, _, _ = await self.exchange_refresh_token(raw_token)
+        return access_token
+
+    async def verify_access_token(self, token: str) -> str:
+        """Compatibility helper that returns the subject claim from an access token."""
+
+        payload = self.decode_access_token(token)
+        subject = payload.get("sub")
+        if not subject:
+            raise AuthError("Invalid token error, please try again")
+        return subject
 
     async def issue_tokens(self, player: Player, *, rotate_existing: bool = True) -> tuple[str, str, int]:
         if rotate_existing:

@@ -23,9 +23,9 @@ async def test_prompts_waiting_count_after_flagging(db_session, player_factory):
 
     # Create two players
     player_a = await player_factory()
-    player_a.balance = 1000
+    player_a.wallet = 1000
     player_b = await player_factory()
-    player_b.balance = 1000
+    player_b.wallet = 1000
     await db_session.commit()
 
     # Seed test prompts
@@ -113,9 +113,9 @@ async def test_dashboard_endpoint_shows_correct_count_after_flagging(
 
     # Create two players
     player_a = await player_factory()
-    player_a.balance = 1000
+    player_a.wallet = 1000
     player_b = await player_factory()
-    player_b.balance = 1000
+    player_b.wallet = 1000
     await db_session.commit()
 
     # Seed test prompts
@@ -197,9 +197,9 @@ async def test_abandoned_prompt_not_counted_in_available(db_session, player_fact
 
     # Create two players
     player_a = await player_factory()
-    player_a.balance = 1000
+    player_a.wallet = 1000
     player_b = await player_factory()
-    player_b.balance = 1000
+    player_b.wallet = 1000
     await db_session.commit()
 
     # Seed test prompt

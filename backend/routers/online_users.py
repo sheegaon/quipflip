@@ -59,6 +59,22 @@ settings = get_settings()
 async def detect_player_and_game(request: Request, authorization: str | None, db: AsyncSession
                                  ) -> Tuple[Player, GameType]:
     """Detect the authenticated player and their game type from the request."""
+    host_scope = getattr(request.state, "host_scope", None)
+    host_game_type = getattr(host_scope, "game", None)
+
+    if host_game_type is not None:
+        player = await get_current_player(
+            request=request,
+            game_type=host_game_type,
+            authorization=authorization,
+            db=db,
+        )
+        logger.debug(
+            "Authenticated player via validated host scope: %s",
+            player.player_id,
+        )
+        return player, host_game_type
+
     last_error = None
     for game_type in GameType:
         try:
@@ -125,7 +141,11 @@ async def authenticate_websocket(websocket: WebSocket) -> Optional[Tuple[Player,
 
             player_id = UUID(player_id_str)
 
-            for game_type in GameType:
+            host_scope = websocket.scope.get("state", {}).get("host_scope")
+            host_game_type = getattr(host_scope, "game", None)
+            game_types = (host_game_type,) if host_game_type is not None else tuple(GameType)
+
+            for game_type in game_types:
                 player_service = get_player_service(game_type, db)
                 player = await player_service.get_player_by_id(player_id)
 

@@ -127,11 +127,13 @@ async def test_ir_guest_player_flow(db_session):
 
     # 4. Upgrade guest to full account
     email = f"upgraded{uuid.uuid4().hex[:8]}@example.com"
-    upgraded_player, new_token = await auth_service.upgrade_guest(
+    upgraded_player = await auth_service.upgrade_guest(
         guest,
         email,
         "NewPassword123!"
     )
+
+    new_token, _, _ = await auth_service.issue_tokens(upgraded_player)
 
     assert upgraded_player.is_guest is False
     assert upgraded_player.email == email
@@ -173,8 +175,8 @@ async def test_ir_daily_bonus_flow(db_session):
 
     # Verify balance increased
     from sqlalchemy import select
-    from backend.models.ir.player import IRPlayer
-    stmt = select(IRPlayer).where(IRPlayer.player_id == player.player_id)
+    from backend.models.player import Player
+    stmt = select(Player).where(Player.player_id == player.player_id)
     result = await db_session.execute(stmt)
     updated_player = result.scalars().first()
 
@@ -239,7 +241,7 @@ async def test_ir_self_vote_prevention(db_session):
 async def test_ir_insufficient_balance_blocking(db_session):
     """Test that players with insufficient balance cannot enter."""
     from sqlalchemy import update
-    from backend.models.ir.player import IRPlayer
+    from backend.models.ir.player_data import IRPlayerData
     from backend.services import GameType, TransactionService
 
     auth_service = AuthService(db_session)
@@ -254,7 +256,11 @@ async def test_ir_insufficient_balance_blocking(db_session):
     )
 
     # 2. Set balance to 50 (less than 100 entry cost)
-    stmt = update(IRPlayer).where(IRPlayer.player_id == player.player_id).values(wallet=50)
+    stmt = (
+        update(IRPlayerData)
+        .where(IRPlayerData.player_id == player.player_id)
+        .values(wallet=50)
+    )
     await db_session.execute(stmt)
     await db_session.commit()
 
