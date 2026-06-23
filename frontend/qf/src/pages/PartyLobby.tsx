@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { usePartyWebSocket } from '../hooks/usePartyWebSocket';
@@ -6,10 +6,47 @@ import apiClient from '@crowdcraft/api/client.ts';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CircleIcon } from '@crowdcraft/components/icons/NavigationIcons.tsx';
 import { BotIcon } from '@crowdcraft/components/icons/EngagementIcons.tsx';
+import { SoundOnIcon, SoundOffIcon, BellIcon } from '@crowdcraft/components/icons/SoundIcons.tsx';
 import { quipflipBranding } from '@crowdcraft/utils/brandedMessages.ts';
+import { playSound, primeAudio } from '@crowdcraft/utils/sound.ts';
+import { useSoundSettings } from '@crowdcraft/hooks/useSoundSettings.ts';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  showBrowserNotification,
+  type NotificationPermissionState,
+} from '@crowdcraft/utils/browserNotifications.ts';
+import { PartyStartTransition } from '../components/party/PartyStartTransition';
 import type { QFPartySessionStatusResponse, QFPartyParticipant } from '@crowdcraft/api/types.ts';
 
 const { loadingMessages } = quipflipBranding;
+
+type ActivityKind = 'join' | 'leave' | 'ready' | 'ping' | 'info';
+
+interface ActivityEntry {
+  id: string;
+  kind: ActivityKind;
+  message: string;
+  at: number;
+}
+
+const ACTIVITY_LIMIT = 15;
+
+const ACTIVITY_DOT: Record<ActivityKind, string> = {
+  join: 'bg-ccl-turquoise',
+  leave: 'bg-gray-400',
+  ready: 'bg-ccl-orange',
+  ping: 'bg-ccl-navy',
+  info: 'bg-ccl-teal',
+};
+
+const formatRelative = (at: number): string => {
+  const secs = Math.max(0, Math.floor((Date.now() - at) / 1000));
+  if (secs < 5) return 'just now';
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  return `${mins}m ago`;
+};
 
 /**
  * Party Lobby page - Players wait here until host starts the game
@@ -28,6 +65,23 @@ export const PartyLobby: React.FC = () => {
   const [isAddingAI, setIsAddingAI] = useState(false);
   const [isPinging, setIsPinging] = useState(false);
 
+  // Activity tracking + sound / notification preferences
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const { muted, toggleMuted } = useSoundSettings();
+  const [notifPermission, setNotifPermission] = useState<NotificationPermissionState>(
+    getNotificationPermission()
+  );
+  const [, setRelativeTick] = useState(0);
+
+  // Transition to game
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const transitionStartedRef = useRef(false);
+  const loadSessionRequestIdRef = useRef(0);
+
+  // Snapshot of participants from the previous status load, used to diff joins /
+  // leaves / ready changes so activity tracking works over WebSocket *or* polling.
+  const participantsRef = useRef<Map<string, QFPartyParticipant> | null>(null);
+
   // Check if current player is host
   const isHost = sessionStatus?.participants.find(p => p.player_id === player?.player_id)?.is_host ?? false;
 
@@ -44,14 +98,95 @@ export const PartyLobby: React.FC = () => {
   const neededAi = Math.max(0, minPlayers - totalCount);
   const availableSlots = Math.max(0, maxPlayers - totalCount);
   const needsAutoAiStart = isHost && allHumansReady && !hasEnoughPlayers;
+  // Once the room has enough players, let the host nudge anyone who hasn't readied up.
+  const inactiveHumans = hasEnoughPlayers ? humanNotReady.length : 0;
+  const canPing = humanParticipants.length > 1;
+
+  const pushActivity = useCallback((kind: ActivityKind, message: string) => {
+    setActivity((prev) => [
+      { id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, kind, message, at: Date.now() },
+      ...prev,
+    ].slice(0, ACTIVITY_LIMIT));
+  }, []);
+
+  // Diff the participant list against the previous snapshot and emit activity,
+  // sounds, and background notifications for anything that changed.
+  const reconcileActivity = useCallback((next: QFPartyParticipant[]) => {
+    const prev = participantsRef.current;
+    const nextMap = new Map(next.map((p) => [p.participant_id, p]));
+
+    // First load seeds the snapshot silently so we don't announce existing players.
+    if (prev === null) {
+      participantsRef.current = nextMap;
+      return;
+    }
+
+    const selfId = player?.player_id;
+
+    // Joins
+    for (const p of next) {
+      if (prev.has(p.participant_id) || p.player_id === selfId) continue;
+      if (p.is_ai) {
+        pushActivity('join', `${p.username} (AI) joined`);
+      } else {
+        pushActivity('join', `${p.username} joined`);
+        playSound('join');
+        showBrowserNotification('Someone joined your party', {
+          body: `${p.username} is in the lobby`,
+          tag: 'qf-party-activity',
+        });
+      }
+    }
+
+    // Leaves
+    for (const [id, p] of prev) {
+      if (nextMap.has(id) || p.player_id === selfId) continue;
+      if (p.is_ai) {
+        pushActivity('leave', `${p.username} (AI) left`);
+      } else {
+        pushActivity('leave', `${p.username} left`);
+        playSound('leave');
+        showBrowserNotification('Someone left your party', {
+          body: `${p.username} left the lobby`,
+          tag: 'qf-party-activity',
+        });
+      }
+    }
+
+    // Ready transitions (not ready -> ready)
+    for (const p of next) {
+      const before = prev.get(p.participant_id);
+      if (before && before.status !== 'READY' && p.status === 'READY' && !p.is_ai) {
+        pushActivity('ready', `${p.username} is ready`);
+        if (p.player_id !== selfId) playSound('ready');
+      }
+    }
+
+    participantsRef.current = nextMap;
+  }, [player?.player_id, pushActivity]);
+
+  const beginStartTransition = useCallback(() => {
+    if (transitionStartedRef.current) return;
+    transitionStartedRef.current = true;
+    setIsTransitioning(true);
+  }, []);
+
+  const handleTransitionComplete = useCallback(() => {
+    if (!sessionId) return;
+    navigate(`/party/game/${sessionId}`);
+  }, [navigate, sessionId]);
 
   // Load session status
   const loadSessionStatus = useCallback(async () => {
     if (!sessionId) return;
 
+    const requestId = ++loadSessionRequestIdRef.current;
+
     try {
       const status = await apiClient.qfGetPartySessionStatus(sessionId);
+      if (requestId !== loadSessionRequestIdRef.current) return;
       setSessionStatus(status);
+      reconcileActivity(status.participants);
 
       // If the session has progressed past the lobby, navigate to the correct screen via REST status
       if (status.current_phase === 'RESULTS' || status.status === 'COMPLETED') {
@@ -60,14 +195,69 @@ export const PartyLobby: React.FC = () => {
       }
 
       if (status.status === 'IN_PROGRESS' || status.current_phase !== 'LOBBY') {
-        navigate(`/party/game/${sessionId}`);
+        // Show the celebratory hand-off; it navigates into the game when done.
+        beginStartTransition();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load session');
+      if (requestId === loadSessionRequestIdRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load session');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === loadSessionRequestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [navigate, sessionId]);
+  }, [beginStartTransition, navigate, reconcileActivity, sessionId]);
+
+  const refreshSessionStatus = useCallback(() => {
+    void loadSessionStatus();
+  }, [loadSessionStatus]);
+
+  const handleSessionStarted = useCallback(() => {
+    // Start the transition immediately; REST polling keeps the count current.
+    beginStartTransition();
+    refreshSessionStatus();
+  }, [beginStartTransition, refreshSessionStatus]);
+
+  const handleHostPing = useCallback((data: { host_player_id: string; host_username: string; join_url: string }) => {
+    // The host's own broadcast echoes back - ignore it.
+    if (data.host_player_id === player?.player_id) return;
+    pushActivity('ping', `${data.host_username} pinged the lobby`);
+    // The audible ping is played once by the global notification handler so a
+    // player who has wandered off still hears it; here we add a feed entry and
+    // a background notification for the lobby view.
+    showBrowserNotification('Party ping', {
+      body: `${data.host_username} is waiting for everyone to ready up`,
+      tag: 'qf-party-ping',
+    });
+  }, [player?.player_id, pushActivity]);
+
+  const handleSessionUpdate = useCallback((data: Record<string, unknown>) => {
+    // Show host change notification
+    if (data.reason === 'inactive_player_removed' && typeof data.message === 'string') {
+      setNotification(data.message);
+      pushActivity('info', data.message);
+      setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
+    }
+    refreshSessionStatus();
+  }, [pushActivity, refreshSessionStatus]);
+
+  const partyWebSocketConfig = useMemo(() => ({
+    sessionId: sessionId ?? '',
+    pageContext: 'lobby' as const,
+    onPlayerJoined: refreshSessionStatus,
+    onPlayerLeft: refreshSessionStatus,
+    onPlayerReady: refreshSessionStatus,
+    onSessionStarted: handleSessionStarted,
+    onHostPing: handleHostPing,
+    onSessionUpdate: handleSessionUpdate,
+  }), [
+    handleHostPing,
+    handleSessionStarted,
+    handleSessionUpdate,
+    refreshSessionStatus,
+    sessionId,
+  ]);
 
   useEffect(() => {
     loadSessionStatus();
@@ -97,44 +287,34 @@ export const PartyLobby: React.FC = () => {
     };
   }, [loadSessionStatus, sessionId]);
 
-  // WebSocket handlers
+  // Keep relative timestamps in the activity feed fresh.
+  useEffect(() => {
+    const id = window.setInterval(() => setRelativeTick((t) => t + 1), 10000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Resume the audio context on the first user gesture so cues are audible.
+  useEffect(() => {
+    const prime = () => primeAudio();
+    window.addEventListener('pointerdown', prime, { once: true });
+    window.addEventListener('keydown', prime, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', prime);
+      window.removeEventListener('keydown', prime);
+    };
+  }, []);
+
+  // WebSocket handlers - these nudge an immediate reload; reconcileActivity (run
+  // inside loadSessionStatus) is the single source of truth for sounds/feed.
   const {
     connected: wsConnected,
     connecting: wsConnecting,
-  } = usePartyWebSocket({
-    sessionId: sessionId ?? '',
-    pageContext: 'lobby',
-    onPlayerJoined: (data) => {
-      console.log(`${data.username} joined the party!`);
-      loadSessionStatus(); // Reload to get updated participant list
-    },
-    onPlayerLeft: (data) => {
-      console.log(`${data.username} left the party`);
-      loadSessionStatus();
-    },
-    onPlayerReady: (data) => {
-      console.log(`${data.username} is ready!`);
-      loadSessionStatus();
-    },
-    onSessionStarted: () => {
-      console.log('Party started notification received');
-      // WebSocket just notifies; REST polling drives navigation
-      void loadSessionStatus();
-    },
-    onSessionUpdate: (data) => {
-      console.log('Session update:', data);
-      // Show host change notification
-      if (data.reason === 'inactive_player_removed' && typeof data.message === 'string') {
-        setNotification(data.message);
-        setTimeout(() => setNotification(null), 5000); // Clear after 5 seconds
-      }
-      loadSessionStatus();
-    },
-  });
+  } = usePartyWebSocket(partyWebSocketConfig);
 
   const handleStartParty = async () => {
     if (!sessionId || !isHost || isStarting || !allHumansReady) return;
 
+    primeAudio();
     setIsStarting(true);
     try {
       if (!hasEnoughPlayers) {
@@ -191,16 +371,31 @@ export const PartyLobby: React.FC = () => {
   const handlePingPlayers = async () => {
     if (!sessionId || !isHost) return;
 
+    primeAudio();
     setIsPinging(true);
     try {
       await apiClient.qfPingParty(sessionId);
-      setNotification('Ping sent to everyone in your party.');
+      const message = inactiveHumans > 0
+        ? `Pinged ${inactiveHumans} player${inactiveHumans === 1 ? '' : 's'} who aren't ready yet.`
+        : 'Ping sent to everyone in your party.';
+      setNotification(message);
+      pushActivity('ping', 'You pinged the lobby');
       setTimeout(() => setNotification(null), 4000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to ping players');
       setTimeout(() => setError(null), 4000);
     } finally {
       setIsPinging(false);
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    primeAudio();
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+    if (result === 'granted') {
+      setNotification('Browser alerts enabled. We’ll let you know when players come and go.');
+      setTimeout(() => setNotification(null), 4000);
     }
   };
 
@@ -236,9 +431,24 @@ export const PartyLobby: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ccl-orange to-ccl-turquoise flex items-center justify-center p-4 bg-pattern">
+      {isTransitioning && (
+        <PartyStartTransition playerCount={totalCount} onComplete={handleTransitionComplete} />
+      )}
       <div className="max-w-2xl w-full tile-card p-8 slide-up-enter">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="relative text-center mb-8">
+          {/* Sound toggle */}
+          <button
+            type="button"
+            onClick={() => { primeAudio(); toggleMuted(); }}
+            aria-pressed={muted}
+            title={muted ? 'Sounds are off — click to turn on' : 'Sounds are on — click to mute'}
+            className="absolute right-0 top-0 flex items-center gap-1.5 px-3 py-2 rounded-tile border-2 border-ccl-navy/15 text-ccl-navy hover:border-ccl-navy/40 transition-colors"
+          >
+            {muted ? <SoundOffIcon className="w-5 h-5 text-gray-500" /> : <SoundOnIcon className="w-5 h-5 text-ccl-teal" />}
+            <span className="text-xs font-semibold hidden sm:inline">{muted ? 'Muted' : 'Sound'}</span>
+          </button>
+
           <div className="flex items-center justify-center gap-2 mb-2">
             <CircleIcon className="w-8 h-8" />
             <h1 className="text-3xl font-display font-bold text-ccl-navy">Party Lobby</h1>
@@ -337,17 +547,69 @@ export const PartyLobby: React.FC = () => {
             </div>
           </div>
 
+          {/* Activity Feed */}
+          <div className="tile-card shadow-tile p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-display font-bold text-ccl-navy">Lobby Activity</h3>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-ccl-teal">
+                <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-ccl-turquoise animate-pulse' : 'bg-gray-300'}`} />
+                Live
+              </span>
+            </div>
+            {activity.length === 0 ? (
+              <p className="text-sm text-ccl-teal">
+                Waiting for players… joins, exits, and ready-ups will show up here.
+              </p>
+            ) : (
+              <ul className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                {activity.map((entry) => (
+                  <li key={entry.id} className="flex items-center gap-3 text-sm">
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${ACTIVITY_DOT[entry.kind]}`} />
+                    <span className="text-ccl-navy flex-1">{entry.message}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{formatRelative(entry.at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Browser notification opt-in */}
+          {notifPermission === 'default' && (
+            <button
+              type="button"
+              onClick={handleEnableNotifications}
+              className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-ccl-teal hover:text-ccl-turquoise border-2 border-dashed border-ccl-teal/30 hover:border-ccl-turquoise rounded-tile py-2.5 transition-colors"
+            >
+              <BellIcon className="w-4 h-4" />
+              Get a browser alert when players join or leave
+            </button>
+          )}
+
           {/* Action Buttons */}
           <div className="space-y-3">
             {/* Ping Button (host only) */}
             {isHost && (
               <button
                 onClick={handlePingPlayers}
-                disabled={isPinging}
-                className="w-full border-2 border-ccl-navy text-ccl-navy bg-white hover:bg-ccl-navy hover:text-white font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-60"
+                disabled={isPinging || !canPing}
+                className={`w-full flex items-center justify-center gap-2 font-semibold py-3 px-4 rounded-tile transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                  inactiveHumans > 0
+                    ? 'bg-ccl-navy text-white hover:bg-ccl-teal'
+                    : 'border-2 border-ccl-navy text-ccl-navy bg-white hover:bg-ccl-navy hover:text-white'
+                }`}
               >
-                {isPinging ? 'Pinging players...' : 'Ping Everyone'}
+                <BellIcon className="w-5 h-5" />
+                {isPinging
+                  ? 'Pinging players...'
+                  : inactiveHumans > 0
+                    ? `Ping ${inactiveHumans} inactive player${inactiveHumans === 1 ? '' : 's'}`
+                    : 'Ping Everyone'}
               </button>
+            )}
+            {isHost && inactiveHumans > 0 && (
+              <p className="text-xs text-center text-ccl-teal -mt-1">
+                Sends an audible nudge to players who haven’t readied up.
+              </p>
             )}
 
             {/* Add AI Player Button (host only) */}

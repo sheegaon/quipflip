@@ -68,11 +68,34 @@
     will-change: transform, filter;
   }
 
+  /* Party lobby -> game start transition */
+  .party-transition-overlay {
+    animation: partyFadeIn 0.35s ease-out;
+  }
+
+  .party-transition-tile {
+    animation: tileFlipIn 0.5s ease-out both;
+    transform-origin: center bottom;
+  }
+
+  .party-transition-count {
+    display: inline-block;
+    font-size: 5rem;
+    line-height: 1;
+    animation: countPop 0.6s ease-out;
+  }
+
   /* Respect user's motion preferences for accessibility */
   @media (prefers-reduced-motion: reduce) {
     .trophy-pulse {
       animation: none;
       will-change: auto;
+    }
+
+    .party-transition-overlay,
+    .party-transition-tile,
+    .party-transition-count {
+      animation: none;
     }
   }
 }
@@ -153,5 +176,44 @@
   50% {
     transform: scale(1.08);
     filter: brightness(1.15) hue-rotate(5deg);
+  }
+}
+
+@keyframes partyFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes tileFlipIn {
+  0% {
+    transform: rotateY(-90deg) translateY(-12px);
+    opacity: 0;
+  }
+  60% {
+    transform: rotateY(12deg) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes countPop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
