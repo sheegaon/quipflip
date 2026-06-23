@@ -195,7 +195,6 @@ class QFBackupOrchestrator:
                         logger.info(
                             f"Skipping prompt {quip_round.round_id} - copy slots were filled while AI was generating"
                         )
-                        QFQueueService.add_prompt_round_to_queue(quip_round.round_id)
                         continue
 
                     copy_cost, _, system_contribution = round_service._calculate_copy_round_cost()

@@ -11,6 +11,7 @@ import uuid
 from sqlalchemy import delete, select, text
 
 from backend.models.qf.player import QFPlayer
+from backend.models.qf.player_data import QFPlayerData
 from backend.models.qf.round import Round
 from backend.models.qf.phraseset import Phraseset
 from backend.models.qf.vote import Vote
@@ -20,7 +21,7 @@ from backend.services import GameType, QFVoteService
 from backend.services import TransactionService
 from backend.services import QFScoringService
 from backend.config import get_settings
-from backend.utils.exceptions import InvalidPhraseError
+from backend.utils.exceptions import AlreadyInRoundError, InvalidPhraseError
 
 settings = get_settings()
 
@@ -355,6 +356,36 @@ class TestVoteBalanceAccounting:
 
         await db_session.refresh(voter)
         assert voter.wallet == initial_balance - settings.vote_cost
+
+    @pytest.mark.asyncio
+    async def test_start_vote_round_reports_active_round_constraint_cleanly(
+        self, db_session, test_phraseset_with_players
+    ):
+        """A concurrent-start loser should roll back its vote charge."""
+        voter = test_phraseset_with_players["voter"]
+        active_round = Round(
+            round_id=uuid.uuid4(),
+            player_id=voter.player_id,
+            round_type="prompt",
+            status="active",
+            prompt_text="Existing active round",
+            cost=settings.prompt_cost,
+            expires_at=datetime.now(UTC) + timedelta(minutes=3),
+        )
+        db_session.add(active_round)
+        voter.active_round_id = active_round.round_id
+        await db_session.commit()
+        voter_id = voter.player_id
+        initial_balance = voter.wallet
+
+        vote_service = QFVoteService(db_session)
+        transaction_service = TransactionService(db_session, GameType.QF)
+
+        with pytest.raises(AlreadyInRoundError, match="active_round_exists"):
+            await vote_service.start_vote_round(voter, transaction_service)
+
+        player_data = await db_session.get(QFPlayerData, voter_id)
+        assert player_data.wallet == initial_balance
 
     @pytest.mark.asyncio
     async def test_vote_payout_awarded(self, db_session, test_phraseset_with_players):

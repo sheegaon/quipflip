@@ -90,7 +90,7 @@ async def test_ir_debit_insufficient_balance(db_session, ir_player_factory):
     transaction_service = TransactionService(db_session, GameType.IR)
 
     # Set balance to 50
-    player.wallet = 50
+    player.ir_player_data.wallet = 50
     await db_session.commit()
 
     # Try to debit 100
@@ -104,7 +104,6 @@ async def test_ir_debit_insufficient_balance(db_session, ir_player_factory):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="apply_vault_rake method does not exist in TransactionService")
 async def test_ir_vault_rake_application(db_session, ir_player_factory):
     """Test applying vault rake to earnings."""
     player = await ir_player_factory()
@@ -116,9 +115,12 @@ async def test_ir_vault_rake_application(db_session, ir_player_factory):
     rake_percent = 30  # 30% rake
 
     # Apply vault rake
-    await transaction_service.apply_vault_rake(
+    await transaction_service.create_split_payout(
         player_id=str(player.player_id),
-        net_earnings=earnings
+        gross_amount=earnings,
+        cost=0,
+        trans_type="ir_creator_payout",
+        reference_id=uuid.uuid4(),
     )
 
     # Refresh player
@@ -225,21 +227,6 @@ async def test_ir_daily_bonus_available_check(db_session, ir_player_factory):
     # Should no longer be available today
     available = await bonus_service.is_bonus_available(player.player_id)
     assert available is False
-
-
-@pytest.mark.asyncio
-@pytest.mark.skip(reason="get_pending_payouts method does not exist in IRDailyBonusService")
-async def test_ir_get_pending_payouts(db_session, ir_player_factory):
-    """Test retrieving pending payouts."""
-    player = await ir_player_factory()
-    bonus_service = IRDailyBonusService(db_session)
-
-    # Get pending payouts (should be empty)
-    # This test requires a payouts service or method that doesn't currently exist
-    pending = []
-
-    # Should be a list (possibly empty)
-    assert isinstance(pending, list)
 
 
 @pytest.mark.asyncio

@@ -75,7 +75,11 @@ def resolve_runtime_paths(settings: Any) -> RuntimePaths:
 
 
 def validate_runtime_settings(settings: Any) -> list[str]:
-    """Return human-readable production runtime validation failures."""
+    """Return production config failures that require no filesystem I/O.
+
+    Safe to call during Settings initialisation and from CLI tools/migrations
+    where built static assets may not yet be present.
+    """
 
     if getattr(settings, "environment", "") != "production":
         return []
@@ -120,7 +124,31 @@ def validate_runtime_settings(settings: Any) -> list[str]:
 
     if not paths.static_root.is_absolute():
         errors.append("CROWDCRAFT_STATIC_ROOT must resolve to an absolute path in production")
-    elif not paths.static_root.exists():
+
+    return errors
+
+
+def validate_runtime_resources(settings: Any) -> list[str]:
+    """Return filesystem resource failures for production deployment gates.
+
+    Checks that the active static release is present and complete. Separated
+    from validate_runtime_settings so that offline tools and migrations can load
+    Settings without failing when built SPAs are not yet deployed.
+
+    Call this from the application lifespan (fail-closed startup) and from
+    readiness checks, but NOT from Settings initialisation.
+    """
+
+    if getattr(settings, "environment", "") != "production":
+        return []
+
+    paths = resolve_runtime_paths(settings)
+    errors: list[str] = []
+
+    if not paths.static_root.is_absolute():
+        return errors
+
+    if not paths.static_root.exists():
         errors.append(f"Static root does not exist: {paths.static_root}")
     elif not paths.static_root.is_dir():
         errors.append(f"Static root is not a directory: {paths.static_root}")
