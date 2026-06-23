@@ -177,7 +177,7 @@ export const RoundPlay: React.FC = () => {
         finalCoverage: details.final_coverage || 0,
         grossPayout: details.gross_payout || 0,
         strikeCount: strikes,
-        matchedClusters: details.matched_clusters?.length || 0,
+        matchedClusters: details.matched_cluster_count || 0,
         totalClusters: details.snapshot_answer_count || 0,
       };
 

@@ -463,7 +463,10 @@ class MMGameService:
 
         if round_obj:
             # Load relationships
-            await self.db.refresh(round_obj, ['image', 'player', 'chosen_caption'])
+            await self.db.refresh(
+                round_obj,
+                ['image', 'player', 'chosen_caption', 'caption_submission'],
+            )
 
         return round_obj
 

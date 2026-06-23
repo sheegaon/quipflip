@@ -7,18 +7,19 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.mm.caption import MMCaption
 from backend.models.mm.caption_submission import MMCaptionSubmission
 from backend.models.mm.image import MMImage
 from backend.models.mm.player import MMPlayer
+from backend.models.mm.vote_round import MMVoteRound
 from backend.services.transaction_service import TransactionService
 from backend.services.mm.system_config_service import MMSystemConfigService
 from backend.services.mm.daily_state_service import MMPlayerDailyStateService
 from backend.services.mm.scoring_service import MMScoringService
 from backend.services.phrase_validator import get_phrase_validator
-from backend.utils import lock_client
 from backend.utils.exceptions import InsufficientBalanceError
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ class MMCaptionService:
     async def submit_caption(
         self,
         player: MMPlayer,
-        image_id: UUID,
+        round_obj: MMVoteRound,
         text: str,
         shown_captions: list[MMCaption],
         transaction_service: TransactionService
@@ -56,7 +57,7 @@ class MMCaptionService:
 
         Args:
             player: Player submitting caption
-            image_id: Image ID
+            round_obj: Completed vote round being used for this caption
             text: Caption text
             shown_captions: List of captions shown in the round (for riff detection)
             transaction_service: Transaction service
@@ -68,55 +69,60 @@ class MMCaptionService:
             ValueError: Invalid caption
             InsufficientBalanceError: Player cannot afford submission fee
         """
-        lock_name = f"submit_caption:{player.player_id}"
-        with lock_client.lock(lock_name, timeout=10):
-            # Validate image exists and is active
-            image = await self.db.get(MMImage, image_id)
-            if not image or image.status != 'active':
-                raise ValueError(f"Image {image_id} not found or inactive")
+        if round_obj.player_id != player.player_id:
+            raise ValueError("Cannot submit a caption for another player's round")
+        if not round_obj.chosen_caption_id:
+            raise ValueError("vote_required_before_caption")
 
-            # Detect riff or original using cosine similarity
-            kind, parent_caption_id = await self._detect_riff_or_original(
-                text, shown_captions
-            )
+        image_id = round_obj.image_id
+        image = await self.db.get(MMImage, image_id)
+        if not image or image.status != 'active':
+            raise ValueError(f"Image {image_id} not found or inactive")
 
-            # Check if caption text is duplicate (basic check)
-            await self._check_duplicate_caption(image_id, text)
+        # Embedding/similarity work occurs before the decisive write transaction.
+        kind, parent_caption_id = await self._detect_riff_or_original(
+            text, shown_captions
+        )
+        await self._check_duplicate_caption(image_id, text)
 
-            # Determine cost (free quota or paid)
-            remaining_free = await self.daily_state_service.get_remaining_free_captions(
+        caption_id = uuid4()
+        submission = MMCaptionSubmission(
+            submission_id=uuid4(),
+            round_id=round_obj.round_id,
+            player_id=player.player_id,
+            image_id=image_id,
+            caption_id=None,
+            submission_text=text,
+            status='processing',
+            rejection_reason=None,
+            used_free_slot=False,
+            created_at=datetime.now(UTC),
+        )
+        self.db.add(submission)
+        try:
+            await self.db.flush([submission])
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise ValueError("caption_already_submitted_for_round") from exc
+
+        try:
+            used_free_slot = await self.daily_state_service.try_consume_free_caption(
                 player.player_id
             )
-            used_free_slot = False
             cost = 0
-            caption_id = uuid4()
-
-            if remaining_free > 0:
-                # Use free slot
-                await self.daily_state_service.consume_free_caption(player.player_id)
-                used_free_slot = True
-                cost = 0
-            else:
-                # Charge submission fee
+            if not used_free_slot:
                 cost = await self.config_service.get_config_value(
                     "mm_caption_submission_cost", default=100
                 )
-
-                if player.wallet < cost:
-                    raise InsufficientBalanceError(
-                        f"Insufficient balance. Need {cost}, have {player.wallet}"
-                    )
-
                 await transaction_service.create_transaction(
                     player.player_id,
                     -cost,
                     "mm_caption_submission_fee",
-                    reference_id=caption_id,
+                    reference_id=round_obj.round_id,
                     auto_commit=False,
                     skip_lock=True,
                 )
 
-            # Create caption
             caption = MMCaption(
                 caption_id=caption_id,
                 image_id=image_id,
@@ -134,40 +140,31 @@ class MMCaptionService:
                 lifetime_to_wallet=0,
                 lifetime_to_vault=0,
             )
-
             self.db.add(caption)
             await self.db.flush([caption])
 
-            # Create submission log
-            submission = MMCaptionSubmission(
-                submission_id=uuid4(),
-                player_id=player.player_id,
-                image_id=image_id,
-                caption_id=caption.caption_id,
-                submission_text=text,
-                status='accepted',
-                rejection_reason=None,
-                used_free_slot=used_free_slot,
-                created_at=datetime.now(UTC),
-            )
-
-            self.db.add(submission)
+            submission.caption_id = caption.caption_id
+            submission.status = 'accepted'
+            submission.used_free_slot = used_free_slot
             await self.db.commit()
             await self.db.refresh(player)
+        except Exception:
+            await self.db.rollback()
+            raise
 
-            logger.info(
-                f"Caption submitted: {caption.caption_id} by player {player.player_id} "
-                f"for image {image_id}, kind={kind}, cost={cost}, free={used_free_slot}"
-            )
+        logger.info(
+            f"Caption submitted: {caption.caption_id} by player {player.player_id} "
+            f"for round {round_obj.round_id}, kind={kind}, cost={cost}, free={used_free_slot}"
+        )
 
-            return {
-                'success': True,
-                'caption_id': caption.caption_id,
-                'cost': cost,
-                'used_free_slot': used_free_slot,
-                'new_wallet': player.wallet,
-                'quality_score': caption.quality_score,
-            }
+        return {
+            'success': True,
+            'caption_id': caption.caption_id,
+            'cost': cost,
+            'used_free_slot': used_free_slot,
+            'new_wallet': player.wallet,
+            'quality_score': caption.quality_score,
+        }
 
     async def _check_duplicate_caption(self, image_id: UUID, text: str) -> None:
         """Check if caption text already exists for this image.

@@ -4,10 +4,10 @@ Calculates coverage, payouts, and manages round finalization.
 """
 import logging
 import math
+from datetime import datetime, UTC
 from typing import List, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from sqlalchemy.sql import func
 
 from backend.models.tl import TLRound, TLAnswer
 from backend.config import get_settings
@@ -284,7 +284,7 @@ class TLScoringService:
             vault_award: int,
             gross_payout: int,
             coverage: float,
-    ) -> None:
+    ) -> bool:
         """Finalize round with final scores, statistics, and player updates.
 
         Args:
@@ -296,11 +296,30 @@ class TLScoringService:
             coverage: Final coverage (0-1)
         """
         try:
-            # Update round status and final scores
-            tl_round.status = 'completed'
-            tl_round.final_coverage = coverage
-            tl_round.gross_payout = gross_payout
-            tl_round.ended_at = func.now()  # Server timestamp
+            finalized_at = datetime.now(UTC)
+            result = await db.execute(
+                update(TLRound)
+                .where(
+                    TLRound.round_id == tl_round.round_id,
+                    TLRound.status == 'active',
+                )
+                .values(
+                    status='completed',
+                    final_coverage=coverage,
+                    gross_payout=gross_payout,
+                    ended_at=finalized_at,
+                )
+            )
+
+            if result.rowcount != 1:
+                await db.refresh(tl_round)
+                logger.info(
+                    "ℹ️  Stale TL finalizer no-op for round %s (status already advanced)",
+                    tl_round.round_id,
+                )
+                return False
+
+            await db.refresh(tl_round)
 
             # Update answer stats
             await self.update_answer_stats(db, tl_round)
@@ -315,6 +334,7 @@ class TLScoringService:
                 f"coverage={coverage:.1%}, gross={gross_payout}, "
                 f"wallet={wallet_award}, vault={vault_award}"
             )
+            return True
         except Exception as e:
             logger.error(f"❌ Round finalization failed: {e}")
             raise

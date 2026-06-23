@@ -6,6 +6,7 @@ from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
 from backend.models.ir.backronym_observer_guard import BackronymObserverGuard
+from backend.models.ir.assignment import IRAssignment
 from backend.models.ir.transaction import IRTransaction
 from backend.models.ir.result_view import IRResultView
 from backend.models.ir.refresh_token import IRRefreshToken
@@ -22,6 +23,7 @@ __all__ = [
     "BackronymEntry",
     "BackronymVote",
     "BackronymObserverGuard",
+    "IRAssignment",
     "IRTransaction",
     "IRResultView",
     "IRRefreshToken",

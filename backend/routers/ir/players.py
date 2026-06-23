@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.utils import ensure_utc
@@ -10,6 +11,8 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.dependencies import get_current_player, enforce_guest_creation_rate_limit
 from backend.models.ir.player import IRPlayer
+from backend.models.ir.backronym_entry import BackronymEntry
+from backend.models.ir.backronym_vote import BackronymVote
 from backend.schemas.auth import (
     AuthTokenResponse,
     GamePlayerSnapshot,
@@ -28,11 +31,16 @@ from backend.schemas.player import (
     UpgradeGuestRequest,
     UpgradeGuestResponse,
 )
-from backend.routers.ir.schemas import IRDashboardResponse, IRDashboardPlayerSummary
+from backend.routers.ir.schemas import (
+    IRDashboardActiveSession,
+    IRDashboardPlayerSummary,
+    IRDashboardResponse,
+)
 from backend.services import AuthService, AuthError
 from backend.services.player_service import PlayerService
 from backend.utils.model_registry import GameType
 from backend.services.ir import IRPlayerService
+from backend.services.ir.assignment_service import IRAssignmentService
 from backend.utils.cookies import (
     clear_auth_cookies,
     clear_refresh_cookie,
@@ -406,9 +414,36 @@ async def get_player_dashboard(
         created_at=ensure_utc(player.created_at),
     )
 
+    assignment_service = IRAssignmentService(db)
+    assignment = await assignment_service.get_active_assignment(player.player_id)
+    active_session = None
+    if assignment:
+        set_obj = await assignment_service.set_service.get_set_by_id(assignment.set_id)
+        entry_exists = await db.scalar(
+            select(BackronymEntry.entry_id).where(
+                BackronymEntry.set_id == assignment.set_id,
+                BackronymEntry.player_id == player.player_id,
+            )
+        )
+        vote_exists = await db.scalar(
+            select(BackronymVote.vote_id).where(
+                BackronymVote.set_id == assignment.set_id,
+                BackronymVote.player_id == player.player_id,
+            )
+        )
+        if set_obj:
+            active_session = IRDashboardActiveSession(
+                set_id=str(assignment.set_id),
+                assignment_token=str(assignment.assignment_token),
+                word=set_obj.word,
+                status=str(set_obj.status),
+                has_submitted_entry=entry_exists is not None,
+                has_voted=vote_exists is not None,
+            )
+
     return IRDashboardResponse(
         player=player_summary,
-        active_session=None,
+        active_session=active_session,
         pending_results=[],
         wallet=wallet,
         vault=vault,

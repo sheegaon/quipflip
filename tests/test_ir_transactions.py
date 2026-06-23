@@ -5,6 +5,8 @@ from datetime import timedelta
 from backend.services import IRPlayerService
 from backend.services import GameType, TransactionService
 from backend.services import IRDailyBonusError, IRDailyBonusService
+from backend.models.ir.backronym_set import BackronymSet
+from backend.models.ir.enums import SetStatus, Mode
 from backend.utils.passwords import hash_password
 
 
@@ -88,7 +90,7 @@ async def test_ir_debit_insufficient_balance(db_session, ir_player_factory):
     transaction_service = TransactionService(db_session, GameType.IR)
 
     # Set balance to 50
-    player.wallet = 50
+    player.ir_player_data.wallet = 50
     await db_session.commit()
 
     # Try to debit 100
@@ -102,7 +104,6 @@ async def test_ir_debit_insufficient_balance(db_session, ir_player_factory):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="apply_vault_rake method does not exist in TransactionService")
 async def test_ir_vault_rake_application(db_session, ir_player_factory):
     """Test applying vault rake to earnings."""
     player = await ir_player_factory()
@@ -114,9 +115,12 @@ async def test_ir_vault_rake_application(db_session, ir_player_factory):
     rake_percent = 30  # 30% rake
 
     # Apply vault rake
-    await transaction_service.apply_vault_rake(
+    await transaction_service.create_split_payout(
         player_id=str(player.player_id),
-        net_earnings=earnings
+        gross_amount=earnings,
+        cost=0,
+        trans_type="ir_creator_payout",
+        reference_id=uuid.uuid4(),
     )
 
     # Refresh player
@@ -137,20 +141,27 @@ async def test_ir_transaction_ledger_tracking(db_session, ir_player_factory):
     player = await ir_player_factory()
     transaction_service = TransactionService(db_session, GameType.IR)
 
-    ref_id = str(uuid.uuid4())
+    backronym_set = BackronymSet(
+        set_id=uuid.uuid4(),
+        word="CARR",
+        mode=Mode.STANDARD,
+        status=SetStatus.OPEN,
+    )
+    db_session.add(backronym_set)
+    await db_session.flush()
 
     transaction = await transaction_service.debit_wallet(
         player_id=str(player.player_id),
         amount=100,
         transaction_type="ir_backronym_entry",
-        reference_id=ref_id
+        reference_id=backronym_set.set_id,
     )
 
     assert transaction is not None
     assert str(transaction.player_id) == str(player.player_id)
     assert transaction.amount == -100  # Debits are stored as negative
     assert transaction.transaction_type == "ir_backronym_entry"
-    assert str(transaction.set_id) == ref_id  # Schema uses set_id instead of reference_id
+    assert str(transaction.set_id) == str(backronym_set.set_id)
 
 
 @pytest.mark.asyncio
@@ -219,21 +230,6 @@ async def test_ir_daily_bonus_available_check(db_session, ir_player_factory):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="get_pending_payouts method does not exist in IRDailyBonusService")
-async def test_ir_get_pending_payouts(db_session, ir_player_factory):
-    """Test retrieving pending payouts."""
-    player = await ir_player_factory()
-    bonus_service = IRDailyBonusService(db_session)
-
-    # Get pending payouts (should be empty)
-    # This test requires a payouts service or method that doesn't currently exist
-    pending = []
-
-    # Should be a list (possibly empty)
-    assert isinstance(pending, list)
-
-
-@pytest.mark.asyncio
 async def test_ir_concurrent_transactions(db_session, ir_player_factory):
     """Test that concurrent transactions are handled safely."""
     player = await ir_player_factory()
@@ -247,7 +243,7 @@ async def test_ir_concurrent_transactions(db_session, ir_player_factory):
             player_id=str(player.player_id),
             amount=10,
             transaction_type="ir_vote_entry",
-            reference_id=None  # set_id is optional
+            reference_id=uuid.uuid4(),
         )
 
     # Refresh and verify

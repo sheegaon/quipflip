@@ -40,6 +40,12 @@ class MMVoteRound(VersionedBase, Base):
     player = relationship("MMPlayer", back_populates="vote_rounds")
     image = relationship("MMImage", back_populates="vote_rounds")
     chosen_caption = relationship("MMCaption", back_populates="vote_rounds", foreign_keys=[chosen_caption_id])
+    caption_submission = relationship(
+        "MMCaptionSubmission",
+        back_populates="round",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         CheckConstraint("abandoned IN (0, 1)", name="valid_mm_vote_round_abandoned"),

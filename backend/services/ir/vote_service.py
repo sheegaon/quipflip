@@ -1,7 +1,7 @@
 """IR Vote Service - Voting logic and eligibility checks."""
 
 import logging
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -10,8 +10,8 @@ from backend.models.ir.backronym_set import BackronymSet
 from backend.models.ir.backronym_entry import BackronymEntry
 from backend.models.ir.backronym_vote import BackronymVote
 from backend.models.ir.backronym_observer_guard import BackronymObserverGuard
-from backend.models.ir.player import IRPlayer
-from backend.models.ir.enums import SetStatus
+from backend.models.player import Player
+from backend.models.ir.enums import SetStatus, Mode
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class IRVoteService:
                 return False, "set_not_in_voting_phase", False
 
             # Check if player has wallet balance for vote
-            player_stmt = select(IRPlayer).where(IRPlayer.player_id == player_id)
+            player_stmt = select(Player).where(Player.player_id == player_id)
             player_result = await self.db.execute(player_stmt)
             player = player_result.scalars().first()
 
@@ -83,6 +83,8 @@ class IRVoteService:
             # Check wallet balance only for non-participants
             # Participants already paid entry fee and don't pay to vote
             if not is_participant:
+                if player.is_guest:
+                    return False, "guest_non_participant_votes_not_allowed", False
                 if (
                     set_obj.non_participant_vote_count
                     >= self.settings.ir_non_participant_votes_per_set
@@ -117,27 +119,6 @@ class IRVoteService:
 
             # Non-participant vote cap check (optional, can vote multiple times if want)
             # For MVP, we allow unlimited votes from non-participants
-            if not is_participant:
-                # Check if guest player exceeds non-participant vote cap
-                if player.is_guest and not is_participant:
-                    # Count non-participant votes by this guest
-                    guest_votes_stmt = select(BackronymVote).where(
-                        (BackronymVote.player_id == player_id)
-                        & (BackronymVote.is_participant_voter == False)
-                    )
-                    guest_votes_result = await self.db.execute(guest_votes_stmt)
-                    guest_votes = guest_votes_result.scalars().all()
-
-                    if (
-                        len(guest_votes)
-                        >= self.settings.ir_non_participant_vote_cap
-                    ):
-                        return (
-                            False,
-                            "non_participant_vote_cap_exceeded",
-                            is_participant,
-                        )
-
             return True, "", is_participant
 
         except Exception as e:
@@ -295,6 +276,12 @@ class IRVoteService:
                 set_obj.vote_count += 1
                 if not is_participant:
                     set_obj.non_participant_vote_count += 1
+                now = datetime.now(UTC)
+                set_obj.last_human_vote_at = now
+                if set_obj.mode == Mode.STANDARD:
+                    set_obj.voting_finalized_at = now + timedelta(
+                        minutes=self.settings.ir_standard_voting_timer_minutes
+                    )
 
             # Update entry vote count
             entry.received_votes += 1

@@ -1,9 +1,10 @@
 """IR Backronym Set Service - Set lifecycle management for Initial Reaction."""
 
 import logging
+import uuid
 from datetime import datetime, UTC, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import func, select, and_, or_, update
 
 from backend.config import get_settings
 from backend.models.ir.backronym_set import BackronymSet
@@ -107,15 +108,26 @@ class BackronymSetService:
             BackronymSet or None if no available sets
         """
         try:
+            from backend.models.ir.assignment import IRAssignment
+
             # Find open sets that are not too old
             age_limit = datetime.now(UTC) - timedelta(
                 minutes=self.settings.ir_rapid_entry_timeout_minutes * 2
+            )
+            reserved_assignments = (
+                select(func.count(IRAssignment.assignment_id))
+                .where(
+                    IRAssignment.set_id == BackronymSet.set_id,
+                    IRAssignment.status.in_(("assigned", "submitting")),
+                )
+                .correlate(BackronymSet)
+                .scalar_subquery()
             )
             stmt = select(BackronymSet).where(
                 and_(
                     BackronymSet.status == SetStatus.OPEN,
                     BackronymSet.created_at >= age_limit,
-                    BackronymSet.entry_count < 5,  # Not full
+                    BackronymSet.entry_count + reserved_assignments < 5,
                 )
             )
 
@@ -144,6 +156,9 @@ class BackronymSetService:
         player_id: str,
         backronym_text: list[str],
         is_ai: bool = False,
+        *,
+        auto_commit: bool = True,
+        transition_when_full: bool = True,
     ) -> BackronymEntry:
         """Add a backronym entry to a set.
 
@@ -169,6 +184,7 @@ class BackronymSetService:
 
             # Create entry
             entry = BackronymEntry(
+                entry_id=uuid.uuid4(),
                 set_id=set_id,
                 player_id=player_id,
                 backronym_text=backronym_text,
@@ -204,15 +220,18 @@ class BackronymSetService:
                         minutes=self.settings.ir_rapid_entry_timer_minutes
                     )
 
-            await self.db.commit()
-            await self.db.refresh(entry)
+            if auto_commit:
+                await self.db.commit()
+                await self.db.refresh(entry)
+            else:
+                await self.db.flush([entry])
 
             logger.info(
                 f"Added entry {entry.entry_id} to set {set_id} from {player_id=}"
             )
 
             # Check if we should transition to voting
-            if set_obj.entry_count >= 5:
+            if transition_when_full and set_obj.entry_count >= 5:
                 await self.transition_to_voting(set_id)
 
             return entry
@@ -247,6 +266,20 @@ class BackronymSetService:
 
             # Set timer for when AI will fill remaining votes
             now = datetime.now(UTC)
+            from backend.models.ir.assignment import IRAssignment
+
+            await self.db.execute(
+                update(IRAssignment)
+                .where(
+                    IRAssignment.set_id == set_obj.set_id,
+                    IRAssignment.status.in_(("assigned", "submitting")),
+                )
+                .values(
+                    status="expired",
+                    expired_at=now,
+                    version=IRAssignment.version + 1,
+                )
+            )
             if set_obj.mode == Mode.RAPID:
                 set_obj.voting_finalized_at = now + timedelta(
                     minutes=self.settings.ir_rapid_voting_timer_minutes
@@ -389,8 +422,41 @@ class BackronymSetService:
             if not set_obj:
                 raise BackronymSetError("set_not_found")
 
+            if set_obj.status == SetStatus.FINALIZED:
+                return set_obj
+
             set_obj.status = SetStatus.FINALIZED
             set_obj.finalized_at = datetime.now(UTC)
+
+            from backend.models.ir.assignment import IRAssignment
+
+            await self.db.execute(
+                update(IRAssignment)
+                .where(
+                    IRAssignment.set_id == set_obj.set_id,
+                    IRAssignment.status.in_(("assigned", "submitting", "submitted")),
+                )
+                .values(
+                    status="completed",
+                    completed_at=set_obj.finalized_at,
+                    version=IRAssignment.version + 1,
+                )
+            )
+
+            try:
+                from backend.services.ir.scoring_service import IRScoringService
+
+                scoring_service = IRScoringService(self.db)
+                await scoring_service.process_payouts(set_id)
+            except Exception as exc:
+                await self.db.rollback()
+                logger.warning(
+                    "IR payout processing failed for set %s during finalization: %s",
+                    set_id,
+                    exc,
+                )
+                raise BackronymSetError(f"Failed to finalize set: {exc}") from exc
+
             await self.db.commit()
             await self.db.refresh(set_obj)
             await self.queue_service.dequeue_voting_set(set_id)

@@ -247,7 +247,10 @@ class IRScoringService:
             for voter_id, amount in payouts["voter_payouts"].items():
                 try:
                     txn = await self.transaction_service.process_vote_payout(
-                        player_id=voter_id, amount=amount, set_id=set_id
+                        player_id=voter_id,
+                        amount=amount,
+                        set_id=set_id,
+                        auto_commit=False,
                     )
                     results["voter_transactions"].append(
                         {
@@ -274,7 +277,10 @@ class IRScoringService:
                 try:
                     # Pay creator the net amount
                     txn = await self.transaction_service.process_creator_payout(
-                        player_id=creator_id, amount=net_amount, set_id=set_id
+                        player_id=creator_id,
+                        amount=net_amount,
+                        set_id=set_id,
+                        auto_commit=False,
                     )
                     results["creator_transactions"].append(
                         {
@@ -294,6 +300,7 @@ class IRScoringService:
                             amount=vault_contribution,
                             transaction_type=self.transaction_service.VAULT_CONTRIBUTION,
                             reference_id=set_id,
+                            auto_commit=False,
                         )
                         results["vault_transactions"].append(
                             {
@@ -368,6 +375,7 @@ class IRScoringService:
         except IRScoringError:
             raise
         except Exception as e:
+            await self.db.rollback()
             raise IRScoringError(f"Failed to process payouts: {str(e)}") from e
 
     async def get_payout_summary(self, set_id: str) -> dict:

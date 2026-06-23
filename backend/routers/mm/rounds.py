@@ -26,12 +26,10 @@ from backend.services.mm import (
     MMSystemConfigService,
     MMPlayerDailyStateService,
 )
-from backend.utils import ensure_utc
+from backend.services.mm.vote_service import SYSTEM_PLAYER_ID
 from backend.utils.exceptions import (
     InsufficientBalanceError,
     NoContentAvailableError,
-    RoundExpiredError,
-    RoundNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,13 +68,12 @@ async def start_vote_round(
 
         # Load caption details
         from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
         from backend.models.mm.caption import MMCaption
 
         caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
 
-        stmt = select(MMCaption).where(
-            MMCaption.caption_id.in_(caption_ids)
-        )
+        stmt = select(MMCaption).options(selectinload(MMCaption.author)).where(MMCaption.caption_id.in_(caption_ids))
         result = await db.execute(stmt)
         captions_map = {c.caption_id: c for c in result.scalars().all()}
 
@@ -90,7 +87,6 @@ async def start_vote_round(
             captions.append({
                 'caption_id': str(cid),
                 'text': caption.text,
-                'author_username': caption.author.username if caption.author else None,
             })
 
         return StartVoteRoundResponse(
@@ -100,7 +96,6 @@ async def start_vote_round(
             thumbnail_url=round_obj.image.thumbnail_url,
             attribution_text=round_obj.image.attribution_text,
             captions=captions,
-            expires_at=ensure_utc(round_obj.created_at),
             cost=round_obj.entry_cost,
         )
 
@@ -150,11 +145,47 @@ async def submit_vote(
             transaction_service
         )
 
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        from backend.services.mm.circle_service import MMCircleService
+        from backend.models.mm.caption import MMCaption
+
+        circle_mates = await MMCircleService.get_circle_mates(db, player.player_id)
+        caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
+        stmt = select(MMCaption).options(selectinload(MMCaption.author)).where(MMCaption.caption_id.in_(caption_ids))
+        caption_result = await db.execute(stmt)
+        captions_map = {c.caption_id: c for c in caption_result.scalars().all()}
+
+        revealed_captions = []
+        for cid in caption_ids:
+            caption = captions_map.get(cid)
+            if not caption:
+                continue
+
+            author_player_id = caption.author_player_id
+            revealed_captions.append({
+                'caption_id': str(cid),
+                'text': caption.text,
+                'author_username': caption.author.username if caption.author else None,
+                'kind': caption.kind,
+                'parent_caption_id': str(caption.parent_caption_id) if caption.parent_caption_id else None,
+                'is_ai': bool(caption.author_player_id is None or caption.author_player_id == SYSTEM_PLAYER_ID),
+                'is_bot': bool(caption.author_player_id is None or caption.author_player_id == SYSTEM_PLAYER_ID),
+                'is_system': bool(caption.author_player_id is None or caption.author_player_id == SYSTEM_PLAYER_ID),
+                'is_seed_caption': bool(caption.author_player_id is None or caption.author_player_id == SYSTEM_PLAYER_ID),
+                'is_circle_member': bool(author_player_id and author_player_id in circle_mates),
+                'in_circle': bool(author_player_id and author_player_id in circle_mates),
+            })
+
         return SubmitVoteResponse(
             success=result['success'],
             chosen_caption_id=result['caption_id'],
             payout=result['payout_wallet'],
-            correct=True,  # For MVP, all votes are "correct" (just means they voted)
+            payout_wallet=result['payout_wallet'],
+            payout_vault=result['payout_vault'],
+            first_vote_bonus=result['first_vote_bonus'],
+            local_crowd_favorite_bonus=result['local_crowd_favorite_bonus'],
+            revealed_captions=revealed_captions,
             new_wallet=result['new_wallet'],
             new_vault=result['new_vault'],
         )
@@ -190,8 +221,8 @@ async def submit_caption(
     if not round_obj:
         raise HTTPException(status_code=404, detail="Round not found")
 
-    # Get the image from the round
-    image_id = round_obj.image_id
+    if not round_obj.chosen_caption_id:
+        raise HTTPException(status_code=400, detail="vote_required_before_caption")
 
     # Load the captions that were shown in this round for riff detection
     caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
@@ -202,7 +233,7 @@ async def submit_caption(
     try:
         result = await caption_service.submit_caption(
             player,
-            image_id,
+            round_obj,
             request.caption_text,
             shown_captions,  # Pass captions for algorithmic riff detection
             transaction_service
@@ -292,13 +323,12 @@ async def get_round_details(
 
     # Load captions
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
     from backend.models.mm.caption import MMCaption
 
     caption_ids = [UUID(str(cid)) for cid in round_obj.caption_ids_shown]
 
-    stmt = select(MMCaption).where(
-        MMCaption.caption_id.in_(caption_ids)
-    )
+    stmt = select(MMCaption).options(selectinload(MMCaption.author)).where(MMCaption.caption_id.in_(caption_ids))
     result = await db.execute(stmt)
     captions_map = {c.caption_id: c for c in result.scalars().all()}
 
@@ -311,17 +341,26 @@ async def get_round_details(
         captions.append({
             'caption_id': str(cid),
             'text': caption.text,
-            'author_username': caption.author.username if caption.author else None,
         })
+
+    submission = round_obj.caption_submission
+    status = (
+        "captioned"
+        if submission and submission.status == "accepted"
+        else "completed"
+        if round_obj.chosen_caption_id
+        else "active"
+    )
 
     return RoundDetails(
         round_id=round_obj.round_id,
         type="vote",
-        status="completed" if round_obj.chosen_caption_id else "active",
-        expires_at=ensure_utc(round_obj.created_at),
+        status=status,
         image_id=round_obj.image_id,
         image_url=round_obj.image.source_url,
         cost=round_obj.entry_cost,
         captions=captions,
         chosen_caption_id=round_obj.chosen_caption_id,
+        submitted_caption_id=submission.caption_id if submission else None,
+        submitted_caption_text=submission.submission_text if submission else None,
     )

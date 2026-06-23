@@ -34,6 +34,7 @@ from backend.utils.exceptions import (
     RoundNotFoundError,
     NoPhrasesetsAvailableError,
     NoPromptsAvailableError,
+    AlreadyInRoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,8 @@ async def start_prompt_round(
             "as we add more prompts, and keep enjoying copy and vote rounds in the meantime!"
         )
         raise HTTPException(status_code=400, detail=message)
+    except AlreadyInRoundError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"Error starting prompt round: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -198,6 +201,8 @@ async def start_vote_round(
         )
     except NoPhrasesetsAvailableError as e:
         raise HTTPException(status_code=400, detail="no_phrasesets_available")
+    except AlreadyInRoundError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"Error starting vote round: {e}")
         raise HTTPException(status_code=500, detail=str(e))

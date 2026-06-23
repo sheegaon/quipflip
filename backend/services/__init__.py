@@ -47,6 +47,7 @@ from backend.services.ir.result_view_service import IRResultViewService
 from backend.services.ir.statistics_service import IRStatisticsService
 from backend.services.ir.scoring_service import IRScoringService
 from backend.services.ir.daily_bonus_service import IRDailyBonusService, IRDailyBonusError
+from backend.services.ir.assignment_service import IRAssignmentError, IRAssignmentService
 
 # MM (Meme Mint) services
 from backend.services.mm.player_service import MMPlayerService
@@ -119,6 +120,8 @@ __all__ = [
     'IRScoringService',
     'IRDailyBonusService',
     'IRDailyBonusError',
+    'IRAssignmentError',
+    'IRAssignmentService',
 
     # MM services
     'MMPlayerService',

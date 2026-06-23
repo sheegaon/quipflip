@@ -88,8 +88,9 @@ The application still validates `Host`; tunnel ingress is not the only boundary.
 ## One-time preparation
 
 1. Complete the deterministic, production-SQLite, and smoke gates.
-2. Decide whether legacy deployment data is preserved. If yes, rehearse the
-   export/conversion and restore into a copy of the target SQLite database.
+2. Heroku data is not preserved for cutover. If that policy changes later, rehearse
+   the export/conversion and restore into a copy of the target SQLite database
+   before changing the plan.
 3. Create application, backup, and log directories with owner-only permissions.
 4. Store runtime secrets in Keychain and install the Keychain-reading wrapper.
 5. Build all four frontends and verify static deep links locally with exact Host
