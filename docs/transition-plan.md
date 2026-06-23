@@ -77,9 +77,14 @@ acceptance criteria.
 - The shared backend shape is already established: one FastAPI app mounts the four
   game routers plus shared auth, health, notifications, and online-user routes.
 - The shared frontend library is also real, with common components, hooks,
-  contexts, and the base API client in `frontend/crowdcraft`, but the client still
-  carries legacy localhost fallbacks that do not match the target same-origin
-  deployment model.
+  contexts, and the base API client in `frontend/crowdcraft`; the same-origin
+  helpers now exist, but the host matrix still needs full end-to-end proof and
+  IR continues to carry some separate client logic.
+- Since that snapshot, the readiness gate, exact-host middleware, same-origin
+  URL helpers, and one-worker production wrapper have landed in `main`. The
+  remaining deployment gap is the release/migration orchestration, startup
+  purity, tunnel/DNS installation, and cutover evidence rather than the basic
+  host or readiness plumbing.
 
 ### Code-level findings that change this plan
 
@@ -103,13 +108,17 @@ acceptance criteria.
    general uniqueness key that makes retries provably idempotent.
 6. Party phase advancement contains an `async with` call against the synchronous
    lock context manager and lacks direct test coverage for that path.
-7. `VITE_API_URL=''` does not currently select same-origin because the clients use
-   `value || localhostFallback`. Same-origin deployment needs a code change and
-   tests, not only an environment change.
-8. `/health` returns a Python tuple on database failure rather than an explicit
-   503 response. It is not yet a safe readiness gate. Startup also performs data
-   seeding/cleanup, so process liveness and readiness must be separated.
-9. The current CI uses Python 3.11 while repository guidance requires 3.12, omits
+7. The shared and IR clients now derive same-origin URLs from
+   `window.location.origin`. The remaining work is making sure every entrypoint
+   stays on the shared helper and the host matrix keeps it that way.
+8. `/livez` and `/readyz` now exist, and `/health` is a compatibility endpoint
+   that returns an explicit 503 on database failure. Startup still performs data
+   seeding/cleanup and other background mutation, so process liveness and
+   readiness are separated in code but startup purity still needs work.
+9. The Mac deployment still lacks the guarded `scripts/ops/` release/rollback/
+   backup/tunnel orchestration and launchd templates described later in the plan,
+   so cutover remains a manual/document-only path.
+10. The current CI uses Python 3.11 while repository guidance requires 3.12, omits
    the IR frontend job, does not run the whole backend collection, and does not pin
    actions to immutable SHAs.
 
@@ -339,9 +348,9 @@ private-projection tests, and one built-server smoke loop before cutover.
 | 6. Cutover | F7 | Four target domains pass the browser/API/WS matrix with rollback ready |
 | 7. Soak and retirement | F8 | Monitoring window accepted; previous deployment retired deliberately |
 
-Phases describe merge gates, not a ban on parallel work. Deployment scripts and
-host dispatch can be developed after Phase 1, but public cutover waits for all four
-game smoke loops and the restore rehearsal.
+Phases describe merge gates, not a ban on parallel work. Deployment scripts can
+be developed after Phase 1, and the host-dispatch pieces are already in main,
+but public cutover waits for all four game smoke loops and the restore rehearsal.
 
 ## Risk register and decisions still required
 

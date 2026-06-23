@@ -3,7 +3,7 @@
 > **Document type:** Implementation plan
 > **Status:** Target
 > **Audience:** Maintainers and operators
-> **Last reviewed:** 2026-06-22
+> **Last reviewed:** 2026-06-23
 
 ## Objective
 
@@ -16,8 +16,27 @@ deployment.
 
 On 2026-06-22 the four target hostnames were not deployed, the legacy backend
 returned maintenance-mode HTTP 503, and the existing client still contained
-localhost origin fallbacks. `/health` was not a reliable readiness response, and
-startup performed mutation that should be explicit release work.
+localhost origin fallbacks. Since then, the readiness gate, exact-host middleware,
+same-origin helpers, and one-worker production wrapper have landed in `main`, but
+startup still performs mutation that should be explicit release work and the
+release/rollback/tunnel tooling is still incomplete.
+
+## Current implementation status
+
+As of 2026-06-23, the repository already contains these deployment prerequisites:
+
+- `/livez` and `/readyz` in `backend/routers/health.py`, with bounded checks in
+  `backend/runtime/readiness.py`.
+- Exact-host validation and host-specific SPA dispatch in
+  `backend/middleware/host_scope.py` and `backend/runtime/host_scope.py`.
+- Same-origin HTTP/WS helpers in `frontend/crowdcraft/src/api/origin.ts`,
+  `frontend/crowdcraft/src/api/client.ts`, `frontend/ir/src/api/client.ts`, and
+  `frontend/crowdcraft/src/hooks/useWebSocket.ts`.
+- `scripts/run-production-server.py`, which enforces a one-worker Uvicorn
+  launch on the target Mac.
+
+The remaining deployment work is the guarded release/migration path, launchd and
+Cloudflare installation, startup purity, and the cutover/soak evidence.
 
 ## Dependencies and boundaries
 
@@ -29,24 +48,30 @@ startup performed mutation that should be explicit release work.
   [startup-services runbook](../development/persistent-startup-services.md).
 - Exactly one Uvicorn worker owns the production SQLite database.
 
-## Repository anchors and gotchas (verified 2026-06-22)
+## Repository anchors and gotchas (verified 2026-06-23)
 
-- **`/health` is the readiness bug to fix (F2).** `backend/routers/health.py:25-28`
-  does `return {"status": "error", ...}, 503` — a `(dict, int)` tuple, which FastAPI
-  serializes as a **200 OK body**, not a 503. It also opens a DB connection on every
-  call. A sibling `/status` endpoint exists; `/livez` and `/readyz` do not.
-- **Exact same-origin fallbacks to remove (F3).**
-  `frontend/crowdcraft/src/api/client.ts:74`
-  (`import.meta.env.VITE_API_URL || 'http://localhost:8000'`);
-  `src/hooks/useWebSocket.ts:65` (`|| http://${window.location.hostname}:8000`).
-  The same file's `client.ts:76` prefix regex omits `ir` (see workstream E), so
-  the same-origin rewrite must cover all four game prefixes.
+- **Readiness is now explicit.** `backend/routers/health.py` now exposes
+  `/livez` and `/readyz`, and `/health` is compatibility-only. Readiness still
+  depends on the runtime config, SQLite pragmas, Alembic revision, and the active
+  static release being present.
+- **Exact same-origin fallbacks now exist.**
+  `frontend/crowdcraft/src/api/origin.ts`,
+  `frontend/crowdcraft/src/api/client.ts`,
+  `frontend/ir/src/api/client.ts`, and
+  `frontend/crowdcraft/src/hooks/useWebSocket.ts` now derive from
+  `window.location.origin`. Keep the host matrix tests aligned so no entrypoint
+  reintroduces a localhost fallback.
 - **Startup mutation to relocate (F2).** `backend/main.py` starts hourly token/guest
   cleanup and Party maintenance on startup (see
   [`docs/CLEANUP_SCRIPTS.md`](../CLEANUP_SCRIPTS.md)); these are the destructive/slow
   startup mutations to move into explicit idempotent release commands.
-- **Backup tooling exists.** `scripts/backup_db.py` is present for F1b; the
-  legacy deployment scripts have been removed.
+- **Backup tooling exists, but orchestration does not.** `scripts/backup_db.py`
+  is present for F1b, but the guarded SQLite backup/restore/release orchestrator
+  described later in this plan is still missing.
+- **Host routing is now enforced at the edge of the app.**
+  `backend/middleware/host_scope.py` and `backend/runtime/host_scope.py` now
+  reject foreign game prefixes and share the validated host scope with auth and
+  static dispatch.
 - Implements [ADR 0004](../decisions/0004-same-origin-cloudflare-deployment.md)
   (already linked) and [ADR 0005](../decisions/0005-sqlite-concurrency-boundary.md)
   (one worker).
@@ -55,11 +80,10 @@ startup performed mutation that should be explicit release work.
 
 ### Problem
 
-The current application cannot be safely cut over by changing DNS. The backend has
-no trustworthy readiness gate, performs database mutation during startup, accepts
-client-selected game scope in shared auth paths, and does not serve the four SPAs.
-The clients still know legacy backend origins. The existing backup and deployment
-scripts are provider-specific and do not supply a reversible SQLite release.
+The current application cannot be safely cut over by changing DNS alone. The
+readiness gate, host-scope middleware, and same-origin clients now exist, but
+startup still mutates state, the reversible SQLite release path is incomplete,
+and the launchd/tunnel/cutover orchestration still has to be built and rehearsed.
 
 ### Expected behavior
 

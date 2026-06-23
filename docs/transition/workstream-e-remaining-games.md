@@ -135,9 +135,10 @@ eligibility, balances, frozen snapshots, or finalization results.
   lint/build job.
 - Root auth is mounted at `/auth`, `/qf/auth`, `/mm/auth`, and `/tl/auth`, but not
   `/ir/auth`; IR also exposes legacy player-auth endpoints.
-- Shared `/auth/ws-token` currently authenticates without a game scope.
-- Host-to-game routing is not yet the authorization boundary; URL prefixes remain
-  callable independently of the request host.
+- Shared `/auth/ws-token` remains a game-neutral token exchange; the game-scoped
+  auth endpoints now derive their scope from the validated host.
+- Host-to-game routing is now enforced by the host-scope middleware. URL
+  prefixes on the wrong host are rejected before the game router handles them.
 
 ### Initial Reaction
 

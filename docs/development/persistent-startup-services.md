@@ -5,8 +5,9 @@
 > **Audience:** Maintainers
 
 The target deployment runs one FastAPI worker and one Cloudflare tunnel under
-launchd. Until cutover, the transition plan describes the remaining gap to the
-target topology.
+launchd. Several prerequisites already exist in code (`/livez`, `/readyz`,
+exact-host dispatch, same-origin client helpers), but the transition plan still
+describes the remaining gap to the target topology.
 
 ## Topology and paths
 
@@ -29,7 +30,9 @@ The database, WAL, secrets, and logs do not live in the repository.
 
 ## Required application behavior
 
-The service is not deployable until it provides:
+The service is not deployable until the following requirements are satisfied.
+Some are already present in `main`; the remaining gaps are the release wrapper,
+release automation, and cutover evidence:
 
 - `/livez`: process liveness only;
 - `/readyz`: real non-2xx failure for database access, expected Alembic revision,
@@ -41,8 +44,8 @@ The service is not deployable until it provides:
 - production refusal of default/empty signing secrets and unsafe origins;
 - an absent API/WS override resolving to `window.location` in built frontends.
 
-Do not gate a restart on the current `/health`: its database-failure return path does
-not yet set an HTTP 503.
+Do not gate a restart on `/health`; use `/readyz` for release gating and keep
+`/health` as compatibility-only.
 
 ## Services
 
