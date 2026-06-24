@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import inspect, select, text, update
+from sqlalchemy import bindparam, inspect, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -236,8 +236,8 @@ class AccountService:
             )
             target_row = target_result.scalar_one_or_none()
             if target_row is None:
-                source_row.player_id = target_player_id  # type: ignore[attr-defined]
-                continue
+                target_row = model(player_id=target_player_id)  # type: ignore[call-arg]
+                self.db.add(target_row)
 
             self._merge_player_data_rows(source_row, target_row)
             await self.db.delete(source_row)
@@ -265,8 +265,12 @@ class AccountService:
             for source_row in source_rows:
                 target_row = target_by_date.get(source_row.date)
                 if target_row is None:
-                    source_row.player_id = target_player_id  # type: ignore[attr-defined]
-                    continue
+                    target_row = model(  # type: ignore[call-arg]
+                        player_id=target_player_id,
+                        date=source_row.date,
+                    )
+                    self.db.add(target_row)
+                    target_by_date[source_row.date] = target_row
 
                 target_row.amount = int(getattr(target_row, "amount", 0) or 0) + int(
                     getattr(source_row, "amount", 0) or 0
@@ -303,8 +307,12 @@ class AccountService:
             for source_row in source_rows:
                 target_row = target_by_date.get(source_row.date)
                 if target_row is None:
-                    source_row.player_id = target_player_id  # type: ignore[attr-defined]
-                    continue
+                    target_row = model(  # type: ignore[call-arg]
+                        player_id=target_player_id,
+                        date=source_row.date,
+                    )
+                    self.db.add(target_row)
+                    target_by_date[source_row.date] = target_row
 
                 target_row.free_captions_used = int(
                     getattr(target_row, "free_captions_used", 0) or 0
@@ -340,6 +348,7 @@ class AccountService:
         def _sync_reassign(sync_session) -> None:
             conn = sync_session.connection()
             inspector = inspect(conn)
+            player_id_type = Player.__table__.c.player_id.type
 
             for table_name in inspector.get_table_names():
                 if table_name in skipped_tables or table_name.endswith("_player_data"):
@@ -350,15 +359,19 @@ class AccountService:
                         continue
 
                     for column_name in fk.get("constrained_columns", []):
+                        statement = text(
+                            f'UPDATE "{table_name}" '
+                            f'SET "{column_name}" = :target_player_id '
+                            f'WHERE "{column_name}" = :source_player_id'
+                        ).bindparams(
+                            bindparam("target_player_id", type_=player_id_type),
+                            bindparam("source_player_id", type_=player_id_type),
+                        )
                         sync_session.execute(
-                            text(
-                                f'UPDATE "{table_name}" '
-                                f'SET "{column_name}" = :target_player_id '
-                                f'WHERE "{column_name}" = :source_player_id'
-                            ),
+                            statement,
                             {
-                                "target_player_id": str(target_player_id),
-                                "source_player_id": str(source_player_id),
+                                "target_player_id": target_player_id,
+                                "source_player_id": source_player_id,
                             },
                         )
 
