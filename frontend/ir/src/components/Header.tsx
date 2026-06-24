@@ -7,13 +7,12 @@ import { ArrowLeftIcon } from './icons/ArrowIcons';
 import { HomeIcon, SettingsIcon } from './icons/NavigationIcons';
 
 const Header: React.FC = () => {
-  const { player, logout, isAuthenticated, refreshDashboard } = useIRGame();
+  const { player, logout, isAuthenticated, refreshDashboard, pendingResults } = useIRGame();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [showGuestWarning, setShowGuestWarning] = React.useState(false);
-  const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const logoButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -77,39 +76,15 @@ const Header: React.FC = () => {
       logout();
       return;
     }
-
-    let email: string | null = player?.email ?? null;
-    let password: string | null = null;
-
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('ir_guest_credentials');
-        if (stored) {
-          const parsed = JSON.parse(stored) as { email?: string; password?: string };
-          if (parsed.email) {
-            email = parsed.email;
-          }
-          if (parsed.password) {
-            password = parsed.password;
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to read guest credentials from storage', err);
-      }
-    }
-
-    setGuestCredentials({ email, password });
     setShowGuestWarning(true);
-  }, [player?.is_guest, player?.email, logout]);
+  }, [player?.is_guest, logout]);
 
   const handleDismissGuestLogout = React.useCallback(() => {
     setShowGuestWarning(false);
-    setGuestCredentials(null);
   }, []);
 
   const handleConfirmGuestLogout = React.useCallback(() => {
     setShowGuestWarning(false);
-    setGuestCredentials(null);
     logout();
   }, [logout]);
 
@@ -130,23 +105,14 @@ const Header: React.FC = () => {
             <p className="text-ir-teal mb-4">
               You're logged in as a guest. If you log out without upgrading to a full account, you may lose access to this account.
             </p>
-            {guestCredentials?.email && (
-              <div className="mb-4 p-3 bg-ir-teal-light rounded-lg">
-                <p className="text-sm text-ir-navy">
-                  <strong>Username:</strong> {player.username}
-                </p>
-                {guestCredentials.email && (
-                  <p className="text-sm text-ir-navy">
-                    <strong>Email:</strong> {guestCredentials.email}
-                  </p>
-                )}
-                {guestCredentials.password && (
-                  <p className="text-sm text-ir-navy mt-2">
-                    <strong>Password:</strong> {guestCredentials.password}
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="mb-4 p-3 bg-ir-teal-light rounded-lg">
+              <p className="text-sm text-ir-navy">
+                <strong>Username:</strong> {player.username}
+              </p>
+              <p className="text-sm text-ir-navy">
+                <strong>Email:</strong> {player.email ?? 'Not available'}
+              </p>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={handleDismissGuestLogout}
@@ -209,6 +175,27 @@ const Header: React.FC = () => {
                     </button>
 
                     <button
+                      onClick={() => handleNavigate('/account')}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span className="font-semibold">Account</span>
+                    </button>
+
+                    <button
                       onClick={() => handleNavigate('/settings')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
                     >
@@ -216,9 +203,9 @@ const Header: React.FC = () => {
                       <span className="font-semibold">Settings</span>
                     </button>
 
-                    {player.is_guest && (
+                    {player.is_guest && pendingResults.length > 0 && (
                       <button
-                        onClick={() => handleNavigate('/settings')}
+                        onClick={() => handleNavigate('/auth/magic-link')}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
                       >
                         <svg
@@ -227,10 +214,10 @@ const Header: React.FC = () => {
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span className="font-semibold">Upgrade Account</span>
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        <span className="font-semibold">Save your account</span>
                       </button>
                     )}
 

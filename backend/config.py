@@ -40,6 +40,16 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
     access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
+    magic_link_exp_minutes: int = 30
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_address: str = "no-reply@crowdcraftlabs.com"
+    smtp_from_name: str = "Crowdcraft"
+    smtp_use_tls: bool = True
+    smtp_use_ssl: bool = False
+    smtp_timeout_seconds: int = 10
     access_token_cookie_name: str = "quipflip_access_token"
     refresh_token_cookie_name: str = "quipflip_refresh_token"
     auth_emit_legacy_fields: bool = True

@@ -4,7 +4,7 @@ import './NewUserWelcomeOverlay.css';
 interface GuestLogoutWarningProps {
   isVisible: boolean;
   username: string | null;
-  guestCredentials: { email: string | null; password: string | null } | null;
+  guestCredentials: { email: string | null } | null;
   onConfirmLogout: () => void;
   onDismiss: () => void;
 }
@@ -54,7 +54,7 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
           <div className="guest-credentials bg-gradient-to-r from-ccl-orange to-ccl-turquoise text-white md:p-6 px-3 py-6 rounded-tile mb-6 shadow-lg">
             <p className="font-bold md:mb-3 mb-2 text-lg">Guest Credentials</p>
             <p className="text-sm opacity-90 mb-3">
-              You&apos;ll need this username/email and password to sign back in after logging out. Keep a copy before you continue.
+              Your guest account is tied to this device until you save it. If you log out now, use the email below to find it again later.
             </p>
             <div className="bg-white bg-opacity-20 md:p-4 p-2 rounded-lg mb-3 backdrop-blur-sm">
               <p className="my-0 md:my-1 font-mono text-sm">
@@ -63,22 +63,13 @@ const GuestLogoutWarning: React.FC<GuestLogoutWarningProps> = ({
               <p className="my-0 md:my-1 font-mono text-sm">
                 <strong>Email:</strong> {guestCredentials?.email ?? 'Not available'}
               </p>
-              {guestCredentials?.password ? (
-                <p className="my-0 md:my-1 font-mono text-sm">
-                  <strong>Password:</strong> {guestCredentials.password}
-                </p>
-              ) : (
-                <p className="my-0 md:my-1 font-mono text-sm">
-                  <strong>Password:</strong> QuipGuest
-                </p>
-              )}
             </div>
             <div className="text-sm opacity-95">
               <p className="font-semibold mb-2">To log back in later:</p>
               <ol className="list-decimal pl-5 space-y-1">
-                <li>Visit the MemeMint login page and choose the &quot;Returning Player&quot; option.</li>
-                <li>Enter the username or email and password shown above.</li>
-                <li>Continue playing—your progress and coins stay with your guest account.</li>
+                <li>Open the account save flow from any game page or the account menu.</li>
+                <li>Use the email shown above to save or restore the account.</li>
+                <li>Continue playing—your progress stays with the guest player until you save it.</li>
               </ol>
             </div>
           </div>

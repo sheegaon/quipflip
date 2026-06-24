@@ -116,6 +116,7 @@ async def _build_common_auth_response(
     player_payload = GlobalPlayerInfo(
         player_id=player.player_id,
         username=player.username,
+        account_id=player.account_id,
         email=player.email,
         is_guest=player.is_guest,
         is_admin=player.is_admin,
@@ -553,6 +554,18 @@ class PlayerRouterBase(ABC):
         token = request.refresh_token or refresh_cookie
         if token:
             auth_service = AuthService(db, game_type=self.game_type)
+
+            if self.game_type == GameType.QF:
+                try:
+                    player = await auth_service.get_player_from_refresh_token(token)
+                    if player is not None:
+                        from backend.services.qf import PartySessionService
+
+                        party_service = PartySessionService(db)
+                        await party_service.remove_player_from_all_sessions(player.player_id)
+                except Exception as exc:  # pragma: no cover - logout should continue
+                    logger.warning("Failed to update QF party presence on logout: %s", exc)
+
             await auth_service.revoke_refresh_token(token)
 
         clear_auth_cookies(response)

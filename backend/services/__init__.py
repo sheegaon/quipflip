@@ -1,4 +1,11 @@
 from backend.services.auth_service import AuthService, AuthError, GameType
+from backend.services.account_service import (
+    AccountService,
+    AccountServiceError,
+    MagicLinkError,
+    MagicLinkRequestResult,
+    MagicLinkSessionResult,
+)
 from backend.services.player_service import PlayerService, PlayerServiceError
 from backend.services.system_config_service import SystemConfigService
 from backend.services.username_service import (
@@ -64,6 +71,11 @@ __all__ = [
     # Core services
     'AuthService',
     'AuthError',
+    'AccountService',
+    'AccountServiceError',
+    'MagicLinkError',
+    'MagicLinkRequestResult',
+    'MagicLinkSessionResult',
     'PlayerError',
     'PlayerService',
     'PlayerServiceError',

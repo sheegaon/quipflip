@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from backend.database import Base
@@ -27,6 +27,11 @@ class Player(Base):
     username_canonical = Column(String(80), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    account_id = get_uuid_column(
+        ForeignKey("accounts.account_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
@@ -35,6 +40,12 @@ class Player(Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
 
+    account = relationship(
+        "Account",
+        back_populates="players",
+        foreign_keys=[account_id],
+        lazy="selectin",
+    )
     # Relationships
     phraseset_activities = relationship(
         "PhrasesetActivity",

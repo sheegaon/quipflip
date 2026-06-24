@@ -16,6 +16,7 @@ import { PageErrorFallback } from '@crowdcraft/components/ErrorFallback.tsx';
 
 // Lazy load pages with error boundaries
 const Landing = lazy(() => import('./pages/Landing'));
+const MagicLink = lazy(() => import('./pages/MagicLink'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const PromptRound = lazy(() => import('./pages/PromptRound'));
 const CopyRound = lazy(() => import('./pages/CopyRound'));
@@ -112,6 +113,10 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/auth/magic-link"
+          element={renderWithSuspense(<MagicLink />)}
+        />
+        <Route
           path="/dashboard"
           element={renderProtectedRoute(<Dashboard />)}
         />
@@ -162,6 +167,10 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/quests"
           element={renderProtectedRoute(<Quests />)}
+        />
+        <Route
+          path="/account"
+          element={renderProtectedRoute(<Statistics />)}
         />
         <Route
           path="/statistics"

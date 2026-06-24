@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import Header from '../components/Header';
+import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import { settingsAPI } from '@/api/client.ts';
 import { getErrorMessage } from '../utils/errorHelpers';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 
 const getErrorDetail = (error: unknown): string | undefined => {
   if (!error || typeof error !== 'object') {
@@ -26,7 +28,7 @@ const formatDateTime = (dateString?: string | null) => {
 };
 
 const Settings: React.FC = () => {
-  const { player, logout, upgradeGuest, refreshDashboard, login } = useIRGame();
+  const { player, logout, refreshDashboard, pendingResults } = useIRGame();
   const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
@@ -55,16 +57,6 @@ const Settings: React.FC = () => {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [usernameSuccess, setUsernameSuccess] = useState<string | null>(null);
   const [usernameLoading, setUsernameLoading] = useState(false);
-
-  const [upgradeForm, setUpgradeForm] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [upgradeError, setUpgradeError] = useState<string | null>(null);
-  const [upgradeSuccess, setUpgradeSuccess] = useState<string | null>(null);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -128,94 +120,6 @@ const Settings: React.FC = () => {
       setPasswordError(getErrorMessage(err, 'Failed to update password'));
     } finally {
       setPasswordLoading(false);
-    }
-  };
-
-  const handleUpgradeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUpgradeError(null);
-    setUpgradeSuccess(null);
-
-    if (!upgradeForm.username.trim()) {
-      setUpgradeError('Please enter a username.');
-      return;
-    }
-
-    if (!emailPattern.test(upgradeForm.email)) {
-      setUpgradeError('Please enter a valid email address.');
-      return;
-    }
-
-    if (!upgradeForm.password || upgradeForm.password.length < 8) {
-      setUpgradeError('Password must be at least 8 characters long.');
-      return;
-    }
-
-    if (upgradeForm.password !== upgradeForm.confirmPassword) {
-      setUpgradeError('Passwords do not match.');
-      return;
-    }
-
-    try {
-      setUpgradeLoading(true);
-
-      await upgradeGuest(upgradeForm.username.trim(), upgradeForm.email.trim(), upgradeForm.password);
-
-      setUpgradeSuccess('Account upgraded successfully! You can now log in with your new credentials.');
-      setUpgradeForm({ username: '', email: '', password: '', confirmPassword: '' });
-
-      // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    } catch (err: unknown) {
-      if (getErrorDetail(err) === 'not_a_guest') {
-        setUpgradeError('This account is already a full account.');
-      } else if (getErrorDetail(err) === 'email_taken') {
-        setUpgradeError('That email address is already in use.');
-      } else {
-        setUpgradeError(getErrorMessage(err, 'Failed to upgrade account'));
-      }
-    } finally {
-      setUpgradeLoading(false);
-    }
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUpgradeError(null);
-    setUpgradeSuccess(null);
-
-    const identifier = upgradeForm.username.trim() || upgradeForm.email.trim();
-
-    if (!identifier) {
-      setUpgradeError('Please enter your username or email.');
-      return;
-    }
-
-    if (!upgradeForm.username.trim() && upgradeForm.email && !emailPattern.test(upgradeForm.email)) {
-      setUpgradeError('Please enter a valid email address.');
-      return;
-    }
-
-    if (!upgradeForm.password) {
-      setUpgradeError('Please enter your password.');
-      return;
-    }
-
-    try {
-      setUpgradeLoading(true);
-
-      await login(identifier, upgradeForm.password);
-      setUpgradeSuccess('Logged in successfully! Redirecting...');
-      setUpgradeForm({ username: '', email: '', password: '', confirmPassword: '' });
-
-      await refreshDashboard();
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      setUpgradeError(getErrorMessage(err, 'Unable to log in with these credentials.'));
-    } finally {
-      setUpgradeLoading(false);
     }
   };
 
@@ -407,95 +311,24 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {/* Upgrade Guest Account */}
-        {player.is_guest && (
+        {player.is_guest && pendingResults.length > 0 && (
           <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ir-orange">
-            <h2 className="text-2xl font-display font-bold text-ir-navy mb-4">
-              Login or Upgrade Your Guest Account
-            </h2>
-            <p className="text-ir-navy mb-4">
-              You're currently using a guest account with limited access. Upgrade to a full account to:
-            </p>
-            <ul className="list-disc list-inside text-ir-navy mb-4 space-y-1">
-              <li>Save your progress permanently</li>
-              <li>Access your account from any device</li>
-              <li>Never lose your InitCoins and stats</li>
-              <li>Get higher rate limits for smoother gameplay</li>
-            </ul>
-            {upgradeError && <p className="text-red-600 mb-3">{upgradeError}</p>}
-            {upgradeSuccess && <p className="text-green-600 mb-3">{upgradeSuccess}</p>}
-            <form onSubmit={handleUpgradeSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-ir-teal mb-2">Username</label>
-                <input
-                  type="text"
-                  value={upgradeForm.username}
-                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, username: e.target.value }))}
-                  className="border-2 border-ir-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ir-orange bg-white"
-                  placeholder="Choose a username"
-                  disabled={upgradeLoading}
-                  required
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-ir-teal mb-2">Email Address</label>
-                <input
-                  type="email"
-                  value={upgradeForm.email}
-                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="border-2 border-ir-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ir-orange bg-white"
-                  placeholder="your@email.com"
-                  disabled={upgradeLoading}
-                  required
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-ir-teal mb-2">Password</label>
-                <input
-                  type="password"
-                  value={upgradeForm.password}
-                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, password: e.target.value }))}
-                  className="border-2 border-ir-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ir-orange bg-white"
-                  placeholder="Min 8 characters"
-                  disabled={upgradeLoading}
-                  minLength={8}
-                  required
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-ir-teal mb-2">Confirm Password</label>
-                <input
-                  type="password"
-                  value={upgradeForm.confirmPassword}
-                  onChange={(e) => setUpgradeForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="border-2 border-ir-navy border-opacity-30 rounded-tile p-3 focus:outline-none focus:border-ir-orange bg-white"
-                  placeholder="Re-enter password"
-                  disabled={upgradeLoading}
-                  minLength={8}
-                />
-              </div>
-              <div className="md:col-span-4 flex flex-wrap justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleLoginSubmit}
-                  disabled={upgradeLoading}
-                  className="bg-white border-2 border-ir-navy text-ir-navy hover:bg-ir-navy hover:text-white disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300 font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-                >
-                  {upgradeLoading ? 'Logging in...' : 'Login'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={upgradeLoading}
-                  className="bg-ir-orange hover:bg-ir-orange-deep disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm"
-                >
-                  {upgradeLoading ? 'Upgrading...' : 'Upgrade Account'}
-                </button>
-              </div>
-            </form>
+            <MagicLinkPanel
+              mode="save"
+              title="Keep your stats"
+              description="Save your name, wins, awards, and history across devices."
+              ctaLabel="Save my account"
+              guestPlayerId={player.player_id}
+              autoNavigateOnSuccess
+              continueDestination="/dashboard"
+              continueLabel="Continue playing"
+              guestCredentialsStorageKey={GUEST_CREDENTIALS_KEY}
+            />
           </div>
         )}
 
         {/* Change Password */}
+        {!player.is_guest && (
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-ir-navy mb-4">Change Password</h2>
           <p className="text-ir-teal mb-4">
@@ -545,8 +378,10 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        )}
 
         {/* Change Email */}
+        {!player.is_guest && (
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-ir-navy mb-4">Change Email</h2>
           <p className="text-ir-teal mb-4">Enter a new email address and confirm with your current password.</p>
@@ -584,8 +419,10 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        )}
 
         {/* Change Username */}
+        {!player.is_guest && (
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-ir-navy mb-4">Change Username</h2>
           <p className="text-ir-teal mb-4">Update your display name and confirm with your current password.</p>
@@ -625,6 +462,7 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        )}
 
         {/* Delete Account */}
         <div className="tile-card p-6 mb-6 bg-red-50 border-2 border-red-300">

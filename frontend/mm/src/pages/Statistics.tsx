@@ -9,6 +9,7 @@ import EarningsChart from '@crowdcraft/components/statistics/EarningsChart';
 import SpendingChart from '@crowdcraft/components/statistics/SpendingChart';
 import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart';
 import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart';
+import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 import type { MMBetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
@@ -158,6 +159,9 @@ const Statistics: React.FC = () => {
   );
 
   const { latestWinRate, weeklyEarnings, weeklyRounds } = weeklyTrendSummary;
+  const totalRoundsPlayed = data
+    ? data.prompt_stats.total_rounds + data.copy_stats.total_rounds + data.voter_stats.total_rounds
+    : 0;
 
   useEffect(() => {
     const playerId = player?.player_id;
@@ -296,34 +300,18 @@ const Statistics: React.FC = () => {
           </div>
         </div>
 
-        {/* Guest Upgrade Card */}
-        {player?.is_guest && (
+        {/* Guest Save Card */}
+        {player?.is_guest && totalRoundsPlayed > 0 && (
           <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ccl-orange">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <h2 className="text-2xl font-display font-bold text-ccl-navy mb-2">
-                  Upgrade Your Account
-                </h2>
-                <p className="text-ccl-navy mb-3">
-                  You're using a guest account. Upgrade to a full account to:
-                </p>
-                <ul className="list-disc list-inside text-ccl-navy text-sm space-y-1 mb-3">
-                  <li>Save your progress permanently</li>
-                  <li>Access your account from any device</li>
-                  <li>Never lose your memecoins and stats</li>
-                  <li>Get higher rate limits for smoother gameplay</li>
-                </ul>
-              </div>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => navigate('/settings')}
-                  className="bg-gradient-to-r from-ccl-orange to-ccl-turquoise hover:from-ccl-orange-deep hover:to-ccl-teal text-white font-bold py-3 px-6 rounded-tile transition-all hover:shadow-tile-sm whitespace-nowrap"
-                >
-                  Upgrade Now
-                </button>
-                <p className="text-xs text-center text-gray-600">Quick & Easy</p>
-              </div>
-            </div>
+            <MagicLinkPanel
+              mode="save"
+              title="Keep your stats"
+              description="Save your display name, coins, wins, and meme history across devices."
+              ctaLabel="Save my account"
+              guestPlayerId={player.player_id}
+              compact={false}
+              currentSummary={`${totalRoundsPlayed} completed rounds`}
+            />
           </div>
         )}
 

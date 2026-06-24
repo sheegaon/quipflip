@@ -1,5 +1,7 @@
 """Authentication endpoints."""
 from datetime import UTC, datetime
+import ipaddress
+from urllib.parse import urlsplit
 
 import logging
 
@@ -8,10 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.dependencies import get_current_player, get_optional_player
+from backend.dependencies import get_current_player
 from backend.schemas.auth import (
     AuthSessionResponse,
     AuthTokenResponse,
+    MagicLinkConsumeRequest,
+    MagicLinkRequest,
+    MagicLinkRequestResponse,
+    MagicLinkResolveRequest,
+    MagicLinkStatusResponse,
     GamePlayerSnapshot,
     GlobalPlayerInfo,
     LoginRequest,
@@ -21,6 +28,7 @@ from backend.schemas.auth import (
     UsernameLoginRequest,
 )
 from backend.services import AuthError, UsernameService
+from backend.services.account_service import AccountService, MagicLinkError
 from backend.services.auth_service import AuthService, GameType
 from backend.services.player_service import PlayerService
 from backend.utils.cookies import (
@@ -49,6 +57,74 @@ def _resolve_host_game_type(request: Request, game_type: GameType | None) -> Gam
         return host_game_type
 
     return game_type
+
+
+def _origin_identity(value: str | None) -> tuple[str, str, int | None] | None:
+    if not value:
+        return None
+
+    parsed = urlsplit(value.strip())
+    if parsed.scheme not in {"http", "https"}:
+        return None
+    if parsed.query or parsed.fragment:
+        return None
+    if parsed.path not in {"", "/"}:
+        return None
+
+    hostname = parsed.hostname
+    if not hostname:
+        return None
+
+    return parsed.scheme.lower(), hostname.lower(), parsed.port
+
+
+def _is_safe_local_origin_hostname(hostname: str) -> bool:
+    if hostname in {"localhost", "127.0.0.1", "::1"}:
+        return True
+
+    try:
+        parsed_ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+
+    return parsed_ip.is_private or parsed_ip.is_loopback
+
+
+def _resolve_magic_link_frontend_origin(request: Request) -> str:
+    host_scope = getattr(request.state, "host_scope", None)
+    configured_origin = getattr(host_scope, "frontend_url", None)
+    request_origin = request.headers.get("origin")
+
+    if configured_origin:
+        if request_origin and _origin_identity(request_origin) != _origin_identity(configured_origin):
+            raise HTTPException(status_code=400, detail="invalid_frontend_origin")
+        return configured_origin.rstrip("/")
+
+    if request_origin:
+        origin_identity = _origin_identity(request_origin)
+        if origin_identity is None:
+            raise HTTPException(status_code=400, detail="invalid_frontend_origin")
+
+        _, request_hostname, _ = origin_identity
+        if not _is_safe_local_origin_hostname(request_hostname):
+            raise HTTPException(status_code=400, detail="invalid_frontend_origin")
+
+        return request_origin.rstrip("/")
+
+    return str(request.base_url).rstrip("/")
+
+
+def _build_global_player_info(player: PlayerBase) -> GlobalPlayerInfo:
+    return GlobalPlayerInfo(
+        player_id=player.player_id,
+        username=player.username,
+        account_id=getattr(player, "account_id", None),
+        email=player.email,
+        is_guest=player.is_guest,
+        is_admin=player.is_admin,
+        created_at=player.created_at,
+        last_login_date=player.last_login_date,
+    )
 
 
 async def _complete_login(
@@ -109,15 +185,7 @@ async def _build_auth_response(
         else None
     )
 
-    player_payload = GlobalPlayerInfo(
-        player_id=player.player_id,
-        username=player.username,
-        email=player.email,
-        is_guest=player.is_guest,
-        is_admin=player.is_admin,
-        created_at=player.created_at,
-        last_login_date=player.last_login_date,
-    )
+    player_payload = _build_global_player_info(player)
 
     return AuthTokenResponse(
         access_token=access_token,
@@ -182,15 +250,7 @@ async def get_session(
         else None
     )
 
-    player_payload = GlobalPlayerInfo(
-        player_id=player.player_id,
-        username=player.username,
-        email=player.email,
-        is_guest=player.is_guest,
-        is_admin=player.is_admin,
-        created_at=player.created_at,
-        last_login_date=player.last_login_date,
-    )
+    player_payload = _build_global_player_info(player)
 
     return AuthSessionResponse(
         player_id=player.player_id,
@@ -240,6 +300,141 @@ async def suggest_username(
     return SuggestUsernameResponse(suggested_username=display_name)
 
 
+@router.post("/magic-links", response_model=MagicLinkRequestResponse, status_code=202)
+async def request_magic_link(
+    request: Request,
+    magic_link_request: MagicLinkRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MagicLinkRequestResponse:
+    """Request a single-use magic link for saving or restoring an account."""
+
+    account_service = AccountService(db)
+    frontend_origin = _resolve_magic_link_frontend_origin(request)
+    try:
+        result = await account_service.request_magic_link(
+            email=magic_link_request.email,
+            guest_player_id=magic_link_request.guest_player_id,
+            redirect_path=magic_link_request.redirect_path,
+            frontend_origin=frontend_origin,
+        )
+    except MagicLinkError as exc:
+        message = str(exc)
+        if message in {"invalid_email", "invalid_redirect_path"}:
+            raise HTTPException(status_code=400, detail=message) from exc
+        if message == "guest_player_not_found":
+            raise HTTPException(status_code=404, detail=message) from exc
+        if message == "invalid_frontend_origin":
+            raise HTTPException(status_code=400, detail=message) from exc
+        if message == "magic_link_email_failed":
+            raise HTTPException(status_code=503, detail=message) from exc
+        raise HTTPException(status_code=500, detail=message) from exc
+
+    return MagicLinkRequestResponse(
+        email=result.email,
+        expires_at=result.expires_at,
+        message="Check your email for a sign-in link.",
+    )
+
+
+@router.post("/magic-links/consume", response_model=MagicLinkStatusResponse)
+async def consume_magic_link(
+    consume_request: MagicLinkConsumeRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MagicLinkStatusResponse:
+    """Verify a magic link token and either authenticate or request merge confirmation."""
+
+    account_service = AccountService(db)
+    try:
+        result = await account_service.consume_magic_link(consume_request.token)
+    except MagicLinkError as exc:
+        message = str(exc)
+        if message in {"magic_link_invalid_or_expired", "magic_link_already_used"}:
+            raise HTTPException(status_code=401, detail=message) from exc
+        if message in {"magic_link_not_found", "account_not_found"}:
+            raise HTTPException(status_code=404, detail=message) from exc
+        if message == "magic_link_not_ready":
+            raise HTTPException(status_code=400, detail=message) from exc
+        raise HTTPException(status_code=500, detail=message) from exc
+
+    if result.status == "merge_required":
+        if not result.guest_player or not result.saved_player:
+            raise HTTPException(status_code=500, detail="magic_link_merge_incomplete")
+        return MagicLinkStatusResponse(
+            status="merge_required",
+            message="This email already has an account. Choose whether to add this device's history to it.",
+            guest_player=_build_global_player_info(result.guest_player),
+            saved_player=_build_global_player_info(result.saved_player),
+        )
+
+    if not result.player or not result.access_token or not result.refresh_token or result.expires_in is None:
+        raise HTTPException(status_code=500, detail="magic_link_auth_incomplete")
+
+    set_access_token_cookie(response, result.access_token)
+    set_refresh_cookie(response, result.refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    auth_response = await _build_auth_response(
+        player=result.player,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        expires_in=result.expires_in,
+        game_type=None,
+        db=db,
+    )
+
+    return MagicLinkStatusResponse(
+        status="authenticated",
+        message="Account saved.",
+        auth=auth_response,
+    )
+
+
+@router.post("/magic-links/resolve", response_model=MagicLinkStatusResponse)
+async def resolve_magic_link(
+    resolve_request: MagicLinkResolveRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MagicLinkStatusResponse:
+    """Finalize a verified magic link after the user picks merge or sign-in only."""
+
+    account_service = AccountService(db)
+    try:
+        result = await account_service.resolve_magic_link(
+            resolve_request.token,
+            merge_guest=resolve_request.merge_guest,
+        )
+    except MagicLinkError as exc:
+        message = str(exc)
+        if message in {"magic_link_invalid_or_expired", "magic_link_already_used"}:
+            raise HTTPException(status_code=401, detail=message) from exc
+        if message in {"magic_link_not_found", "account_not_found"}:
+            raise HTTPException(status_code=404, detail=message) from exc
+        if message == "magic_link_not_ready":
+            raise HTTPException(status_code=400, detail=message) from exc
+        raise HTTPException(status_code=500, detail=message) from exc
+
+    if not result.player or not result.access_token or not result.refresh_token or result.expires_in is None:
+        raise HTTPException(status_code=500, detail="magic_link_auth_incomplete")
+
+    set_access_token_cookie(response, result.access_token)
+    set_refresh_cookie(response, result.refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    auth_response = await _build_auth_response(
+        player=result.player,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        expires_in=result.expires_in,
+        game_type=None,
+        db=db,
+    )
+
+    return MagicLinkStatusResponse(
+        status="authenticated",
+        message="Account saved.",
+        auth=auth_response,
+    )
+
+
 @router.post("/refresh", response_model=AuthTokenResponse)
 async def refresh_tokens(
     request: Request,
@@ -280,38 +475,30 @@ async def logout(
     request: Request,
     logout_request: LogoutRequest,
     response: Response,
-    player: PlayerBase | None = Depends(get_optional_player),
     refresh_cookie: str | None = Cookie(
         default=None, alias=settings.refresh_token_cookie_name
     ),
     game_type: GameType | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Invalidate the provided refresh token, clean up party sessions, and clear cookies."""
+    """Invalidate the provided refresh token and clear auth cookies."""
 
     game_type = _resolve_host_game_type(request, game_type)
     token = logout_request.refresh_token or refresh_cookie
     auth_service = AuthService(db, game_type=game_type)
 
-    player_id = player.player_id if player else None
-    if not player_id and token:
-        linked_player = await auth_service.get_player_from_refresh_token(token)
-        if linked_player:
-            player_id = linked_player.player_id
-
-    # Clean up any active party sessions the player is in
-    if player_id and game_type == GameType.QF:
-        try:
-            from backend.services.qf.party_session_service import PartySessionService
-            party_service = PartySessionService(db)
-            await party_service.remove_player_from_all_sessions(player_id)
-        except Exception as e:
-            # Log but don't fail logout if party cleanup fails
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to clean up party sessions for {player_id=}: {e}")
-
     if token:
+        if game_type == GameType.QF:
+            try:
+                player = await auth_service.get_player_from_refresh_token(token)
+                if player is not None:
+                    from backend.services.qf import PartySessionService
+
+                    party_service = PartySessionService(db)
+                    await party_service.remove_player_from_all_sessions(player.player_id)
+            except Exception as exc:  # pragma: no cover - logout should continue
+                logger.warning("Failed to update QF party presence on logout: %s", exc)
+
         await auth_service.revoke_refresh_token(token)
 
     clear_auth_cookies(response)

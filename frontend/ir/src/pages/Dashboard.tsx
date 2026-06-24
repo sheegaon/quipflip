@@ -4,8 +4,10 @@ import { useIRGame } from '../contexts/IRGameContext';
 import Header from '../components/Header';
 import InitCoinDisplay from '../components/InitCoinDisplay';
 import TutorialWelcome from '../components/Tutorial/TutorialWelcome';
+import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import { useTutorial } from '../contexts/TutorialContext';
 import { Pagination } from '../components/Pagination';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -19,15 +21,10 @@ const Dashboard: React.FC = () => {
     claimDailyBonus,
     refreshDashboard,
     clearError,
-    upgradeGuest,
   } = useIRGame();
   const { startTutorial, skipTutorial, tutorialStatus } = useTutorial();
 
   const RESULTS_PER_PAGE = 3;
-  const [showUpgradeForm, setShowUpgradeForm] = useState(false);
-  const [upgradeUsername, setUpgradeUsername] = useState('');
-  const [upgradeEmail, setUpgradeEmail] = useState('');
-  const [upgradePassword, setUpgradePassword] = useState('');
   const [resultsPage, setResultsPage] = useState(1);
 
   // Initialize dashboard on component mount with proper error handling
@@ -73,19 +70,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleUpgrade = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await upgradeGuest(upgradeUsername, upgradeEmail, upgradePassword);
-      setShowUpgradeForm(false);
-      setUpgradeUsername('');
-      setUpgradeEmail('');
-      setUpgradePassword('');
-    } catch (err) {
-      console.error('Failed to upgrade account:', err);
-    }
-  };
-
   const handleViewResult = (setId: string) => {
     navigate(`/results/${setId}`);
   };
@@ -126,61 +110,20 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Guest Account Upgrade Banner */}
-        {player.is_guest && (
+        {/* Guest Save Prompt */}
+        {player.is_guest && pendingResults.length > 0 && (
           <div className="mb-6 tile-card p-4 bg-ir-orange bg-opacity-10 border-2 border-ir-orange slide-up-enter">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-display font-semibold text-ir-orange-deep">Playing as Guest</h3>
-                <p className="text-sm text-ir-teal">
-                  Upgrade to a full account to save your progress across devices!
-                </p>
-              </div>
-              <button
-                onClick={() => setShowUpgradeForm(!showUpgradeForm)}
-                className="px-4 py-2 bg-ir-orange text-white rounded-tile hover:bg-ir-orange-deep transition-colors font-semibold"
-              >
-                Upgrade
-              </button>
-            </div>
-
-            {/* Upgrade Form */}
-            {showUpgradeForm && (
-              <form onSubmit={handleUpgrade} className="mt-4 space-y-3">
-                <input
-                  type="text"
-                  value={upgradeUsername}
-                  onChange={(e) => setUpgradeUsername(e.target.value)}
-                  placeholder="Choose a username"
-                  required
-                  className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus-visible:ring-ir-teal focus:outline-none"
-                />
-                <input
-                  type="email"
-                  value={upgradeEmail}
-                  onChange={(e) => setUpgradeEmail(e.target.value)}
-                  placeholder="Email"
-                  required
-                  className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus-visible:ring-ir-teal focus:outline-none"
-                />
-                <input
-                  type="password"
-                  value={upgradePassword}
-                  onChange={(e) => setUpgradePassword(e.target.value)}
-                  placeholder="Password (min 6 characters)"
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-2 border-2 border-ir-navy border-opacity-20 rounded-tile focus:ring-2 focus-visible:ring-ir-teal focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full px-4 py-2 bg-ir-orange text-white rounded-tile hover:bg-ir-orange-deep transition-all shadow-tile-sm disabled:opacity-50 font-semibold"
-                >
-                  {loading ? 'Upgrading...' : 'Confirm Upgrade'}
-                </button>
-              </form>
-            )}
+            <MagicLinkPanel
+              mode="save"
+              title="Keep your stats"
+              description="Save your name, wins, awards, and history across devices."
+              ctaLabel="Save my account"
+              guestPlayerId={player.player_id}
+              autoNavigateOnSuccess
+              continueDestination="/dashboard"
+              continueLabel="Continue playing"
+              guestCredentialsStorageKey={GUEST_CREDENTIALS_KEY}
+            />
           </div>
         )}
 
