@@ -21,7 +21,7 @@ def test_install_launch_agents_renders_templates(tmp_path, monkeypatch):
     (checkout / "scripts").mkdir()
     (checkout / "scripts" / "run-production-server.py").write_text("#!/usr/bin/env python3\n", encoding="utf-8")
 
-    cloudflared = tmp_path / "cloudflared"
+    cloudflared = tmp_path / "cloudflared-bin"
     cloudflared.write_text("#!/bin/sh\n", encoding="utf-8")
 
     dest_dir = tmp_path / "LaunchAgents"
@@ -39,6 +39,14 @@ def test_install_launch_agents_renders_templates(tmp_path, monkeypatch):
             "tunnel-uuid-123",
             "--release-id",
             "release-123",
+            "--expected-revision",
+            "revision-123",
+            "--cloudflared-config",
+            str(tmp_path / "cloudflared" / "crowdcraft.yml"),
+            "--runtime-root",
+            str(tmp_path / "runtime"),
+            "--log-dir",
+            str(tmp_path / "logs"),
             "--dest",
             str(dest_dir),
         ]
@@ -47,12 +55,16 @@ def test_install_launch_agents_renders_templates(tmp_path, monkeypatch):
     assert exit_code == 0
     server_plist = (dest_dir / "com.crowdcraft.server.plist").read_text(encoding="utf-8")
     tunnel_plist = (dest_dir / "com.crowdcraft.tunnel.plist").read_text(encoding="utf-8")
-    tunnel_yml = (dest_dir / "crowdcraft.yml").read_text(encoding="utf-8")
+    tunnel_config_path = tmp_path / "cloudflared" / "crowdcraft.yml"
+    tunnel_yml = tunnel_config_path.read_text(encoding="utf-8")
 
     assert "${" not in server_plist
     assert "${" not in tunnel_plist
     assert "${" not in tunnel_yml
     assert "tunnel-uuid-123" in tunnel_yml
+    assert "revision-123" in server_plist
+    assert not (dest_dir / "crowdcraft.yml").exists()
+    assert tunnel_config_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_install_launch_agents_points_server_plist_at_wrapper(tmp_path, monkeypatch):
@@ -69,7 +81,7 @@ def test_install_launch_agents_points_server_plist_at_wrapper(tmp_path, monkeypa
     (checkout / "scripts").mkdir()
     (checkout / "scripts" / "run-production-server.py").write_text("#!/usr/bin/env python3\n", encoding="utf-8")
 
-    cloudflared = tmp_path / "cloudflared"
+    cloudflared = tmp_path / "cloudflared-bin"
     cloudflared.write_text("#!/bin/sh\n", encoding="utf-8")
 
     dest_dir = tmp_path / "LaunchAgents"
@@ -87,6 +99,14 @@ def test_install_launch_agents_points_server_plist_at_wrapper(tmp_path, monkeypa
             "tunnel-uuid-123",
             "--release-id",
             "release-123",
+            "--expected-revision",
+            "revision-123",
+            "--cloudflared-config",
+            str(tmp_path / "cloudflared" / "crowdcraft.yml"),
+            "--runtime-root",
+            str(tmp_path / "runtime"),
+            "--log-dir",
+            str(tmp_path / "logs"),
             "--dest",
             str(dest_dir),
         ]

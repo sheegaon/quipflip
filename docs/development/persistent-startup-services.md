@@ -109,6 +109,10 @@ The application still validates `Host`; tunnel ingress is not the only boundary.
 7. Run the full target-domain smoke matrix before DNS cutover.
 
 Do not put real secret values into setup commands that will remain in shell history.
+Render the initial server plist with separate `--release-id` and
+`--expected-revision` values; the latter is the single value printed by
+`python3 -m alembic heads`, not the release ID. The installer writes the tunnel
+configuration to `--cloudflared-config` with owner-only permissions.
 
 ## Safe release sequence
 
@@ -122,13 +126,17 @@ The planned `crowdcraft-ops deploy release --apply` orchestrator must:
    timestamped backup using SQLite's online backup API;
 5. run `alembic upgrade head` with the target `DATABASE_URL`;
 6. atomically publish the staged static assets;
-7. `launchctl kickstart -k gui/$(id -u)/com.crowdcraft.server`;
+7. update the server plist with the release ID and Alembic head, then
+   `launchctl bootstrap` the service after the earlier `bootout`;
 8. wait for `http://127.0.0.1:8000/readyz`;
 9. run the built-server smoke loop and target-host checks; and
 10. print bounded, redacted diagnostics on failure.
 
 Never copy only the main database file while WAL writes may be pending. Retain the
 pre-migration backup until the soak window is accepted.
+On the first deployment, where no SQLite database exists yet, the release record
+explicitly records that there was no pre-migration database to back up before
+running `alembic upgrade head`.
 
 ## Verification matrix
 

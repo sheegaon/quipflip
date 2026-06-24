@@ -4,17 +4,20 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from scripts.ops.keychain import read_generic_password
+
+
 UVICORN_CANDIDATES = (
     ROOT_DIR / ".venv" / "bin" / "uvicorn",
     Path(sys.executable).with_name("uvicorn"),
 )
-KEYCHAIN_SECURITY = Path("/usr/bin/security")
 KEYCHAIN_SERVICE_ENV = "KEYCHAIN_SERVICE"
 SECRET_KEY_ACCOUNT_ENV = "SECRET_KEY_ACCOUNT"
 OPENAI_ACCOUNT_ENV = "OPENAI_ACCOUNT"
@@ -30,58 +33,7 @@ def _select_uvicorn_executable() -> str:
 
 
 def _read_keychain_secret(service: str, account: str, *, required: bool) -> str | None:
-    if not service:
-        if required:
-            raise RuntimeError("KEYCHAIN_SERVICE must be configured")
-        return None
-
-    if not account:
-        if required:
-            raise RuntimeError(f"Keychain account is missing for {service}")
-        return None
-
-    if not KEYCHAIN_SECURITY.is_file():
-        if required:
-            raise RuntimeError("macOS security tool is unavailable")
-        return None
-
-    result = subprocess.run(
-        [
-            str(KEYCHAIN_SECURITY),
-            "find-generic-password",
-            "-s",
-            service,
-            "-a",
-            account,
-            "-w",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        message = (result.stderr or result.stdout or "").strip()
-        if required:
-            raise RuntimeError(
-                f"Unable to load Keychain item {service!r}/{account!r}: {message or 'unknown error'}"
-            )
-        print(
-            f"Warning: optional Keychain item {service!r}/{account!r} could not be read: {message or 'unknown error'}",
-            file=sys.stderr,
-        )
-        return None
-
-    secret = result.stdout.rstrip("\n")
-    if not secret:
-        if required:
-            raise RuntimeError(f"Keychain item {service!r}/{account!r} is empty")
-        print(
-            f"Warning: optional Keychain item {service!r}/{account!r} is empty",
-            file=sys.stderr,
-        )
-        return None
-
-    return secret
+    return read_generic_password(service, account, required=required)
 
 
 def _load_keychain_env() -> None:

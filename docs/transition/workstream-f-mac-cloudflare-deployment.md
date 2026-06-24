@@ -636,6 +636,10 @@ release record. Shell scripts may wrap it but may not duplicate the sequence.
 crowdcraft-ops deploy release --revision <full-git-sha>
 ```
 
+The command loads non-secret production settings from the installed server plist,
+generates a release ID when one is omitted, and resolves the checkout's single
+Alembic head unless `--expected-revision` is supplied explicitly.
+
 State transitions are append-only in the release record:
 
 ```text
@@ -670,7 +674,8 @@ The command:
 6. Quiesces the server with `launchctl bootout` and waits for the single listener
    and database connections to close. `KeepAlive` must not race the migration.
 7. Checkpoints WAL, creates and verifies the pre-migration backup, and records its
-   identifier.
+   identifier. For the first deployment only, a missing database is recorded
+   explicitly and migrations create it.
 8. Runs `alembic upgrade head` against the explicit production database path.
 9. Runs `sync-content --apply` with the release ID, followed by integrity,
    foreign-key, migration, and ledger reconciliation checks.

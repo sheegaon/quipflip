@@ -74,6 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Absolute cloudflared configuration file path.",
     )
     parser.add_argument("--release-id", default="", help="Release ID to embed in the plist.")
+    parser.add_argument(
+        "--expected-revision",
+        default="",
+        help="Expected Alembic revision to embed in the production LaunchAgent.",
+    )
     parser.add_argument("--keychain-service", default="com.crowdcraft.production", help="Keychain service name.")
     parser.add_argument("--secret-key-account", default="SECRET_KEY", help="Keychain account for SECRET_KEY.")
     parser.add_argument("--openai-account", default="OPENAI_API_KEY", help="Keychain account for OPENAI_API_KEY.")
@@ -103,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("--tunnel-uuid is required to render the Cloudflare tunnel config")
     if not args.release_id.strip():
         raise RuntimeError("--release-id is required to render the production LaunchAgent")
+    if not args.expected_revision.strip():
+        raise RuntimeError("--expected-revision is required to render the production LaunchAgent")
 
     values = {
         "CHECKOUT_PATH": str(checkout),
@@ -117,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         "STATIC_ROOT": str(runtime_root / "static" / "current"),
         "LOG_DIR": str(log_dir),
         "RELEASE_ID": args.release_id.strip(),
-        "EXPECTED_REVISION": args.release_id.strip(),
+        "EXPECTED_REVISION": args.expected_revision.strip(),
         "ENVIRONMENT": "production",
         "QF_FRONTEND_URL": "https://quipflip.crowdcraftlabs.com",
         "MM_FRONTEND_URL": "https://mememint.crowdcraftlabs.com",
@@ -133,16 +140,22 @@ def main(argv: list[str] | None = None) -> int:
 
     dest_dir = Path(args.dest).expanduser().resolve()
     dest_dir.mkdir(parents=True, exist_ok=True)
-    for template_name in ("com.crowdcraft.server.plist", "com.crowdcraft.tunnel.plist", "crowdcraft.yml"):
+    log_dir.mkdir(parents=True, exist_ok=True)
+    for template_name in ("com.crowdcraft.server.plist", "com.crowdcraft.tunnel.plist"):
         template_path = TEMPLATE_DIR / template_name
         rendered = _render_template(template_path, values)
         output_path = dest_dir / template_name
         output_path.write_text(rendered, encoding="utf-8")
         os.chmod(output_path, 0o644)
-        if output_path.suffix == ".plist":
-            _lint_plist(output_path)
+        _lint_plist(output_path)
+
+    rendered_tunnel_config = _render_template(TEMPLATE_DIR / "crowdcraft.yml", values)
+    cloudflared_config.parent.mkdir(parents=True, exist_ok=True)
+    cloudflared_config.write_text(rendered_tunnel_config, encoding="utf-8")
+    os.chmod(cloudflared_config, 0o600)
 
     print(f"Rendered launch agents to {dest_dir}")
+    print(f"Rendered Cloudflare config to {cloudflared_config}")
     print(f"Install server plist: launchctl bootstrap gui/$(id -u) {dest_dir / 'com.crowdcraft.server.plist'}")
     print(f"Install tunnel plist: launchctl bootstrap gui/$(id -u) {dest_dir / 'com.crowdcraft.tunnel.plist'}")
     return 0

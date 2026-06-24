@@ -108,8 +108,8 @@ def test_run_release_publishes_static_and_records_artifacts(tmp_path, monkeypatc
             return CompletedProcess(command, 0, stdout="verify ok\n", stderr="")
         if command[:2] == ["launchctl", "bootout"]:
             return CompletedProcess(command, 0, stdout="bootout ok\n", stderr="")
-        if command[:2] == ["launchctl", "kickstart"]:
-            return CompletedProcess(command, 0, stdout="kickstart ok\n", stderr="")
+        if command[:2] == ["launchctl", "bootstrap"]:
+            return CompletedProcess(command, 0, stdout="bootstrap ok\n", stderr="")
         if command[:3] == [release_module.sys.executable, "-m", "alembic"]:
             return CompletedProcess(command, 0, stdout="alembic ok\n", stderr="")
         raise AssertionError(f"unexpected command: {command}")
@@ -134,6 +134,11 @@ def test_run_release_publishes_static_and_records_artifacts(tmp_path, monkeypatc
     monkeypatch.setattr(release_module, "_wait_for_listener_closed", lambda **_kwargs: {"ok": True, "status": "closed"})
     monkeypatch.setattr(release_module, "_wait_for_livez", fake_wait_for_livez)
     monkeypatch.setattr(release_module, "_wait_for_readyz", fake_wait_for_readyz)
+    monkeypatch.setattr(
+        release_module,
+        "_update_server_launch_agent",
+        lambda **kwargs: {"path": "/tmp/server.plist", **kwargs},
+    )
     monkeypatch.setattr(
         release_module,
         "run_smoke_sync",
@@ -182,7 +187,7 @@ def test_run_release_publishes_static_and_records_artifacts(tmp_path, monkeypatc
     assert any(command[:4] == [release_module.sys.executable, "scripts/verify.py", "verify"] for command in commands)
     assert any(command[:3] == [release_module.sys.executable, "-m", "alembic"] for command in commands)
     assert any(command[:3] == ["launchctl", "bootout", f"gui/{os.getuid()}"] for command in commands)
-    assert any(command[:4] == ["launchctl", "kickstart", "-k", f"gui/{os.getuid()}"] for command in commands)
+    assert any(command[:3] == ["launchctl", "bootstrap", f"gui/{os.getuid()}"] for command in commands)
 
     record = sqlite3.connect(db_path)
     try:
@@ -210,6 +215,11 @@ def test_run_rollback_restores_backup_and_previous_static_release(tmp_path, monk
     monkeypatch.setattr(release_module, "_wait_for_listener_closed", lambda **_kwargs: {"ok": True, "status": "closed"})
     monkeypatch.setattr(release_module, "_wait_for_livez", fake_wait_for_livez)
     monkeypatch.setattr(release_module, "_wait_for_readyz", fake_wait_for_readyz)
+    monkeypatch.setattr(
+        release_module,
+        "_update_server_launch_agent",
+        lambda **kwargs: {"path": "/tmp/server.plist", **kwargs},
+    )
     monkeypatch.setattr(
         release_module,
         "run_smoke_sync",
@@ -245,6 +255,64 @@ def test_run_rollback_restores_backup_and_previous_static_release(tmp_path, monk
         rows = conn.execute("SELECT version_num FROM alembic_version ORDER BY rowid").fetchall()
 
     assert rows == [("revision-previous",)]
+
+
+def test_run_release_bootstraps_without_existing_database(tmp_path, monkeypatch):
+    db_path = _configure_production_env(monkeypatch, tmp_path)
+    db_path.unlink()
+    _prepare_release_module(monkeypatch, tmp_path)
+
+    monkeypatch.setattr(
+        release_module,
+        "_run_verify_gate",
+        lambda: {"returncode": 0},
+    )
+    monkeypatch.setattr(
+        release_module,
+        "_run_launchctl",
+        lambda command: {"returncode": 0, "command": command},
+    )
+    monkeypatch.setattr(
+        release_module,
+        "_wait_for_listener_closed",
+        lambda **_kwargs: {"ok": True, "status": "closed"},
+    )
+
+    def fake_run_command(command, **_kwargs):
+        if command[:3] == [release_module.sys.executable, "-m", "alembic"]:
+            db_path.touch()
+            return CompletedProcess(command, 0, stdout="alembic ok\n", stderr="")
+        raise AssertionError(f"unexpected command: {command}")
+
+    async def fake_sync_content(*, apply: bool, release_id: str):
+        return {"release_id": release_id, "applied": apply}
+
+    async def fake_wait(host_header: str, *, base_url: str = "http://127.0.0.1:8000"):
+        return {"ok": True, "host": host_header, "base_url": base_url}
+
+    monkeypatch.setattr(release_module, "run_command", fake_run_command)
+    monkeypatch.setattr(release_module, "sync_content", fake_sync_content)
+    monkeypatch.setattr(release_module, "_wait_for_livez", fake_wait)
+    monkeypatch.setattr(release_module, "_wait_for_readyz", fake_wait)
+    monkeypatch.setattr(
+        release_module,
+        "_update_server_launch_agent",
+        lambda **kwargs: {"path": "/tmp/server.plist", **kwargs},
+    )
+
+    report = release_module.run_release(
+        revision="revision-123",
+        release_id="release-initial",
+        apply=True,
+        run_smoke=False,
+    )
+
+    assert report["status"] == "complete"
+    assert report["backup"] == {
+        "skipped": True,
+        "reason": "initial deployment: database does not exist",
+    }
+    assert db_path.is_file()
 
 
 def test_run_release_dry_run_includes_static_staged_state(tmp_path, monkeypatch):

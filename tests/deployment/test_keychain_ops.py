@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 
 from scripts.ops import crowdcraft_ops
@@ -65,6 +66,35 @@ def test_keychain_store_executes_security_prompt_without_secret_value(tmp_path, 
     ]
 
 
+def test_load_production_secret_environment_reads_only_active_provider(monkeypatch):
+    calls: list[tuple[str, str, bool]] = []
+
+    def fake_read(service: str, account: str, *, required: bool):
+        calls.append((service, account, required))
+        return {
+            keychain.DEFAULT_SECRET_ACCOUNT: "secret-value",
+            keychain.DEFAULT_GEMINI_ACCOUNT: "gemini-value",
+        }.get(account)
+
+    monkeypatch.setattr(keychain, "read_generic_password", fake_read)
+
+    environment = keychain.load_production_secret_environment(
+        {
+            "KEYCHAIN_SERVICE": keychain.DEFAULT_KEYCHAIN_SERVICE,
+            "AI_PROVIDER": "gemini",
+        }
+    )
+
+    assert environment == {
+        "SECRET_KEY": "secret-value",
+        "GEMINI_API_KEY": "gemini-value",
+    }
+    assert calls == [
+        (keychain.DEFAULT_KEYCHAIN_SERVICE, keychain.DEFAULT_SECRET_ACCOUNT, True),
+        (keychain.DEFAULT_KEYCHAIN_SERVICE, keychain.DEFAULT_GEMINI_ACCOUNT, False),
+    ]
+
+
 def test_crowdcraft_ops_secrets_command_routes_to_keychain(monkeypatch, capsys):
     captured: dict[str, object] = {}
 
@@ -97,3 +127,90 @@ def test_crowdcraft_ops_secrets_command_routes_to_keychain(monkeypatch, capsys):
     }
     stdout = capsys.readouterr().out
     assert json.loads(stdout) == {"applied": True, "items": []}
+
+
+def test_deploy_release_loads_launch_agent_environment(monkeypatch, capsys):
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        crowdcraft_ops,
+        "load_server_launch_agent_environment",
+        lambda: {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "sqlite+aiosqlite:////tmp/crowdcraft.sqlite3",
+            "CROWDCRAFT_RUNTIME_ROOT": "/tmp/Crowdcraft",
+        },
+    )
+    monkeypatch.setattr(crowdcraft_ops, "current_alembic_head", lambda: "revision-123")
+    monkeypatch.setattr(
+        crowdcraft_ops,
+        "load_production_secret_environment",
+        lambda _environment: {"SECRET_KEY": "secret-value"},
+    )
+    monkeypatch.setattr(
+        crowdcraft_ops,
+        "run_deploy_release",
+        lambda **kwargs: captured.update(kwargs) or {"ok": True, **kwargs},
+    )
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("CROWDCRAFT_RUNTIME_ROOT", raising=False)
+    monkeypatch.delenv("CROWDCRAFT_RELEASE_ID", raising=False)
+    monkeypatch.delenv("CROWDCRAFT_EXPECTED_REVISION", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "development")
+
+    exit_code = crowdcraft_ops.main(
+        [
+            "deploy",
+            "release",
+            "--revision",
+            "abcdef1234567890",
+            "--release-id",
+            "release-123",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["release_id"] == "release-123"
+    assert os.environ["ENVIRONMENT"] == "production"
+    assert os.environ["CROWDCRAFT_RELEASE_ID"] == "release-123"
+    assert os.environ["CROWDCRAFT_EXPECTED_REVISION"] == "revision-123"
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+def test_deploy_rollback_loads_launch_agent_environment(monkeypatch, capsys):
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        crowdcraft_ops,
+        "load_server_launch_agent_environment",
+        lambda: {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "sqlite+aiosqlite:////tmp/crowdcraft.sqlite3",
+        },
+    )
+    monkeypatch.setattr(
+        crowdcraft_ops,
+        "run_deploy_rollback",
+        lambda **kwargs: captured.update(kwargs) or {"ok": True, **kwargs},
+    )
+    monkeypatch.setattr(
+        crowdcraft_ops,
+        "load_production_secret_environment",
+        lambda _environment: {"SECRET_KEY": "secret-value"},
+    )
+    monkeypatch.setenv("ENVIRONMENT", "development")
+
+    exit_code = crowdcraft_ops.main(
+        [
+            "deploy",
+            "rollback",
+            "--release-id",
+            "release-123",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {"release_id": "release-123", "apply": False}
+    assert os.environ["ENVIRONMENT"] == "production"
+    assert json.loads(capsys.readouterr().out)["ok"] is True

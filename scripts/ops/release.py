@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -54,6 +55,7 @@ STATE_SMOKE_PASSED = "SMOKE_PASSED"
 STATE_COMPLETE = "COMPLETE"
 STATE_FAILED = "FAILED"
 SERVER_LAUNCHD_LABEL = "com.crowdcraft.server"
+SERVER_LAUNCH_AGENT_PATH = Path.home() / "Library" / "LaunchAgents" / f"{SERVER_LAUNCHD_LABEL}.plist"
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +73,7 @@ class StaticStaging:
     games: dict[str, Any]
 
 
-def validate_config() -> dict[str, Any]:
+def validate_config(*, require_runtime_resources: bool = True) -> dict[str, Any]:
     """Validate production runtime configuration and tool availability."""
 
     errors: list[str] = []
@@ -81,7 +83,8 @@ def validate_config() -> dict[str, Any]:
         paths = resolve_runtime_paths(settings)
         paths_payload = {key: str(value) if isinstance(value, Path) else value for key, value in asdict(paths).items()}
         errors.extend(validate_runtime_settings(settings))
-        errors.extend(validate_runtime_resources(settings))
+        if require_runtime_resources:
+            errors.extend(validate_runtime_resources(settings))
     except Exception as exc:
         errors.append(f"configuration validation failed: {exc}")
 
@@ -413,12 +416,19 @@ def _run_launchctl(command: str) -> dict[str, Any]:
     args = ["launchctl", command]
     if command == "bootout":
         args.extend([_launchctl_target(), SERVER_LAUNCHD_LABEL])
-    elif command == "kickstart":
-        args.extend(["-k", _launchctl_target(), SERVER_LAUNCHD_LABEL])
+    elif command == "bootstrap":
+        args.extend([_launchctl_target(), str(SERVER_LAUNCH_AGENT_PATH)])
     else:
         raise ValueError(f"Unsupported launchctl command: {command}")
 
     result = run_command(args, cwd=ROOT_DIR, check=False)
+    if command == "bootout" and result.returncode != 0:
+        diagnostics = f"{result.stdout}\n{result.stderr}".lower()
+        if "could not find service" in diagnostics or "no such process" in diagnostics:
+            return {
+                **_truncated_completed_process(result),
+                "already_stopped": True,
+            }
     if result.returncode != 0:
         raise RuntimeError(
             f"launchctl {command} failed:\n"
@@ -426,6 +436,63 @@ def _run_launchctl(command: str) -> dict[str, Any]:
             f"stderr:\n{result.stderr}"
         )
     return _truncated_completed_process(result)
+
+
+def _update_server_launch_agent(*, release_id: str, expected_revision: str) -> dict[str, Any]:
+    if not SERVER_LAUNCH_AGENT_PATH.is_file():
+        raise FileNotFoundError(SERVER_LAUNCH_AGENT_PATH)
+
+    with SERVER_LAUNCH_AGENT_PATH.open("rb") as handle:
+        payload = plistlib.load(handle)
+
+    environment = payload.setdefault("EnvironmentVariables", {})
+    environment["CROWDCRAFT_RELEASE_ID"] = release_id
+    environment["CROWDCRAFT_EXPECTED_REVISION"] = expected_revision
+
+    temporary_path = SERVER_LAUNCH_AGENT_PATH.with_suffix(".plist.tmp")
+    with temporary_path.open("wb") as handle:
+        plistlib.dump(payload, handle, sort_keys=False)
+    os.chmod(temporary_path, 0o644)
+    os.replace(temporary_path, SERVER_LAUNCH_AGENT_PATH)
+
+    return {
+        "path": str(SERVER_LAUNCH_AGENT_PATH),
+        "release_id": release_id,
+        "expected_revision": expected_revision,
+    }
+
+
+def load_server_launch_agent_environment() -> dict[str, str]:
+    if not SERVER_LAUNCH_AGENT_PATH.is_file():
+        raise FileNotFoundError(SERVER_LAUNCH_AGENT_PATH)
+
+    with SERVER_LAUNCH_AGENT_PATH.open("rb") as handle:
+        payload = plistlib.load(handle)
+
+    raw_environment = payload.get("EnvironmentVariables", {})
+    if not isinstance(raw_environment, dict):
+        raise RuntimeError(f"Invalid EnvironmentVariables in {SERVER_LAUNCH_AGENT_PATH}")
+
+    environment = {
+        str(key): str(value)
+        for key, value in raw_environment.items()
+        if isinstance(key, str) and isinstance(value, (str, int, float, bool))
+    }
+    if not environment:
+        raise RuntimeError(f"No EnvironmentVariables found in {SERVER_LAUNCH_AGENT_PATH}")
+    return environment
+
+
+def current_alembic_head() -> str:
+    result = run_command([sys.executable, "-m", "alembic", "heads"], cwd=ROOT_DIR)
+    heads = [
+        line.split()[0]
+        for line in result.stdout.splitlines()
+        if line.strip().endswith("(head)")
+    ]
+    if len(heads) != 1:
+        raise RuntimeError(f"Expected exactly one Alembic head, found {heads or 'none'}")
+    return heads[0]
 
 
 def _wait_for_listener_closed(
@@ -530,7 +597,7 @@ def run_release(
 ) -> dict[str, Any]:
     """Run a guarded release workflow, optionally mutating production state."""
 
-    validation = validate_config()
+    validation = validate_config(require_runtime_resources=False)
     if not validation["ok"]:
         return {
             "ok": False,
@@ -625,19 +692,26 @@ def run_release(
             if paths.database_path is None:
                 raise RuntimeError("DATABASE_URL does not resolve to a SQLite database path")
 
-            backup_dir = runtime_dirs["backups_root"] / release_id
-            backup_manifest = create_backup(
-                paths.database_path,
-                backup_dir,
-                release_id=release_id,
-                git_sha=revision,
-            )
-            verified_backup = verify_backup(backup_dir)
-            release_record["backup"] = {
-                "backup_dir": str(backup_dir),
-                "manifest": backup_manifest,
-                "verified_manifest": verified_backup,
-            }
+            if paths.database_path.is_file():
+                backup_dir = runtime_dirs["backups_root"] / release_id
+                backup_manifest = create_backup(
+                    paths.database_path,
+                    backup_dir,
+                    release_id=release_id,
+                    git_sha=revision,
+                )
+                verified_backup = verify_backup(backup_dir)
+                release_record["backup"] = {
+                    "backup_dir": str(backup_dir),
+                    "manifest": backup_manifest,
+                    "verified_manifest": verified_backup,
+                }
+            else:
+                ensure_directories(paths.database_path.parent)
+                release_record["backup"] = {
+                    "skipped": True,
+                    "reason": "initial deployment: database does not exist",
+                }
             _append_release_event(release_record_path, release_record, STATE_BACKUP_VERIFIED)
 
             alembic_result = run_command([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=ROOT_DIR)
@@ -660,7 +734,11 @@ def run_release(
             release_record["static_publication"] = asdict(static_publication)
             _append_release_event(release_record_path, release_record, STATE_STATIC_PUBLISHED)
 
-            service_restart = _run_launchctl("kickstart")
+            release_record["launch_agent"] = _update_server_launch_agent(
+                release_id=release_id,
+                expected_revision=paths.expected_revision,
+            )
+            service_restart = _run_launchctl("bootstrap")
             release_record["service_restart"] = service_restart
             host_header = _primary_host_header(settings)
             livez_report = asyncio.run(_wait_for_livez(host_header))
@@ -771,7 +849,16 @@ def run_rollback(
         static_restore = _rollback_static_release(paths, release_record)
         rollback_plan["static_restore"] = static_restore
 
-        rollback_plan["service_restart"] = _run_launchctl("kickstart")
+        previous_release_id = str(release_record.get("previous_static_release_id") or "")
+        backup_manifest = backup_info.get("manifest", {})
+        previous_revision = str(backup_manifest.get("source_revision") or "")
+        if not previous_release_id or not previous_revision:
+            raise RuntimeError("release record is missing rollback release or revision metadata")
+        rollback_plan["launch_agent"] = _update_server_launch_agent(
+            release_id=previous_release_id,
+            expected_revision=previous_revision,
+        )
+        rollback_plan["service_restart"] = _run_launchctl("bootstrap")
         host_header = _primary_host_header(settings)
         rollback_plan["livez"] = asyncio.run(_wait_for_livez(host_header))
         rollback_plan["readyz"] = asyncio.run(_wait_for_readyz(host_header))

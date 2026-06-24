@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -14,7 +15,10 @@ if str(ROOT_DIR) not in sys.path:
 
 from scripts.ops.release import (
     cleanup_retention,
+    current_alembic_head,
     dump_json,
+    load_server_launch_agent_environment,
+    release_timestamp,
     run_deploy_release,
     run_deploy_rollback,
     run_sync_content,
@@ -25,6 +29,7 @@ from scripts.ops.keychain import (
     DEFAULT_KEYCHAIN_SERVICE,
     DEFAULT_OPENAI_ACCOUNT,
     DEFAULT_SECRET_ACCOUNT,
+    load_production_secret_environment,
     store_production_secrets,
 )
 from scripts.ops.smoke import dump_json as smoke_dump_json, run_smoke_sync
@@ -36,7 +41,19 @@ async def _handle_bootstrap(_args: argparse.Namespace) -> None:
     await run_startup_bootstrap()
 
 
+def _load_installed_production_environment() -> None:
+    for name, value in load_server_launch_agent_environment().items():
+        os.environ[name] = value
+    for name, value in load_production_secret_environment(os.environ).items():
+        os.environ[name] = value
+
+    from backend.config import get_settings
+
+    get_settings.cache_clear()
+
+
 def _handle_release_validate_config(_args: argparse.Namespace) -> int:
+    _load_installed_production_environment()
     print(dump_json(validate_config()), end="")
     return 0
 
@@ -53,9 +70,19 @@ def _handle_cleanup_retention(args: argparse.Namespace) -> int:
 
 
 def _handle_deploy_release(args: argparse.Namespace) -> int:
+    _load_installed_production_environment()
+
+    release_id = args.release_id or f"{release_timestamp()}-{args.revision[:8]}"
+    expected_revision = args.expected_revision or current_alembic_head()
+    os.environ["CROWDCRAFT_RELEASE_ID"] = release_id
+    os.environ["CROWDCRAFT_EXPECTED_REVISION"] = expected_revision
+
+    from backend.config import get_settings
+
+    get_settings.cache_clear()
     report = run_deploy_release(
         revision=args.revision,
-        release_id=args.release_id,
+        release_id=release_id,
         apply=args.apply,
         run_smoke=not args.skip_smoke,
     )
@@ -64,6 +91,7 @@ def _handle_deploy_release(args: argparse.Namespace) -> int:
 
 
 def _handle_deploy_rollback(args: argparse.Namespace) -> int:
+    _load_installed_production_environment()
     report = run_deploy_rollback(release_id=args.release_id, apply=args.apply)
     print(dump_json(report), end="")
     return 0
@@ -155,6 +183,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     deploy_release.add_argument("--revision", required=True, help="Full Git SHA to release.")
     deploy_release.add_argument("--release-id", default="", help="Release identifier to record.")
+    deploy_release.add_argument(
+        "--expected-revision",
+        default="",
+        help="Expected Alembic head (default: resolve the checkout's single head).",
+    )
     deploy_release.add_argument("--skip-smoke", action="store_true", help="Skip the smoke gate for dry runs or rehearsals.")
     deploy_release.add_argument("--apply", action="store_true", help="Apply the release instead of producing a dry run.")
     deploy_release.set_defaults(handler=_handle_deploy_release)
