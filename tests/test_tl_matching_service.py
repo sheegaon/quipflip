@@ -1,21 +1,50 @@
 """Unit tests for ThinkLink MatchingService."""
-import pytest
+from __future__ import annotations
+
+import hashlib
 import os
+import random
+
+import pytest
 from backend.services.tl.matching_service import TLMatchingService
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock
+
+
+def _deterministic_embedding(text: str, dimensions: int = 1536) -> list[float]:
+    normalized = text.strip().lower()
+    seed = int(hashlib.sha256(normalized.encode("utf-8")).hexdigest(), 16)
+    rng = random.Random(seed)
+    return [rng.uniform(-1, 1) for _ in range(dimensions)]
+
+
+class _FakeEmbeddingResponse:
+    def __init__(self, embedding: list[float]) -> None:
+        self.data = [type("Data", (), {"embedding": embedding})()]
+
+
+class _FakeOpenAIEmbeddings:
+    async def create(self, *, model: str, input: str, dimensions: int = 1536):
+        del model
+        return _FakeEmbeddingResponse(_deterministic_embedding(input, dimensions=dimensions))
+
+
+class _FakeOpenAIClient:
+    def __init__(self, *args, **kwargs) -> None:
+        del args, kwargs
+        self.embeddings = _FakeOpenAIEmbeddings()
 
 
 class TestMatchingService:
     """Test suite for MatchingService."""
 
     @pytest.fixture
-    def matching_service(self):
+    def matching_service(self, monkeypatch):
         """Create a MatchingService instance.
 
-        Skips tests if OPENAI_API_KEY is not configured.
+        Use a deterministic fake OpenAI client so the suite never hits the network.
         """
-        if not os.getenv('OPENAI_API_KEY'):
-            pytest.skip("OPENAI_API_KEY not configured - skipping live API tests")
+        monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+        monkeypatch.setattr("backend.services.tl.matching_service.AsyncOpenAI", _FakeOpenAIClient)
         return TLMatchingService()
 
     @pytest.fixture

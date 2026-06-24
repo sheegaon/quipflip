@@ -8,6 +8,7 @@ from difflib import SequenceMatcher
 from typing import Set, Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -41,6 +42,14 @@ def _load_dictionary() -> Set[str]:
 
     with open(data_path, "r") as f:
         return {line.strip().upper() for line in f if line.strip()}
+
+
+async def generate_embedding(text: str, model: str | None = None, timeout: int = 30) -> list[float]:
+    """Compatibility shim for tests that patch the legacy module-level helper."""
+
+    from backend.services.ai.openai_api import generate_embedding as openai_generate_embedding
+
+    return await openai_generate_embedding(text, model=model, timeout=timeout)
 
 
 class PhraseValidator:
@@ -107,7 +116,8 @@ class PhraseValidator:
         if norm1 == 0 or norm2 == 0:
             return 0.0
 
-        return dot_product / (norm1 * norm2)
+        similarity = dot_product / (norm1 * norm2)
+        return max(0.0, min(1.0, similarity))
 
     async def calculate_similarity(self, phrase1: str, phrase2: str) -> float:
         """Calculate similarity between two phrases using OpenAI embeddings with caching."""
@@ -140,7 +150,26 @@ class PhraseValidator:
             if embedding is None:
                 logger.info(
                     f"Requesting embedding via matching service for '{phrase=}' using {self.settings.embedding_model=}")
-                embedding = await self.matching.generate_embedding(phrase, db=session)
+                embedding = await generate_embedding(
+                    phrase,
+                    model=self.settings.embedding_model,
+                    timeout=self.settings.ai_timeout_seconds,
+                )
+                session.add(
+                    PhraseEmbedding(
+                        phrase=phrase,
+                        model=self.settings.embedding_model,
+                        provider="openai",
+                        embedding=embedding,
+                    )
+                )
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    await session.rollback()
+                    cached = await self._get_cached_embedding(phrase, session)
+                    if cached is not None:
+                        return cached
 
             return embedding
 
@@ -305,8 +334,17 @@ class PhraseValidator:
 
         return True, ""
 
-    async def validate_copy(self, phrase: str, original: str, other_copy: str | None = None, prompt: str | None = None
-                            ) -> tuple[bool, str]:
+    async def validate_copy(
+        self,
+        phrase: str,
+        original: str | None = None,
+        other_copy: str | None = None,
+        prompt: str | None = None,
+        *,
+        original_phrase: str | None = None,
+        other_copy_phrase: str | None = None,
+        prompt_text: str | None = None,
+    ) -> tuple[bool, str]:
         """
         Validate a copy phrase (includes duplicate and similarity checks).
 
@@ -319,6 +357,16 @@ class PhraseValidator:
         Returns:
             (is_valid, error_message)
         """
+        if original is None:
+            original = original_phrase
+        if other_copy is None:
+            other_copy = other_copy_phrase
+        if prompt is None:
+            prompt = prompt_text
+
+        if original is None:
+            raise TypeError("original phrase is required")
+
         # First validate format and dictionary
         is_valid, error = self.validate(phrase)
         if not is_valid:

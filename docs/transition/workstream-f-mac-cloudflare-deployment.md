@@ -81,9 +81,10 @@ Cloudflare installation, startup purity, and the cutover/soak evidence.
 ### Problem
 
 The current application cannot be safely cut over by changing DNS alone. The
-readiness gate, host-scope middleware, and same-origin clients now exist, but
-startup still mutates state, the reversible SQLite release path is incomplete,
-and the launchd/tunnel/cutover orchestration still has to be built and rehearsed.
+readiness gate, host-scope middleware, and same-origin clients now exist, and
+production now skips the one-time startup bootstrap mutations, but the
+reversible SQLite release path is incomplete and the launchd/tunnel/cutover
+orchestration still has to be built and rehearsed.
 
 ### Expected behavior
 

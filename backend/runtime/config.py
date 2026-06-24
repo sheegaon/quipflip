@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy.engine.url import make_url
 
@@ -12,6 +13,7 @@ from sqlalchemy.engine.url import make_url
 DEFAULT_RUNTIME_ROOT = Path.home() / "Library" / "Application Support" / "Crowdcraft"
 DEFAULT_LOG_DIR = Path.home() / "Library" / "Logs" / "Crowdcraft"
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PRODUCTION_HOST_SUFFIX = ".crowdcraftlabs.com"
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +127,15 @@ def validate_runtime_settings(settings: Any) -> list[str]:
     if not paths.static_root.is_absolute():
         errors.append("CROWDCRAFT_STATIC_ROOT must resolve to an absolute path in production")
 
+    frontend_url_fields = (
+        ("QF_FRONTEND_URL", getattr(settings, "qf_frontend_url", "")),
+        ("MM_FRONTEND_URL", getattr(settings, "mm_frontend_url", "")),
+        ("IR_FRONTEND_URL", getattr(settings, "ir_frontend_url", "")),
+        ("TL_FRONTEND_URL", getattr(settings, "tl_frontend_url", "")),
+    )
+    for env_name, raw_url in frontend_url_fields:
+        errors.extend(_validate_frontend_url(env_name, str(raw_url or "")))
+
     return errors
 
 
@@ -157,5 +168,44 @@ def validate_runtime_resources(settings: Any) -> list[str]:
             index_html = paths.static_root / game / "index.html"
             if not index_html.is_file():
                 errors.append(f"Missing built SPA for {game}: {index_html}")
+
+    return errors
+
+
+def _validate_frontend_url(env_name: str, raw_url: str) -> list[str]:
+    """Validate a production frontend URL without leaking the configured value."""
+
+    errors: list[str] = []
+    if not raw_url:
+        errors.append(f"{env_name} must be configured in production")
+        return errors
+
+    parsed = urlparse(raw_url)
+    if parsed.scheme != "https":
+        errors.append(f"{env_name} must use https in production")
+
+    if parsed.username or parsed.password:
+        errors.append(f"{env_name} must not include credentials in production")
+
+    if parsed.query or parsed.fragment:
+        errors.append(f"{env_name} must not include query strings or fragments in production")
+
+    if parsed.path not in {"", "/"}:
+        errors.append(f"{env_name} must not include a path in production")
+
+    if parsed.port is not None:
+        errors.append(f"{env_name} must not include a port in production")
+
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        errors.append(f"{env_name} must include a hostname in production")
+        return errors
+
+    if hostname in {"localhost", "127.0.0.1", "::1"}:
+        errors.append(f"{env_name} must not point at localhost in production")
+    elif not hostname.endswith(PRODUCTION_HOST_SUFFIX):
+        errors.append(
+            f"{env_name} must end with {PRODUCTION_HOST_SUFFIX} in production"
+        )
 
     return errors

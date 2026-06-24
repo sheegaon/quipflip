@@ -39,6 +39,9 @@ release automation, and cutover evidence:
   required static assets, and required runtime configuration;
 - exact host allowlisting, host-to-game API isolation, and host-to-SPA dispatch;
 - API routes before SPA fallback;
+- production startup skips the one-time bootstrap mutations; explicit release
+  tooling owns any seeding or repair work, currently exposed as
+  `scripts/ops/crowdcraft_ops.py bootstrap`;
 - production SQLite pragmas: foreign keys, WAL, `busy_timeout=5000`, and
   `synchronous=FULL`;
 - production refusal of default/empty signing secrets and unsafe origins;

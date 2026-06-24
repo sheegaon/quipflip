@@ -164,6 +164,62 @@ async def initialize_phrase_validation():
         raise e
 
 
+async def run_release_sync_content():
+    """Run one-time content/bootstrap maintenance as an explicit release step."""
+    # Synchronize prompts between file and database
+    await sync_prompts_with_database()
+
+    # Initialize quests for any players who don't have them yet
+    await initialize_missing_player_quests()
+
+    # Import Meme Mint images and seed captions
+    await import_meme_mint_images()
+
+    # Seed ThinkLink prompts and answers from CSV
+    try:
+        from backend.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await seed_prompts(db)
+        logger.info("ThinkLink prompts seeded successfully")
+    except Exception as e:
+        logger.error(f"Failed to seed ThinkLink prompts: {e}")
+        # Don't raise - allow server to start even if seeding fails
+
+    # Seed ThinkLink answers (completions) from CSV - depends on prompts existing
+    try:
+        from backend.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await seed_answers(db)
+        logger.info("ThinkLink answers seeded successfully")
+    except Exception as e:
+        logger.error(f"Failed to seed ThinkLink answers: {e}")
+        # Don't raise - allow server to start even if seeding fails
+
+    # Clean up prompts with no answers (removes prompts not in CSV)
+    try:
+        from backend.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await cleanup_tl_prompts(db)
+        logger.info("ThinkLink prompt cleanup completed")
+    except Exception as e:
+        logger.error(f"Failed to cleanup ThinkLink prompts: {e}")
+        # Don't raise - allow server to start even if cleanup fails
+
+
+async def run_startup_bootstrap():
+    """Backward-compatible wrapper for non-production startup bootstraps."""
+    await run_release_sync_content()
+
+
+async def maybe_run_startup_bootstrap():
+    """Run bootstrap mutations only outside production."""
+    if settings.environment == "production":
+        logger.info("Skipping startup bootstrap in production; release tooling owns this step")
+        return
+
+    await run_release_sync_content()
+
+
 async def initialize_missing_player_quests():
     """Ensure all players have their starter quests."""
     from backend.scripts.qf.initialize_quests import initialize_quests_for_all_players
@@ -396,44 +452,7 @@ async def lifespan(app_instance: FastAPI):
     # Initialize phrase validation service using either local or remote API
     await initialize_phrase_validation()
 
-    # Synchronize prompts between file and database
-    await sync_prompts_with_database()
-
-    # Initialize quests for any players who don't have them yet
-    await initialize_missing_player_quests()
-
-    # Import Meme Mint images and seed captions
-    await import_meme_mint_images()
-
-    # Seed ThinkLink prompts and answers from CSV
-    try:
-        from backend.database import AsyncSessionLocal
-        async with AsyncSessionLocal() as db:
-            await seed_prompts(db)
-        logger.info("ThinkLink prompts seeded successfully")
-    except Exception as e:
-        logger.error(f"Failed to seed ThinkLink prompts: {e}")
-        # Don't raise - allow server to start even if seeding fails
-
-    # Seed ThinkLink answers (completions) from CSV - depends on prompts existing
-    try:
-        from backend.database import AsyncSessionLocal
-        async with AsyncSessionLocal() as db:
-            await seed_answers(db)
-        logger.info("ThinkLink answers seeded successfully")
-    except Exception as e:
-        logger.error(f"Failed to seed ThinkLink answers: {e}")
-        # Don't raise - allow server to start even if seeding fails
-
-    # Clean up prompts with no answers (removes prompts not in CSV)
-    try:
-        from backend.database import AsyncSessionLocal
-        async with AsyncSessionLocal() as db:
-            await cleanup_tl_prompts(db)
-        logger.info("ThinkLink prompt cleanup completed")
-    except Exception as e:
-        logger.error(f"Failed to cleanup ThinkLink prompts: {e}")
-        # Don't raise - allow server to start even if cleanup fails
+    await maybe_run_startup_bootstrap()
 
     # Start background tasks
     ai_backup_task = None

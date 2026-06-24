@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.crowdcraft.tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${CLOUDFLARED_PATH}</string>
+    <string>tunnel</string>
+    <string>--config</string>
+    <string>${CLOUDFLARED_CONFIG_PATH}</string>
+    <string>--no-autoupdate</string>
+    <string>run</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>${CHECKOUT_PATH}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${LOG_DIR}/tunnel.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>${LOG_DIR}/tunnel.stderr.log</string>
+</dict>
+</plist>

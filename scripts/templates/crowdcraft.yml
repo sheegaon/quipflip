@@ -1,0 +1,13 @@
+tunnel: ${TUNNEL_UUID}
+credentials-file: ${CLOUDFLARED_CREDENTIALS_FILE}
+logfile: ${LOG_DIR}/cloudflared.log
+ingress:
+  - hostname: quipflip.crowdcraftlabs.com
+    service: http://127.0.0.1:8000
+  - hostname: mememint.crowdcraftlabs.com
+    service: http://127.0.0.1:8000
+  - hostname: initialreaction.crowdcraftlabs.com
+    service: http://127.0.0.1:8000
+  - hostname: thinklink.crowdcraftlabs.com
+    service: http://127.0.0.1:8000
+  - service: http_status:404

@@ -70,6 +70,10 @@ async def test_readiness_report_passes_for_complete_runtime(tmp_path):
         crowdcraft_expected_revision="revision-123",
         crowdcraft_workers=1,
         crowdcraft_trust_proxy=True,
+        qf_frontend_url="https://quipflip.crowdcraftlabs.com",
+        mm_frontend_url="https://mememint.crowdcraftlabs.com",
+        ir_frontend_url="https://initialreaction.crowdcraftlabs.com",
+        tl_frontend_url="https://thinklink.crowdcraftlabs.com",
         use_phrase_validator_api=False,
     )
 
@@ -114,6 +118,10 @@ async def test_readiness_report_rejects_stale_static_release_pointer(tmp_path):
         crowdcraft_expected_revision="revision-123",
         crowdcraft_workers=1,
         crowdcraft_trust_proxy=True,
+        qf_frontend_url="https://quipflip.crowdcraftlabs.com",
+        mm_frontend_url="https://mememint.crowdcraftlabs.com",
+        ir_frontend_url="https://initialreaction.crowdcraftlabs.com",
+        tl_frontend_url="https://thinklink.crowdcraftlabs.com",
         use_phrase_validator_api=False,
     )
 
@@ -150,6 +158,30 @@ def test_production_runtime_validation_rejects_worker_count(tmp_path):
         )
 
 
+def test_production_runtime_validation_rejects_localhost_frontend_url(tmp_path):
+    runtime_root = tmp_path / "Crowdcraft"
+    static_root = runtime_root / "static" / "current"
+    log_dir = tmp_path / "logs"
+    db_path = tmp_path / "crowdcraft.sqlite3"
+    log_dir.mkdir()
+    _make_static_release(runtime_root, "release-123")
+
+    with pytest.raises(ValueError, match="QF_FRONTEND_URL must not point at localhost"):
+        Settings(
+            environment="production",
+            secret_key="a-very-secret-value",
+            database_url=f"sqlite+aiosqlite:///{db_path}",
+            crowdcraft_runtime_root=str(runtime_root),
+            crowdcraft_static_root=str(static_root),
+            crowdcraft_log_dir=str(log_dir),
+            crowdcraft_release_id="release-123",
+            crowdcraft_expected_revision="revision-123",
+            crowdcraft_workers=1,
+            crowdcraft_trust_proxy=True,
+            qf_frontend_url="https://localhost",
+        )
+
+
 @pytest.mark.asyncio
 async def test_readiness_report_flags_missing_static_bundle(tmp_path):
     runtime_root = tmp_path / "Crowdcraft"
@@ -176,6 +208,10 @@ async def test_readiness_report_flags_missing_static_bundle(tmp_path):
         crowdcraft_expected_revision="revision-123",
         crowdcraft_workers=1,
         crowdcraft_trust_proxy=True,
+        qf_frontend_url="https://quipflip.crowdcraftlabs.com",
+        mm_frontend_url="https://mememint.crowdcraftlabs.com",
+        ir_frontend_url="https://initialreaction.crowdcraftlabs.com",
+        tl_frontend_url="https://thinklink.crowdcraftlabs.com",
         use_phrase_validator_api=False,
     )
 
@@ -216,6 +252,10 @@ async def test_readiness_report_rejects_multiple_alembic_versions(tmp_path):
         crowdcraft_expected_revision="revision-123",
         crowdcraft_workers=1,
         crowdcraft_trust_proxy=True,
+        qf_frontend_url="https://quipflip.crowdcraftlabs.com",
+        mm_frontend_url="https://mememint.crowdcraftlabs.com",
+        ir_frontend_url="https://initialreaction.crowdcraftlabs.com",
+        tl_frontend_url="https://thinklink.crowdcraftlabs.com",
         use_phrase_validator_api=False,
     )
 

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.crowdcraft.server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${PYTHON_PATH}</string>
+    <string>${CHECKOUT_PATH}/scripts/run-production-server.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>${CHECKOUT_PATH}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>ENVIRONMENT</key>
+    <string>${ENVIRONMENT}</string>
+    <key>DATABASE_URL</key>
+    <string>${DATABASE_URL}</string>
+    <key>CROWDCRAFT_RUNTIME_ROOT</key>
+    <string>${RUNTIME_ROOT}</string>
+    <key>CROWDCRAFT_STATIC_ROOT</key>
+    <string>${STATIC_ROOT}</string>
+    <key>CROWDCRAFT_RELEASE_ID</key>
+    <string>${RELEASE_ID}</string>
+    <key>CROWDCRAFT_EXPECTED_REVISION</key>
+    <string>${EXPECTED_REVISION}</string>
+    <key>CROWDCRAFT_LOG_DIR</key>
+    <string>${LOG_DIR}</string>
+    <key>CROWDCRAFT_WORKERS</key>
+    <string>${WORKERS}</string>
+    <key>CROWDCRAFT_TRUST_PROXY</key>
+    <string>${TRUST_PROXY}</string>
+    <key>QF_FRONTEND_URL</key>
+    <string>${QF_FRONTEND_URL}</string>
+    <key>MM_FRONTEND_URL</key>
+    <string>${MM_FRONTEND_URL}</string>
+    <key>IR_FRONTEND_URL</key>
+    <string>${IR_FRONTEND_URL}</string>
+    <key>TL_FRONTEND_URL</key>
+    <string>${TL_FRONTEND_URL}</string>
+    <key>KEYCHAIN_SERVICE</key>
+    <string>${KEYCHAIN_SERVICE}</string>
+    <key>SECRET_KEY_ACCOUNT</key>
+    <string>${SECRET_KEY_ACCOUNT}</string>
+    <key>OPENAI_ACCOUNT</key>
+    <string>${OPENAI_ACCOUNT}</string>
+    <key>GEMINI_ACCOUNT</key>
+    <string>${GEMINI_ACCOUNT}</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>${LOG_DIR}/server.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>${LOG_DIR}/server.stderr.log</string>
+</dict>
+</plist>

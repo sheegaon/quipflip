@@ -112,9 +112,10 @@ acceptance criteria.
    `window.location.origin`. The remaining work is making sure every entrypoint
    stays on the shared helper and the host matrix keeps it that way.
 8. `/livez` and `/readyz` now exist, and `/health` is a compatibility endpoint
-   that returns an explicit 503 on database failure. Startup still performs data
-   seeding/cleanup and other background mutation, so process liveness and
-   readiness are separated in code but startup purity still needs work.
+   that returns an explicit 503 on database failure. The one-time startup
+   seeding/cleanup bootstrap is now gated off in production, but the periodic
+   maintenance loops still start from lifespan so startup purity is improved
+   rather than fully complete.
 9. The Mac deployment still lacks the guarded `scripts/ops/` release/rollback/
    backup/tunnel orchestration and launchd templates described later in the plan,
    so cutover remains a manual/document-only path.
