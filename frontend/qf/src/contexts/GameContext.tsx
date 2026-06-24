@@ -8,7 +8,7 @@ import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/services/sessionDetection';
 import { SessionState } from '@crowdcraft/types/session.ts';
-import { clearStoredGuestCredentials, setStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
+import { clearStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
 import type {
   Player,
   QFActiveRound,
@@ -144,14 +144,6 @@ export const GameProvider: React.FC<{
             if (!isMounted) return;
 
             gameContextLogger.info('✅ Guest account created:', { username: guestResponse.username });
-
-            // Store guest credentials so the session can be restored after cookie expiry
-            setStoredGuestCredentials({
-              username: guestResponse.username,
-              email: guestResponse.email,
-              password: guestResponse.password,
-              timestamp: Date.now(),
-            });
 
             // Set session with guest account
             apiClient.setSession(guestResponse.username);
@@ -508,7 +500,6 @@ export const GameProvider: React.FC<{
     }
 
     try {
-      gameContextLogger.debug('🔄 Setting loading to true');
       setLoading(true);
       setError(null);
       gameContextLogger.debug('📞 Calling apiClient.startPromptRound()...');
@@ -548,11 +539,9 @@ export const GameProvider: React.FC<{
     } catch (err) {
       gameContextLogger.error('❌ Start prompt round failed:', err);
       const errorMessage = getActionErrorMessage('start-prompt', err);
-      gameContextLogger.debug('📝 Setting error message:', errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
-      gameContextLogger.debug('🔄 Setting loading to false');
       setLoading(false);
     }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
@@ -564,7 +553,6 @@ export const GameProvider: React.FC<{
     }
 
     try {
-      gameContextLogger.debug('🔄 Setting loading to true');
       setLoading(true);
       setError(null);
       gameContextLogger.debug('📞 Calling apiClient.startCopyRound()...');
@@ -607,11 +595,9 @@ export const GameProvider: React.FC<{
     } catch (err) {
       gameContextLogger.error('❌ Start copy round failed:', err);
       const errorMessage = getActionErrorMessage('start-copy', err);
-      gameContextLogger.debug('📝 Setting error message:', errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
-      gameContextLogger.debug('🔄 Setting loading to false');
       setLoading(false);
     }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);
@@ -685,7 +671,6 @@ export const GameProvider: React.FC<{
     }
 
     try {
-      gameContextLogger.debug('🔄 Setting loading to true');
       setLoading(true);
       setError(null);
       gameContextLogger.debug('📞 Calling apiClient.startVoteRound()...');
@@ -727,11 +712,9 @@ export const GameProvider: React.FC<{
     } catch (err) {
       gameContextLogger.error('❌ Start vote round failed:', err);
       const errorMessage = getActionErrorMessage('start-vote', err);
-      gameContextLogger.debug('📝 Setting error message:', errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
-      gameContextLogger.debug('🔄 Setting loading to false');
       setLoading(false);
     }
   }, [isAuthenticated, triggerPoll, onDashboardTrigger]);

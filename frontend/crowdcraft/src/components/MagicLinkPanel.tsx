@@ -81,6 +81,7 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
   const location = useLocation();
   const autoNavigateTimerRef = useRef<number | null>(null);
   const autoConsumeAttemptedRef = useRef(false);
+  const pendingResolveTokenRef = useRef<string | null>(null);
 
   const [panelState, setPanelState] = useState<PanelState>('form');
   const [email, setEmail] = useState(initialEmail);
@@ -122,7 +123,7 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
     }
 
     autoNavigateTimerRef.current = window.setTimeout(() => {
-      window.location.assign(destination);
+      navigate(destination);
     }, 1300);
   };
 
@@ -131,16 +132,25 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
       return;
     }
 
-    navigate(location.pathname, { replace: true });
+    const params = new URLSearchParams(location.search);
+    for (const key of TOKEN_PARAM_NAMES) {
+      params.delete(key);
+    }
+
+    const nextSearch = params.toString();
+    navigate(
+      nextSearch ? `${location.pathname}?${nextSearch}` : location.pathname,
+      { replace: true },
+    );
   };
 
   const consumeMagicLink = async (magicLinkToken: string) => {
     try {
       setPanelState('consuming');
       setError(null);
+      pendingResolveTokenRef.current = magicLinkToken;
       const result = await apiClient.consumeMagicLink({ token: magicLinkToken });
       setStatusResult(result);
-      clearMagicLinkTokenFromUrl();
 
       if (result.status === 'merge_required') {
         setPanelState('merge_required');
@@ -151,7 +161,9 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
         throw new Error('magic_link_auth_incomplete');
       }
 
+      clearMagicLinkTokenFromUrl();
       clearStoredGuestCredentials(guestCredentialsStorageKey);
+      pendingResolveTokenRef.current = null;
       setPanelState('authenticated');
       await onAuthenticated?.(result.auth);
       scheduleAutoNavigate(continueDestination);
@@ -162,14 +174,16 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
   };
 
   const handleResolve = async (mergeGuest: boolean) => {
-    if (!statusResult) {
+    const resolveToken = pendingResolveTokenRef.current;
+    if (!statusResult || !resolveToken) {
       return;
     }
 
     try {
       setPanelState('consuming');
       setError(null);
-      const result = await apiClient.resolveMagicLink(statusResult.magic_link_id, {
+      const result = await apiClient.resolveMagicLink({
+        token: resolveToken,
         merge_guest: mergeGuest,
       });
       setStatusResult(result);
@@ -177,7 +191,9 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
         throw new Error('magic_link_auth_incomplete');
       }
 
+      clearMagicLinkTokenFromUrl();
       clearStoredGuestCredentials(guestCredentialsStorageKey);
+      pendingResolveTokenRef.current = null;
       setPanelState('authenticated');
       await onAuthenticated?.(result.auth);
       scheduleAutoNavigate(continueDestination);
@@ -199,6 +215,7 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
     try {
       setPanelState('requesting');
       setError(null);
+      pendingResolveTokenRef.current = null;
       const result = await apiClient.requestMagicLink({
         email: normalizedEmail,
         guest_player_id: guestPlayerId ?? undefined,
@@ -301,7 +318,7 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
           ) : (
             <button
               type="button"
-              onClick={() => window.location.assign(continueDestination)}
+              onClick={() => navigate(continueDestination)}
               className="rounded-tile bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-700"
             >
               {continueLabel}

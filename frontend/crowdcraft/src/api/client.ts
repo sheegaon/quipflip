@@ -8,7 +8,6 @@ import type {
   MagicLinkConsumeRequest,
   MagicLinkRequest,
   MagicLinkRequestResponse,
-  MagicLinkResolveRequest,
   MagicLinkStatusResponse,
   GameType,
   MMCircle,
@@ -163,12 +162,11 @@ class CrowdcraftApiClient extends BaseApiClient {
   }
 
   async resolveMagicLink(
-    magicLinkId: string,
-    payload: MagicLinkResolveRequest,
+    payload: { token: string; merge_guest: boolean },
     signal?: AbortSignal,
   ): Promise<MagicLinkStatusResponse> {
     const { data } = await this.rootApi.post<MagicLinkStatusResponse>(
-      `/auth/magic-links/${magicLinkId}/resolve`,
+      '/auth/magic-links/resolve',
       payload,
       { signal },
     );

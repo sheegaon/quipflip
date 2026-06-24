@@ -1,6 +1,7 @@
 """Guest-account save and magic-link account recovery helpers."""
 from __future__ import annotations
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import hashlib
 import logging
 import secrets
@@ -17,6 +18,7 @@ from backend.models.account import Account
 from backend.models.magic_link import MagicLink
 from backend.models.player import Player
 from backend.services.auth_service import AuthService
+from backend.services.magic_link_mailer import MagicLinkMailer, MagicLinkMailerError
 from backend.services.player_service import PlayerService
 
 logger = logging.getLogger(__name__)
@@ -62,11 +64,13 @@ class AccountService:
         *,
         auth_service: AuthService | None = None,
         player_service: PlayerService | None = None,
+        mailer: MagicLinkMailer | None = None,
     ) -> None:
         self.db = db
         self.settings = get_settings()
         self.player_service = player_service or PlayerService(db)
         self.auth_service = auth_service or AuthService(db, player_service=self.player_service)
+        self.mailer = mailer or MagicLinkMailer(self.settings)
 
     def _normalize_email(self, email: str) -> str:
         normalized = email.strip().lower()
@@ -144,12 +148,34 @@ class AccountService:
     def _token_hash(self, token: str) -> str:
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+    def _build_magic_link_url(self, frontend_origin: str, redirect_path: str | None, token: str) -> str:
+        normalized_origin = frontend_origin.strip().rstrip("/")
+        if not normalized_origin:
+            raise MagicLinkError("invalid_frontend_origin")
+
+        relative_path = redirect_path or "/magic-link"
+        parsed_path = urlsplit(relative_path)
+        query_pairs = list(parse_qsl(parsed_path.query, keep_blank_values=True))
+        query_pairs.append(("token", token))
+        rebuilt_relative = urlunsplit(
+            (
+                "",
+                "",
+                parsed_path.path or "/magic-link",
+                urlencode(query_pairs),
+                parsed_path.fragment,
+            )
+        )
+
+        return f"{normalized_origin}{rebuilt_relative}"
+
     async def request_magic_link(
         self,
         *,
         email: str,
         guest_player_id: uuid.UUID | str | None = None,
         redirect_path: str | None = None,
+        frontend_origin: str | None = None,
     ) -> MagicLinkRequestResult:
         normalized_email = self._normalize_email(email)
         normalized_redirect_path = self._normalize_redirect_path(redirect_path)
@@ -170,6 +196,24 @@ class AccountService:
             expires_at=datetime.now(UTC) + timedelta(minutes=self.settings.magic_link_exp_minutes),
         )
         self.db.add(link)
+        await self.db.flush()
+
+        if frontend_origin is None:
+            await self.db.rollback()
+            raise MagicLinkError("invalid_frontend_origin")
+
+        link_url = self._build_magic_link_url(frontend_origin, normalized_redirect_path, raw_token)
+
+        try:
+            await self.mailer.send_magic_link(
+                to_email=normalized_email,
+                link_url=link_url,
+                expires_at=link.expires_at,
+            )
+        except MagicLinkMailerError as exc:
+            await self.db.rollback()
+            raise MagicLinkError("magic_link_email_failed") from exc
+
         await self.db.commit()
 
         logger.info(
@@ -196,13 +240,14 @@ class AccountService:
         magic_link = result.scalar_one_or_none()
         if not magic_link or not magic_link.is_active():
             raise MagicLinkError("magic_link_invalid_or_expired")
-        if magic_link.verified_at is not None or magic_link.consumed_at is not None:
+        if magic_link.consumed_at is not None:
             raise MagicLinkError("magic_link_already_used")
 
         saved_account = await self._get_account_for_email(magic_link.email)
         guest_player = magic_link.guest_player
 
-        magic_link.verified_at = datetime.now(UTC)
+        if magic_link.verified_at is None:
+            magic_link.verified_at = datetime.now(UTC)
         if saved_account:
             magic_link.account_id = saved_account.account_id
 
@@ -266,16 +311,17 @@ class AccountService:
 
     async def resolve_magic_link(
         self,
-        magic_link_id: uuid.UUID | str,
+        token: str,
         *,
         merge_guest: bool,
     ) -> MagicLinkSessionResult:
+        token_hash = self._token_hash(token)
         result = await self.db.execute(
-            select(MagicLink).where(MagicLink.magic_link_id == magic_link_id)
+            select(MagicLink).where(MagicLink.token_hash == token_hash)
         )
         magic_link = result.scalar_one_or_none()
         if not magic_link:
-            raise MagicLinkError("magic_link_not_found")
+            raise MagicLinkError("magic_link_invalid_or_expired")
         if magic_link.verified_at is None or magic_link.consumed_at is not None:
             raise MagicLinkError("magic_link_not_ready")
         if not magic_link.is_active():
@@ -296,6 +342,7 @@ class AccountService:
             guest_player.account = saved_account
             guest_player.account_id = saved_account.account_id
             guest_player.is_guest = False
+            saved_account.updated_at = datetime.now(UTC)
             player_for_session = guest_player
         else:
             player_for_session = saved_player

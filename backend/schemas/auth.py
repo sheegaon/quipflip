@@ -117,7 +117,6 @@ class MagicLinkRequest(BaseModel):
 class MagicLinkRequestResponse(BaseModel):
     """Response after requesting a magic link."""
 
-    magic_link_id: UUID
     email: EmailLike
     expires_at: datetime
     message: str
@@ -132,6 +131,7 @@ class MagicLinkConsumeRequest(BaseModel):
 class MagicLinkResolveRequest(BaseModel):
     """Request payload for resolving a merge-required magic link."""
 
+    token: str
     merge_guest: bool
 
 
@@ -140,7 +140,6 @@ class MagicLinkStatusResponse(BaseModel):
 
     status: Literal["authenticated", "merge_required"]
     message: str
-    magic_link_id: UUID
     auth: Optional[AuthTokenResponse] = None
     guest_player: Optional[GlobalPlayerInfo] = None
     saved_player: Optional[GlobalPlayerInfo] = None

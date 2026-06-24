@@ -26,7 +26,7 @@ import {
   setStoredUsername,
   clearStoredUsername
 } from '../services/sessionDetection';
-import { clearStoredGuestCredentials, setStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
+import { clearStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
 import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 import { createLogger } from '@crowdcraft/utils/logger.ts';
 
@@ -170,16 +170,6 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
 
             const playerFromAuth = mapAuthResponseToPlayer(guestResponse);
             setStoredUsername(playerFromAuth.username);
-            setStoredGuestCredentials(
-              {
-                username: playerFromAuth.username,
-                email: playerFromAuth.email,
-                password: guestResponse.password ?? null,
-                timestamp: Date.now(),
-              },
-              GUEST_CREDENTIALS_KEY,
-            );
-
             setState((prev) => ({
               ...prev,
               isAuthenticated: true,
@@ -258,16 +248,6 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(playerFromAuth.player_id);
       setStoredUsername(playerFromAuth.username);
-      setStoredGuestCredentials(
-        {
-          username: playerFromAuth.username,
-          email: playerFromAuth.email,
-          password: response.password ?? null,
-          timestamp: Date.now(),
-        },
-        GUEST_CREDENTIALS_KEY,
-      );
-
       // Associate visitor with new account
       if (guestVisitorId) {
         associateVisitorWithPlayer(guestVisitorId, playerFromAuth.username);

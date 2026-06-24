@@ -3,7 +3,6 @@ import { GUEST_CREDENTIALS_KEY } from './storageKeys';
 export interface GuestCredentials {
   username: string;
   email?: string | null;
-  password?: string | null;
   timestamp?: number;
 }
 
@@ -22,13 +21,11 @@ const normalizeGuestCredentials = (value: unknown): GuestCredentials | null => {
   }
 
   const email = typeof value.email === 'string' ? value.email.trim() : undefined;
-  const password = typeof value.password === 'string' ? value.password : undefined;
   const timestamp = typeof value.timestamp === 'number' ? value.timestamp : undefined;
 
   return {
     username,
     email: email || undefined,
-    password,
     timestamp,
   };
 };
@@ -58,7 +55,12 @@ export const setStoredGuestCredentials = (
     return;
   }
 
-  window.localStorage.setItem(storageKey, JSON.stringify(credentials));
+  const normalizedCredentials = normalizeGuestCredentials(credentials);
+  if (!normalizedCredentials) {
+    return;
+  }
+
+  window.localStorage.setItem(storageKey, JSON.stringify(normalizedCredentials));
 };
 
 export const clearStoredGuestCredentials = (storageKey: string = GUEST_CREDENTIALS_KEY): void => {

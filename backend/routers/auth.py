@@ -5,7 +5,6 @@ import logging
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from backend.config import get_settings
 from backend.database import get_db
@@ -246,17 +245,20 @@ async def suggest_username(
 
 @router.post("/magic-links", response_model=MagicLinkRequestResponse, status_code=202)
 async def request_magic_link(
+    request: Request,
     magic_link_request: MagicLinkRequest,
     db: AsyncSession = Depends(get_db),
 ) -> MagicLinkRequestResponse:
     """Request a single-use magic link for saving or restoring an account."""
 
     account_service = AccountService(db)
+    frontend_origin = request.headers.get("origin") or str(request.base_url).rstrip("/")
     try:
         result = await account_service.request_magic_link(
             email=magic_link_request.email,
             guest_player_id=magic_link_request.guest_player_id,
             redirect_path=magic_link_request.redirect_path,
+            frontend_origin=frontend_origin,
         )
     except MagicLinkError as exc:
         message = str(exc)
@@ -264,10 +266,13 @@ async def request_magic_link(
             raise HTTPException(status_code=400, detail=message) from exc
         if message == "guest_player_not_found":
             raise HTTPException(status_code=404, detail=message) from exc
+        if message == "invalid_frontend_origin":
+            raise HTTPException(status_code=400, detail=message) from exc
+        if message == "magic_link_email_failed":
+            raise HTTPException(status_code=503, detail=message) from exc
         raise HTTPException(status_code=500, detail=message) from exc
 
     return MagicLinkRequestResponse(
-        magic_link_id=result.magic_link_id,
         email=result.email,
         expires_at=result.expires_at,
         message="Check your email for a sign-in link.",
@@ -301,7 +306,6 @@ async def consume_magic_link(
         return MagicLinkStatusResponse(
             status="merge_required",
             message="This email already has an account. Choose whether to add this device's history to it.",
-            magic_link_id=result.magic_link_id,
             guest_player=_build_global_player_info(result.guest_player),
             saved_player=_build_global_player_info(result.saved_player),
         )
@@ -324,14 +328,12 @@ async def consume_magic_link(
     return MagicLinkStatusResponse(
         status="authenticated",
         message="Account saved.",
-        magic_link_id=result.magic_link_id,
         auth=auth_response,
     )
 
 
-@router.post("/magic-links/{magic_link_id}/resolve", response_model=MagicLinkStatusResponse)
+@router.post("/magic-links/resolve", response_model=MagicLinkStatusResponse)
 async def resolve_magic_link(
-    magic_link_id: UUID,
     resolve_request: MagicLinkResolveRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -341,7 +343,7 @@ async def resolve_magic_link(
     account_service = AccountService(db)
     try:
         result = await account_service.resolve_magic_link(
-            magic_link_id,
+            resolve_request.token,
             merge_guest=resolve_request.merge_guest,
         )
     except MagicLinkError as exc:
@@ -372,7 +374,6 @@ async def resolve_magic_link(
     return MagicLinkStatusResponse(
         status="authenticated",
         message="Account saved.",
-        magic_link_id=result.magic_link_id,
         auth=auth_response,
     )
 
@@ -430,6 +431,17 @@ async def logout(
     auth_service = AuthService(db, game_type=game_type)
 
     if token:
+        if game_type == GameType.QF:
+            try:
+                player = await auth_service.get_player_from_refresh_token(token)
+                if player is not None:
+                    from backend.services.qf import PartySessionService
+
+                    party_service = PartySessionService(db)
+                    await party_service.remove_player_from_all_sessions(player.player_id)
+            except Exception as exc:  # pragma: no cover - logout should continue
+                logger.warning("Failed to update QF party presence on logout: %s", exc)
+
         await auth_service.revoke_refresh_token(token)
 
     clear_auth_cookies(response)

@@ -3,10 +3,8 @@
  * Implements the user session detection flow on app load
  */
 
-import { authAPI, playerAPI } from '@/api/client.ts';
+import { playerAPI } from '@/api/client.ts';
 import { createLogger } from '@crowdcraft/utils/logger.ts';
-import { getStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
-import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 
 const logger = createLogger('SessionDetection');
 
@@ -169,33 +167,6 @@ export async function detectUserSession(
 
     // Got expected 401 - user not authenticated, this is normal
     logger.debug('User not authenticated (401), checking visitor status');
-
-    const storedGuestCredentials = getStoredGuestCredentials(GUEST_CREDENTIALS_KEY);
-    if (storedGuestCredentials?.username && storedGuestCredentials.password) {
-      try {
-        const guestAuth = await authAPI.login({
-          username: storedGuestCredentials.username,
-          password: storedGuestCredentials.password,
-        });
-
-        setStoredUsername(guestAuth.username);
-        const guestBalance = await playerAPI.getBalance(signal).catch(() => null);
-
-        return {
-          state: SessionState.RETURNING_USER,
-          isAuthenticated: true,
-          username: guestAuth.username,
-          visitorId,
-          player: guestBalance ?? {
-            wallet: guestAuth.wallet ?? 0,
-            vault: guestAuth.vault ?? 0,
-            daily_bonus_available: false,
-          },
-        };
-      } catch (guestRestoreError) {
-        logger.info('Guest session restore failed, continuing as returning visitor', guestRestoreError);
-      }
-    }
 
     // Step 2: Not authenticated - determine if returning visitor or new
     if (isReturningVisitor) {

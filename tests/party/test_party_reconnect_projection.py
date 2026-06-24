@@ -63,6 +63,51 @@ async def test_logout_cleanup_preserves_party_membership(db_session, player_fact
 
 
 @pytest.mark.asyncio
+async def test_qf_auth_logout_updates_party_presence(test_app, db_session):
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/qf") as client:
+        host_payload = {
+            "username": f"party_host_{uuid4().hex[:6]}",
+            "email": f"party_host_{uuid4().hex[:6]}@example.com",
+            "password": "PartyHost123!",
+        }
+
+        create_response = await client.post("/player", json=host_payload)
+        assert create_response.status_code == 201
+        create_data = create_response.json()
+
+        session_response = await client.post(
+            "/party/create",
+            json={
+                "min_players": 2,
+                "max_players": 4,
+                "prompts_per_player": 1,
+                "copies_per_player": 2,
+                "votes_per_player": 2,
+            },
+            headers={"Authorization": f"Bearer {create_data['access_token']}"},
+        )
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+
+        party_service = PartySessionService(db_session)
+        participant = await party_service.get_participant(session_id, create_data["player_id"])
+        assert participant is not None
+        assert participant.connection_status == "connected"
+
+        logout_response = await client.post(
+            "/auth/logout",
+            json={"refresh_token": create_data["refresh_token"]},
+            params={"game_type": "qf"},
+        )
+        assert logout_response.status_code == 204
+
+        db_session.expire_all()
+        updated_participant = await party_service.get_participant(session_id, create_data["player_id"])
+        assert updated_participant is not None
+        assert updated_participant.connection_status == "disconnected"
+
+
+@pytest.mark.asyncio
 async def test_party_phase_advance_atomic_sets_deadline_and_version(db_session, player_factory):
     host = await player_factory()
     party_service = PartySessionService(db_session)

@@ -13,7 +13,6 @@ const Header: React.FC = () => {
 
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [showGuestWarning, setShowGuestWarning] = React.useState(false);
-  const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const logoButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -77,39 +76,15 @@ const Header: React.FC = () => {
       logout();
       return;
     }
-
-    let email: string | null = player?.email ?? null;
-    let password: string | null = null;
-
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('ir_guest_credentials');
-        if (stored) {
-          const parsed = JSON.parse(stored) as { email?: string; password?: string };
-          if (parsed.email) {
-            email = parsed.email;
-          }
-          if (parsed.password) {
-            password = parsed.password;
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to read guest credentials from storage', err);
-      }
-    }
-
-    setGuestCredentials({ email, password });
     setShowGuestWarning(true);
-  }, [player?.is_guest, player?.email, logout]);
+  }, [player?.is_guest, logout]);
 
   const handleDismissGuestLogout = React.useCallback(() => {
     setShowGuestWarning(false);
-    setGuestCredentials(null);
   }, []);
 
   const handleConfirmGuestLogout = React.useCallback(() => {
     setShowGuestWarning(false);
-    setGuestCredentials(null);
     logout();
   }, [logout]);
 
@@ -130,23 +105,14 @@ const Header: React.FC = () => {
             <p className="text-ir-teal mb-4">
               You're logged in as a guest. If you log out without upgrading to a full account, you may lose access to this account.
             </p>
-            {guestCredentials?.email && (
-              <div className="mb-4 p-3 bg-ir-teal-light rounded-lg">
-                <p className="text-sm text-ir-navy">
-                  <strong>Username:</strong> {player.username}
-                </p>
-                {guestCredentials.email && (
-                  <p className="text-sm text-ir-navy">
-                    <strong>Email:</strong> {guestCredentials.email}
-                  </p>
-                )}
-                {guestCredentials.password && (
-                  <p className="text-sm text-ir-navy mt-2">
-                    <strong>Password:</strong> {guestCredentials.password}
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="mb-4 p-3 bg-ir-teal-light rounded-lg">
+              <p className="text-sm text-ir-navy">
+                <strong>Username:</strong> {player.username}
+              </p>
+              <p className="text-sm text-ir-navy">
+                <strong>Email:</strong> {player.email ?? 'Not available'}
+              </p>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={handleDismissGuestLogout}

@@ -16,14 +16,29 @@ from backend.models.player import Player
 API_BASE_URL = "http://test/qf"
 
 
+async def _capture_magic_link_send(captured: list[dict], *args, **kwargs):
+    captured.append(
+        {
+            "to_email": kwargs["to_email"],
+            "link_url": kwargs["link_url"],
+            "expires_at": kwargs["expires_at"],
+        }
+    )
+
+
 @pytest.mark.asyncio
 async def test_magic_link_creates_account_for_guest(test_app, db_session, monkeypatch):
     """A guest can save progress to a new account through a magic link."""
 
     token = "guest-save-token"
+    sent_links: list[dict] = []
     monkeypatch.setattr(
         "backend.services.account_service.secrets.token_urlsafe",
         lambda _n: token,
+    )
+    monkeypatch.setattr(
+        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
+        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
 
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
@@ -42,9 +57,12 @@ async def test_magic_link_creates_account_for_guest(test_app, db_session, monkey
         assert request_response.status_code == 202
         request_data = request_response.json()
         assert request_data["email"] == "tal.saved@example.com"
+        assert "magic_link_id" not in request_data
+        assert sent_links and sent_links[0]["to_email"] == "tal.saved@example.com"
+        assert token in sent_links[0]["link_url"]
 
         magic_link = await db_session.scalar(
-            select(MagicLink).where(MagicLink.magic_link_id == UUID(request_data["magic_link_id"]))
+            select(MagicLink).where(MagicLink.token_hash == hashlib.sha256(token.encode("utf-8")).hexdigest())
         )
         assert magic_link is not None
         assert magic_link.token_hash == hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -76,7 +94,7 @@ async def test_magic_link_creates_account_for_guest(test_app, db_session, monkey
         assert linked_player.is_guest is False
 
         refreshed_link = await db_session.scalar(
-            select(MagicLink).where(MagicLink.magic_link_id == UUID(request_data["magic_link_id"]))
+            select(MagicLink).where(MagicLink.token_hash == hashlib.sha256(token.encode("utf-8")).hexdigest())
         )
         assert refreshed_link is not None
         assert refreshed_link.consumed_at is not None
@@ -93,9 +111,14 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
     """A magic-link collision should surface merge vs sign-in choices."""
 
     token = "collision-token"
+    sent_links: list[dict] = []
     monkeypatch.setattr(
         "backend.services.account_service.secrets.token_urlsafe",
         lambda _n: token,
+    )
+    monkeypatch.setattr(
+        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
+        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
 
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
@@ -122,7 +145,8 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
             },
         )
         assert request_response.status_code == 202
-        magic_link_id = request_response.json()["magic_link_id"]
+        assert "magic_link_id" not in request_response.json()
+        assert sent_links and token in sent_links[0]["link_url"]
 
         consume_response = await client.post(
             "/auth/magic-links/consume",
@@ -135,8 +159,8 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         assert consume_data["saved_player"]["player_id"] == existing_data["player_id"]
 
         resolve_response = await client.post(
-            f"/auth/magic-links/{magic_link_id}/resolve",
-            json={"merge_guest": True},
+            "/auth/magic-links/resolve",
+            json={"token": token, "merge_guest": True},
         )
         assert resolve_response.status_code == 200
         resolve_data = resolve_response.json()
@@ -149,6 +173,7 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         )
         assert account is not None
         assert resolve_data["auth"]["player"]["account_id"] == str(account.account_id)
+        assert account.primary_player_id == UUID(existing_data["player_id"])
 
         db_session.expire_all()
         merged_guest = await db_session.scalar(
@@ -170,9 +195,14 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
     """A collision can authenticate the existing account without merging guest history."""
 
     token = "collision-signin-token"
+    sent_links: list[dict] = []
     monkeypatch.setattr(
         "backend.services.account_service.secrets.token_urlsafe",
         lambda _n: token,
+    )
+    monkeypatch.setattr(
+        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
+        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
 
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
@@ -199,7 +229,8 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
             },
         )
         assert request_response.status_code == 202
-        magic_link_id = request_response.json()["magic_link_id"]
+        assert "magic_link_id" not in request_response.json()
+        assert sent_links and token in sent_links[0]["link_url"]
 
         consume_response = await client.post(
             "/auth/magic-links/consume",
@@ -210,8 +241,8 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
         assert consume_data["status"] == "merge_required"
 
         resolve_response = await client.post(
-            f"/auth/magic-links/{magic_link_id}/resolve",
-            json={"merge_guest": False},
+            "/auth/magic-links/resolve",
+            json={"token": token, "merge_guest": False},
         )
         assert resolve_response.status_code == 200
         resolve_data = resolve_response.json()

@@ -38,7 +38,6 @@ export const Header: React.FC = () => {
   const { isOffline } = useNetwork();
 
   const [showGuestLogoutWarning, setShowGuestLogoutWarning] = React.useState(false);
-  const [guestCredentials, setGuestCredentials] = React.useState<{ email: string | null; password: string | null } | null>(null);
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [surveyCompleted, setSurveyCompleted] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -122,39 +121,15 @@ export const Header: React.FC = () => {
       logout();
       return;
     }
-
-    let email: string | null = player?.email ?? null;
-    let password: string | null = null;
-
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('crowdcraft_guest_credentials');
-        if (stored) {
-          const parsed = JSON.parse(stored) as { email?: string; password?: string };
-          if (parsed.email) {
-            email = parsed.email;
-          }
-          if (parsed.password) {
-            password = parsed.password;
-          }
-        }
-      } catch (err) {
-        componentLogger.warn('Failed to read guest credentials from storage', err);
-      }
-    }
-
-    setGuestCredentials({ email, password });
     setShowGuestLogoutWarning(true);
-  }, [player?.is_guest, player?.email, logout]);
+  }, [player?.is_guest, logout]);
 
   const handleDismissGuestLogout = React.useCallback(() => {
     setShowGuestLogoutWarning(false);
-    setGuestCredentials(null);
   }, []);
 
   const handleConfirmGuestLogout = React.useCallback(() => {
     setShowGuestLogoutWarning(false);
-    setGuestCredentials(null);
     logout();
   }, [logout]);
 
@@ -213,7 +188,7 @@ export const Header: React.FC = () => {
       <GuestLogoutWarning
         isVisible={showGuestLogoutWarning}
         username={player.username || username}
-        guestCredentials={guestCredentials}
+        guestCredentials={{ email: player.email ?? null }}
         onConfirmLogout={handleConfirmGuestLogout}
         onDismiss={handleDismissGuestLogout}
       />
