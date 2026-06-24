@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '../api/client.ts';
+import { getStoredGuestCredentials } from '../utils/guestSession.ts';
 import { getOrCreateVisitorId, getVisitorId } from '../utils';
 import { SessionState, SessionDetectionResult } from '../types/session.ts';
 import { createLogger } from '../utils/logger.ts';
@@ -128,6 +129,27 @@ export async function detectUserSession(
         // Refresh failed, clear stale credentials
         logger.info('Token refresh failed, clearing stale session', refreshError);
         apiClient.clearSession();
+      }
+    }
+
+    const storedGuestCredentials = getStoredGuestCredentials();
+    if (storedGuestCredentials?.username && storedGuestCredentials.password) {
+      try {
+        const guestSession = await apiClient.loginWithUsername(
+          {
+            username: storedGuestCredentials.username,
+            password: storedGuestCredentials.password,
+          },
+          signal,
+        );
+
+        if (guestSession.username) {
+          apiClient.setSession(guestSession.username);
+        }
+
+        return buildSessionResult(guestSession, visitorId);
+      } catch (guestRestoreError) {
+        logger.info('Guest session restore failed, continuing as returning visitor', guestRestoreError);
       }
     }
 

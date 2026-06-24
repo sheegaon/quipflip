@@ -1,6 +1,6 @@
 """Authentication schema definitions."""
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, constr
@@ -47,6 +47,7 @@ class GamePlayerSnapshot(BaseModel):
 class GlobalPlayerInfo(BaseModel):
     player_id: UUID
     username: str
+    account_id: Optional[UUID] = None
     email: Optional[str] = None
     is_guest: bool
     is_admin: bool
@@ -103,3 +104,43 @@ class LogoutRequest(BaseModel):
     """Logout payload requiring the refresh token to revoke."""
 
     refresh_token: Optional[str] = None
+
+
+class MagicLinkRequest(BaseModel):
+    """Request payload for a guest save or email sign-in link."""
+
+    email: EmailLike
+    guest_player_id: Optional[UUID] = None
+    redirect_path: Optional[str] = None
+
+
+class MagicLinkRequestResponse(BaseModel):
+    """Response after requesting a magic link."""
+
+    magic_link_id: UUID
+    email: EmailLike
+    expires_at: datetime
+    message: str
+
+
+class MagicLinkConsumeRequest(BaseModel):
+    """Request payload for consuming a magic link token."""
+
+    token: str
+
+
+class MagicLinkResolveRequest(BaseModel):
+    """Request payload for resolving a merge-required magic link."""
+
+    merge_guest: bool
+
+
+class MagicLinkStatusResponse(BaseModel):
+    """Response for a consumed or resolved magic link."""
+
+    status: Literal["authenticated", "merge_required"]
+    message: str
+    magic_link_id: UUID
+    auth: Optional[AuthTokenResponse] = None
+    guest_player: Optional[GlobalPlayerInfo] = None
+    saved_player: Optional[GlobalPlayerInfo] = None

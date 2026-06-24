@@ -590,7 +590,7 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Upgrade Guest Account */}
+        {/* Save Account Prompt */}
         {player.is_guest && <UpgradeGuestAccount className="mb-0 md:mb-2" />}
 
         {/* Round Selection */}

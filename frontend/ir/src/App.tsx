@@ -6,11 +6,13 @@ import NotificationDisplay from './components/NotificationDisplay';
 import { ErrorNotification } from './components/ErrorNotification';
 import TutorialOverlay from './components/Tutorial/TutorialOverlay';
 import Landing from './pages/Landing';
+import MagicLink from './pages/MagicLink';
 import Dashboard from './pages/Dashboard';
 import BackronymCreate from './pages/BackronymCreate';
 import SetTracking from './pages/SetTracking';
 import Voting from './pages/Voting';
 import Results from './pages/Results';
+import Account from './pages/Account';
 import Settings from './pages/Settings';
 import './App.css';
 
@@ -36,6 +38,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/auth/magic-link" element={<MagicLink />} />
 
       <Route
         path="/dashboard"
@@ -74,6 +77,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <Results />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account"
+        element={
+          <ProtectedRoute>
+            <Account />
           </ProtectedRoute>
         }
       />

@@ -9,6 +9,7 @@ export * from './logger';
 export * from './offlineQueue';
 export * from './smartPolling';
 export * from './gameKeys';
+export * from './guestSession';
 export * from './phrasesetHelpers';
 export * from './reviewHelpers';
 export * from './brandedMessages';

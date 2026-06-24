@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useIRGame } from '../contexts/IRGameContext';
 import { gameAPI } from '@/api/client.ts';
 import InitCoinDisplay from '../components/InitCoinDisplay';
+import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import type { IRResultsResponse } from '@crowdcraft/api/types.ts';
 import { HomeIcon } from '../components/icons/NavigationIcons';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
@@ -305,6 +307,22 @@ const Results: React.FC = () => {
                 <p className="text-ir-teal mt-2">The crowd chose differently this time</p>
               )}
             </div>
+          </div>
+        )}
+
+        {player.is_guest && (
+          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ir-orange">
+            <MagicLinkPanel
+              mode="save"
+              title="Keep your stats"
+              description="Save your name, wins, awards, and history across devices."
+              ctaLabel="Save my account"
+              guestPlayerId={player.player_id}
+              autoNavigateOnSuccess
+              continueDestination="/dashboard"
+              continueLabel="Continue playing"
+              guestCredentialsStorageKey={GUEST_CREDENTIALS_KEY}
+            />
           </div>
         )}
 

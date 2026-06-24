@@ -5,6 +5,11 @@ import type {
   ApiError,
   AuthSessionResponse,
   AuthTokenResponse,
+  MagicLinkConsumeRequest,
+  MagicLinkRequest,
+  MagicLinkRequestResponse,
+  MagicLinkResolveRequest,
+  MagicLinkStatusResponse,
   GameType,
   MMCircle,
   MMCircleJoinRequestsResponse,
@@ -138,6 +143,35 @@ class CrowdcraftApiClient extends BaseApiClient {
       params: { game_type: gameType },
       signal,
     });
+    return data;
+  }
+
+  async requestMagicLink(
+    payload: MagicLinkRequest,
+    signal?: AbortSignal,
+  ): Promise<MagicLinkRequestResponse> {
+    const { data } = await this.rootApi.post<MagicLinkRequestResponse>('/auth/magic-links', payload, { signal });
+    return data;
+  }
+
+  async consumeMagicLink(
+    payload: MagicLinkConsumeRequest,
+    signal?: AbortSignal,
+  ): Promise<MagicLinkStatusResponse> {
+    const { data } = await this.rootApi.post<MagicLinkStatusResponse>('/auth/magic-links/consume', payload, { signal });
+    return data;
+  }
+
+  async resolveMagicLink(
+    magicLinkId: string,
+    payload: MagicLinkResolveRequest,
+    signal?: AbortSignal,
+  ): Promise<MagicLinkStatusResponse> {
+    const { data } = await this.rootApi.post<MagicLinkStatusResponse>(
+      `/auth/magic-links/${magicLinkId}/resolve`,
+      payload,
+      { signal },
+    );
     return data;
   }
 

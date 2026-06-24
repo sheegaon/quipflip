@@ -116,6 +116,7 @@ async def _build_common_auth_response(
     player_payload = GlobalPlayerInfo(
         player_id=player.player_id,
         username=player.username,
+        account_id=player.account_id,
         email=player.email,
         is_guest=player.is_guest,
         is_admin=player.is_admin,

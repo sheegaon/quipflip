@@ -198,7 +198,7 @@ export class BaseApiClient {
           error.response?.status === 401 &&
           originalRequest &&
           !originalRequest._retry &&
-          originalRequest.url !== '/auth/login' &&
+          !originalRequest.url?.startsWith('/auth/login') &&
           originalRequest.url !== '/auth/refresh' &&
           originalRequest.url !== '/auth/logout'
         ) {

@@ -7,7 +7,7 @@ import { ArrowLeftIcon } from './icons/ArrowIcons';
 import { HomeIcon, SettingsIcon } from './icons/NavigationIcons';
 
 const Header: React.FC = () => {
-  const { player, logout, isAuthenticated, refreshDashboard } = useIRGame();
+  const { player, logout, isAuthenticated, refreshDashboard, pendingResults } = useIRGame();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -209,6 +209,27 @@ const Header: React.FC = () => {
                     </button>
 
                     <button
+                      onClick={() => handleNavigate('/account')}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span className="font-semibold">Account</span>
+                    </button>
+
+                    <button
                       onClick={() => handleNavigate('/settings')}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
                     >
@@ -216,9 +237,9 @@ const Header: React.FC = () => {
                       <span className="font-semibold">Settings</span>
                     </button>
 
-                    {player.is_guest && (
+                    {player.is_guest && pendingResults.length > 0 && (
                       <button
-                        onClick={() => handleNavigate('/settings')}
+                        onClick={() => handleNavigate('/auth/magic-link')}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left text-ir-navy hover:bg-ir-cream transition-colors"
                       >
                         <svg
@@ -227,10 +248,10 @@ const Header: React.FC = () => {
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span className="font-semibold">Upgrade Account</span>
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        <span className="font-semibold">Save your account</span>
                       </button>
                     )}
 

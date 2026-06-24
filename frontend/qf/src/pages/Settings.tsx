@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
+import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import { Header } from '../components/Header';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { settingsLogger } from '@crowdcraft/utils/logger.ts';
@@ -342,7 +343,20 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
+        {player.is_guest && (
+          <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ccl-orange">
+            <MagicLinkPanel
+              mode="save"
+              title="Keep your stats"
+              description="Save your display name, wins, awards, and history across devices."
+              ctaLabel="Save my account"
+              guestPlayerId={player.player_id}
+            />
+          </div>
+        )}
+
         {/* Change Password */}
+        {!player.is_guest && (
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Change Password</h2>
           <p className="text-ccl-teal mb-4">
@@ -392,8 +406,10 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        )}
 
         {/* Change Email */}
+        {!player.is_guest && (
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Change Email</h2>
           <p className="text-ccl-teal mb-4">Enter a new email address and confirm with your current password.</p>
@@ -431,8 +447,10 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        )}
 
         {/* Change Username */}
+        {!player.is_guest && (
         <div className="tile-card p-6 mb-6">
           <h2 className="text-2xl font-display font-bold text-ccl-navy mb-4">Change Username</h2>
           <p className="text-ccl-teal mb-4">Update your display name and confirm with your current password.</p>
@@ -472,6 +490,7 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        )}
 
         {/* Tutorial Management */}
         <div className="tile-card p-6 mb-6">

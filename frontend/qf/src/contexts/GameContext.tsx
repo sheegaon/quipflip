@@ -8,7 +8,7 @@ import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/services/sessionDetection';
 import { SessionState } from '@crowdcraft/types/session.ts';
-import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
+import { clearStoredGuestCredentials, setStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
 import type {
   Player,
   QFActiveRound,
@@ -145,12 +145,13 @@ export const GameProvider: React.FC<{
 
             gameContextLogger.info('✅ Guest account created:', { username: guestResponse.username });
 
-            // Store guest credentials temporarily for display
-            localStorage.setItem(GUEST_CREDENTIALS_KEY, JSON.stringify({
+            // Store guest credentials so the session can be restored after cookie expiry
+            setStoredGuestCredentials({
+              username: guestResponse.username,
               email: guestResponse.email,
               password: guestResponse.password,
-              timestamp: Date.now()
-            }));
+              timestamp: Date.now(),
+            });
 
             // Set session with guest account
             apiClient.setSession(guestResponse.username);
@@ -279,7 +280,7 @@ export const GameProvider: React.FC<{
       setError(null);
 
       // Clear guest credentials on logout
-      localStorage.removeItem(GUEST_CREDENTIALS_KEY);
+      clearStoredGuestCredentials();
 
       // After logout, user is a returning visitor (visitor ID persists)
       setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);

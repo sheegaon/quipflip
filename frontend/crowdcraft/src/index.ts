@@ -14,6 +14,8 @@ export { default as NotificationToast } from './components/NotificationToast';
 export { default as PingNotificationDisplay } from './components/PingNotificationDisplay';
 export { default as ThumbFeedbackButton } from './components/icons/ThumbFeedbackButton.tsx';
 export { default as EditableConfigField } from './components/EditableConfigField';
+export { default as MagicLinkPanel } from './components/MagicLinkPanel';
+export { default as GuestFirstLanding } from './components/GuestFirstLanding';
 
 // Icons
 export * from './components/icons/ArrowIcons';

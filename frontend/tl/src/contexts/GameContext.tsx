@@ -7,7 +7,7 @@ import { getActionErrorMessage } from '@crowdcraft/utils/errorMessages.ts';
 import { gameContextLogger } from '@crowdcraft/utils/logger.ts';
 import { detectUserSession, associateVisitorWithPlayer } from '@crowdcraft/services/sessionDetection';
 import { SessionState } from '@crowdcraft/types/session.ts';
-import { GUEST_CREDENTIALS_KEY } from '@crowdcraft/utils/storageKeys.ts';
+import { clearStoredGuestCredentials, setStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
 import type { Player, TLRoundAvailability, TLAbandonRoundResponse, TLRoundDetails } from '@crowdcraft/api/types.ts';
 
 // ThinkLink specific helpers
@@ -113,11 +113,12 @@ export const GameProvider: React.FC<{
             const guestResponse = await apiClient.createGuest();
             if (!isMounted) return;
 
-            localStorage.setItem(GUEST_CREDENTIALS_KEY, JSON.stringify({
+            setStoredGuestCredentials({
+              username: guestResponse.username,
               email: guestResponse.email,
               password: guestResponse.password,
               timestamp: Date.now(),
-            }));
+            });
 
             apiClient.setSession(guestResponse.username);
             setUsername(guestResponse.username);
@@ -209,7 +210,7 @@ export const GameProvider: React.FC<{
       setShowNewUserWelcome(false);
       setLoading(false);
       setError(null);
-      localStorage.removeItem(GUEST_CREDENTIALS_KEY);
+      clearStoredGuestCredentials();
       setSessionState(visitorId ? SessionState.RETURNING_VISITOR : SessionState.NEW);
     }
   }, [stopPoll, visitorId]);

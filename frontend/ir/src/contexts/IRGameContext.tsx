@@ -26,6 +26,8 @@ import {
   setStoredUsername,
   clearStoredUsername
 } from '../services/sessionDetection';
+import { clearStoredGuestCredentials, setStoredGuestCredentials } from '@crowdcraft/utils/guestSession.ts';
+import { GUEST_CREDENTIALS_KEY } from '../utils/storageKeys';
 import { createLogger } from '@crowdcraft/utils/logger.ts';
 
 const gameContextLogger = createLogger('IRGameContext');
@@ -69,7 +71,7 @@ interface IRGameState {
 
 interface IRGameContextType extends IRGameState {
   // Authentication
-  loginAsGuest: () => Promise<void>;
+  loginAsGuest: (visitorIdOverride?: string | null) => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -158,6 +160,51 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
             last_login_date: null,
           } : null,
         }));
+
+        if (!result.isAuthenticated && result.state === SessionState.NEW) {
+          // New visitors get a guest identity automatically.
+          gameContextLogger.debug('🎭 New visitor detected, creating guest account');
+          try {
+            const guestResponse = await authAPI.createGuest();
+            if (!isMounted) return;
+
+            const playerFromAuth = mapAuthResponseToPlayer(guestResponse);
+            setStoredUsername(playerFromAuth.username);
+            setStoredGuestCredentials(
+              {
+                username: playerFromAuth.username,
+                email: playerFromAuth.email,
+                password: guestResponse.password ?? null,
+                timestamp: Date.now(),
+              },
+              GUEST_CREDENTIALS_KEY,
+            );
+
+            setState((prev) => ({
+              ...prev,
+              isAuthenticated: true,
+              player: playerFromAuth,
+              loading: false,
+              sessionState: SessionState.RETURNING_USER,
+            }));
+            setPlayerId(playerFromAuth.player_id);
+
+            if (result.visitorId) {
+              associateVisitorWithPlayer(result.visitorId, playerFromAuth.username);
+            }
+          } catch (guestErr) {
+            if (controller.signal.aborted) return;
+            gameContextLogger.error('❌ Failed to create ThinkLink guest account:', guestErr);
+            if (isMounted) {
+              setState((prev) => ({
+                ...prev,
+                isAuthenticated: false,
+                player: null,
+                loading: false,
+              }));
+            }
+          }
+        }
       } catch (error: unknown) {
         if (!isMounted) return;
 
@@ -195,12 +242,13 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
   };
 
   // Authentication methods
-  const loginAsGuest = useCallback(async () => {
+  const loginAsGuest = useCallback(async (visitorIdOverride?: string | null) => {
     try {
       setLoading(true);
       setError(null);
       const response = await authAPI.createGuest();
       const playerFromAuth = mapAuthResponseToPlayer(response);
+      const guestVisitorId = visitorIdOverride ?? state.visitorId;
       setState((prev) => ({
         ...prev,
         isAuthenticated: true,
@@ -210,10 +258,19 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(playerFromAuth.player_id);
       setStoredUsername(playerFromAuth.username);
+      setStoredGuestCredentials(
+        {
+          username: playerFromAuth.username,
+          email: playerFromAuth.email,
+          password: response.password ?? null,
+          timestamp: Date.now(),
+        },
+        GUEST_CREDENTIALS_KEY,
+      );
 
       // Associate visitor with new account
-      if (state.visitorId) {
-        associateVisitorWithPlayer(state.visitorId, playerFromAuth.username);
+      if (guestVisitorId) {
+        associateVisitorWithPlayer(guestVisitorId, playerFromAuth.username);
       }
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('login-guest', err);
@@ -238,6 +295,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(playerFromAuth.player_id);
       setStoredUsername(playerFromAuth.username);
+      clearStoredGuestCredentials(GUEST_CREDENTIALS_KEY);
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('login', err);
       setError(errorMessage);
@@ -261,6 +319,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(playerFromAuth.player_id);
       setStoredUsername(playerFromAuth.username);
+      clearStoredGuestCredentials(GUEST_CREDENTIALS_KEY);
 
       // Associate visitor with new account
       if (state.visitorId) {
@@ -295,6 +354,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       clearGameStorage();
       clearStoredUsername();
+      clearStoredGuestCredentials(GUEST_CREDENTIALS_KEY);
     }
   }, []);
 
@@ -313,6 +373,7 @@ export const IRGameProvider: React.FC<IRGameProviderProps> = ({ children }) => {
       }));
       setPlayerId(playerFromAuth.player_id);
       setStoredUsername(playerFromAuth.username);
+      clearStoredGuestCredentials(GUEST_CREDENTIALS_KEY);
     } catch (err: unknown) {
       const errorMessage = getActionErrorMessage('upgrade-account', err);
       setError(errorMessage);

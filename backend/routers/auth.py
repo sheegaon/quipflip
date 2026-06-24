@@ -5,13 +5,19 @@ import logging
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, Header
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 from backend.config import get_settings
 from backend.database import get_db
-from backend.dependencies import get_current_player, get_optional_player
+from backend.dependencies import get_current_player
 from backend.schemas.auth import (
     AuthSessionResponse,
     AuthTokenResponse,
+    MagicLinkConsumeRequest,
+    MagicLinkRequest,
+    MagicLinkRequestResponse,
+    MagicLinkResolveRequest,
+    MagicLinkStatusResponse,
     GamePlayerSnapshot,
     GlobalPlayerInfo,
     LoginRequest,
@@ -21,6 +27,7 @@ from backend.schemas.auth import (
     UsernameLoginRequest,
 )
 from backend.services import AuthError, UsernameService
+from backend.services.account_service import AccountService, MagicLinkError
 from backend.services.auth_service import AuthService, GameType
 from backend.services.player_service import PlayerService
 from backend.utils.cookies import (
@@ -49,6 +56,19 @@ def _resolve_host_game_type(request: Request, game_type: GameType | None) -> Gam
         return host_game_type
 
     return game_type
+
+
+def _build_global_player_info(player: PlayerBase) -> GlobalPlayerInfo:
+    return GlobalPlayerInfo(
+        player_id=player.player_id,
+        username=player.username,
+        account_id=getattr(player, "account_id", None),
+        email=player.email,
+        is_guest=player.is_guest,
+        is_admin=player.is_admin,
+        created_at=player.created_at,
+        last_login_date=player.last_login_date,
+    )
 
 
 async def _complete_login(
@@ -109,15 +129,7 @@ async def _build_auth_response(
         else None
     )
 
-    player_payload = GlobalPlayerInfo(
-        player_id=player.player_id,
-        username=player.username,
-        email=player.email,
-        is_guest=player.is_guest,
-        is_admin=player.is_admin,
-        created_at=player.created_at,
-        last_login_date=player.last_login_date,
-    )
+    player_payload = _build_global_player_info(player)
 
     return AuthTokenResponse(
         access_token=access_token,
@@ -182,15 +194,7 @@ async def get_session(
         else None
     )
 
-    player_payload = GlobalPlayerInfo(
-        player_id=player.player_id,
-        username=player.username,
-        email=player.email,
-        is_guest=player.is_guest,
-        is_admin=player.is_admin,
-        created_at=player.created_at,
-        last_login_date=player.last_login_date,
-    )
+    player_payload = _build_global_player_info(player)
 
     return AuthSessionResponse(
         player_id=player.player_id,
@@ -240,6 +244,139 @@ async def suggest_username(
     return SuggestUsernameResponse(suggested_username=display_name)
 
 
+@router.post("/magic-links", response_model=MagicLinkRequestResponse, status_code=202)
+async def request_magic_link(
+    magic_link_request: MagicLinkRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MagicLinkRequestResponse:
+    """Request a single-use magic link for saving or restoring an account."""
+
+    account_service = AccountService(db)
+    try:
+        result = await account_service.request_magic_link(
+            email=magic_link_request.email,
+            guest_player_id=magic_link_request.guest_player_id,
+            redirect_path=magic_link_request.redirect_path,
+        )
+    except MagicLinkError as exc:
+        message = str(exc)
+        if message in {"invalid_email", "invalid_redirect_path"}:
+            raise HTTPException(status_code=400, detail=message) from exc
+        if message == "guest_player_not_found":
+            raise HTTPException(status_code=404, detail=message) from exc
+        raise HTTPException(status_code=500, detail=message) from exc
+
+    return MagicLinkRequestResponse(
+        magic_link_id=result.magic_link_id,
+        email=result.email,
+        expires_at=result.expires_at,
+        message="Check your email for a sign-in link.",
+    )
+
+
+@router.post("/magic-links/consume", response_model=MagicLinkStatusResponse)
+async def consume_magic_link(
+    consume_request: MagicLinkConsumeRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MagicLinkStatusResponse:
+    """Verify a magic link token and either authenticate or request merge confirmation."""
+
+    account_service = AccountService(db)
+    try:
+        result = await account_service.consume_magic_link(consume_request.token)
+    except MagicLinkError as exc:
+        message = str(exc)
+        if message in {"magic_link_invalid_or_expired", "magic_link_already_used"}:
+            raise HTTPException(status_code=401, detail=message) from exc
+        if message in {"magic_link_not_found", "account_not_found"}:
+            raise HTTPException(status_code=404, detail=message) from exc
+        if message == "magic_link_not_ready":
+            raise HTTPException(status_code=400, detail=message) from exc
+        raise HTTPException(status_code=500, detail=message) from exc
+
+    if result.status == "merge_required":
+        if not result.guest_player or not result.saved_player:
+            raise HTTPException(status_code=500, detail="magic_link_merge_incomplete")
+        return MagicLinkStatusResponse(
+            status="merge_required",
+            message="This email already has an account. Choose whether to add this device's history to it.",
+            magic_link_id=result.magic_link_id,
+            guest_player=_build_global_player_info(result.guest_player),
+            saved_player=_build_global_player_info(result.saved_player),
+        )
+
+    if not result.player or not result.access_token or not result.refresh_token or result.expires_in is None:
+        raise HTTPException(status_code=500, detail="magic_link_auth_incomplete")
+
+    set_access_token_cookie(response, result.access_token)
+    set_refresh_cookie(response, result.refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    auth_response = await _build_auth_response(
+        player=result.player,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        expires_in=result.expires_in,
+        game_type=None,
+        db=db,
+    )
+
+    return MagicLinkStatusResponse(
+        status="authenticated",
+        message="Account saved.",
+        magic_link_id=result.magic_link_id,
+        auth=auth_response,
+    )
+
+
+@router.post("/magic-links/{magic_link_id}/resolve", response_model=MagicLinkStatusResponse)
+async def resolve_magic_link(
+    magic_link_id: UUID,
+    resolve_request: MagicLinkResolveRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MagicLinkStatusResponse:
+    """Finalize a verified magic link after the user picks merge or sign-in only."""
+
+    account_service = AccountService(db)
+    try:
+        result = await account_service.resolve_magic_link(
+            magic_link_id,
+            merge_guest=resolve_request.merge_guest,
+        )
+    except MagicLinkError as exc:
+        message = str(exc)
+        if message in {"magic_link_invalid_or_expired", "magic_link_already_used"}:
+            raise HTTPException(status_code=401, detail=message) from exc
+        if message in {"magic_link_not_found", "account_not_found"}:
+            raise HTTPException(status_code=404, detail=message) from exc
+        if message == "magic_link_not_ready":
+            raise HTTPException(status_code=400, detail=message) from exc
+        raise HTTPException(status_code=500, detail=message) from exc
+
+    if not result.player or not result.access_token or not result.refresh_token or result.expires_in is None:
+        raise HTTPException(status_code=500, detail="magic_link_auth_incomplete")
+
+    set_access_token_cookie(response, result.access_token)
+    set_refresh_cookie(response, result.refresh_token, expires_days=settings.refresh_token_exp_days)
+
+    auth_response = await _build_auth_response(
+        player=result.player,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+        expires_in=result.expires_in,
+        game_type=None,
+        db=db,
+    )
+
+    return MagicLinkStatusResponse(
+        status="authenticated",
+        message="Account saved.",
+        magic_link_id=result.magic_link_id,
+        auth=auth_response,
+    )
+
+
 @router.post("/refresh", response_model=AuthTokenResponse)
 async def refresh_tokens(
     request: Request,
@@ -280,36 +417,17 @@ async def logout(
     request: Request,
     logout_request: LogoutRequest,
     response: Response,
-    player: PlayerBase | None = Depends(get_optional_player),
     refresh_cookie: str | None = Cookie(
         default=None, alias=settings.refresh_token_cookie_name
     ),
     game_type: GameType | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Invalidate the provided refresh token, clean up party sessions, and clear cookies."""
+    """Invalidate the provided refresh token and clear auth cookies."""
 
     game_type = _resolve_host_game_type(request, game_type)
     token = logout_request.refresh_token or refresh_cookie
     auth_service = AuthService(db, game_type=game_type)
-
-    player_id = player.player_id if player else None
-    if not player_id and token:
-        linked_player = await auth_service.get_player_from_refresh_token(token)
-        if linked_player:
-            player_id = linked_player.player_id
-
-    # Clean up any active party sessions the player is in
-    if player_id and game_type == GameType.QF:
-        try:
-            from backend.services.qf.party_session_service import PartySessionService
-            party_service = PartySessionService(db)
-            await party_service.remove_player_from_all_sessions(player_id)
-        except Exception as e:
-            # Log but don't fail logout if party cleanup fails
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to clean up party sessions for {player_id=}: {e}")
 
     if token:
         await auth_service.revoke_refresh_token(token)

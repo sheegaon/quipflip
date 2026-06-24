@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useQuests } from '@crowdcraft/contexts/QuestContext';
 import { Header } from '../components/Header';
@@ -16,6 +17,7 @@ const QUEST_CATEGORIES = ['all', 'streak', 'quality', 'activity', 'milestone'] a
 type QFQuestCategory = typeof QUEST_CATEGORIES[number];
 
 export const Quests: React.FC = () => {
+  const navigate = useNavigate();
   const { state: gameState, actions: gameActions } = useGame();
   const { player } = gameState;
   const { claimBonus, refreshDashboard } = gameActions;
@@ -183,7 +185,14 @@ export const Quests: React.FC = () => {
                 {isGuestPlayer ? (
                   <>
                     <p className="text-gray-600 mb-2">Daily bonus is only available for registered players</p>
-                    <p className="text-sm text-gray-500">Upgrade your guest account to start earning daily rewards.</p>
+                    <p className="text-sm text-gray-500">Save your account to start earning daily rewards.</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/auth/magic-link')}
+                      className="mt-3 inline-flex rounded-tile bg-ccl-orange px-4 py-2 font-semibold text-white transition hover:bg-ccl-orange-deep"
+                    >
+                      Save your account
+                    </button>
                   </>
                 ) : isFirstDayPlayer ? (
                   <>

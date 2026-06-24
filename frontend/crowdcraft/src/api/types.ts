@@ -13,6 +13,7 @@ export interface GamePlayerSnapshot {
 export interface GlobalPlayerInfo {
   player_id: string;
   username: string;
+  account_id?: string | null;
   email?: string | null;
   is_guest: boolean;
   is_admin: boolean;
@@ -54,6 +55,36 @@ export interface WsAuthTokenResponse {
 
 export interface SuggestUsernameResponse {
   suggested_username: string;
+}
+
+export interface MagicLinkRequest {
+  email: string;
+  guest_player_id?: string | null;
+  redirect_path?: string | null;
+}
+
+export interface MagicLinkRequestResponse {
+  magic_link_id: string;
+  email: string;
+  expires_at: string;
+  message: string;
+}
+
+export interface MagicLinkConsumeRequest {
+  token: string;
+}
+
+export interface MagicLinkResolveRequest {
+  merge_guest: boolean;
+}
+
+export interface MagicLinkStatusResponse {
+  status: 'authenticated' | 'merge_required';
+  message: string;
+  magic_link_id: string;
+  auth?: AuthTokenResponse | null;
+  guest_player?: GlobalPlayerInfo | null;
+  saved_player?: GlobalPlayerInfo | null;
 }
 
 export interface ApiError {

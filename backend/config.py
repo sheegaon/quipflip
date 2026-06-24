@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"  # Use HS256 for symmetric signing
     access_token_exp_minutes: int = 120  # Access tokens valid for 2 hours
     refresh_token_exp_days: int = 30  # Longer-lived refresh tokens
+    magic_link_exp_minutes: int = 30
     access_token_cookie_name: str = "quipflip_access_token"
     refresh_token_cookie_name: str = "quipflip_refresh_token"
     auth_emit_legacy_fields: bool = True

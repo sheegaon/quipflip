@@ -95,8 +95,8 @@ export const Header: React.FC = () => {
     checkSurveyStatus();
   }, [player?.player_id]);
 
-  const goToStatistics = React.useCallback(() => {
-    navigate('/statistics');
+  const goToAccount = React.useCallback(() => {
+    navigate('/account');
   }, [navigate]);
 
   const handleLogoClick = React.useCallback(() => {
@@ -266,12 +266,23 @@ export const Header: React.FC = () => {
                       <span className="font-semibold">Party Mode</span>
                     </button>
                     <button
-                      onClick={() => handleNavigate('/statistics')}
+                      onClick={() => handleNavigate('/account')}
                       className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
                     >
                       <StatisticsIcon className="h-5 w-5" />
-                      <span className="font-semibold">Statistics</span>
+                      <span className="font-semibold">Account</span>
                     </button>
+                    {player.is_guest && state.pendingResults.length > 0 && (
+                      <button
+                        onClick={() => handleNavigate('/auth/magic-link')}
+                        className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="font-semibold">Save your account</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleNavigate('/leaderboard')}
                       className="w-full flex items-center md:gap-3 gap-1 md:px-4 px-2 py-1.5 md:py-3 text-left text-ccl-navy hover:bg-ccl-cream transition-colors"
@@ -369,12 +380,12 @@ export const Header: React.FC = () => {
               )}
             </div>
 
-            {/* Center: Username (clickable to statistics) */}
+            {/* Center: Username (clickable to account) */}
             <div className="flex-1 text-center">
               <button
-                onClick={goToStatistics}
+                onClick={goToAccount}
                 className="text-md md:text-2xl text-ccl-turquoise font-semibold hover:text-ccl-teal transition-colors"
-                title="View your statistics"
+                title="View your account"
               >
                 <div className="flex items-center justify-center gap-0.5 md:gap-3">
                   {!player.is_guest && (
@@ -396,10 +407,10 @@ export const Header: React.FC = () => {
               {/* Wallet Balance */}
               <button
                 type="button"
-                onClick={goToStatistics}
+                onClick={goToAccount}
                 className="flex items-center gap-0.5 tutorial-balance border border-white/10 rounded-xl px-0.5 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-teal"
-                title="Wallet balance"
-                aria-label="Wallet balance"
+                title="Account details"
+                aria-label="Account details"
               >
                 <img src="/wallet.png" alt="Wallet" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
@@ -410,10 +421,10 @@ export const Header: React.FC = () => {
               {/* Vault Balance */}
               <button
                 type="button"
-                onClick={goToStatistics}
+                onClick={goToAccount}
                 className="flex items-center gap-0.5 border border-white/10 rounded-xl px-0.5 md:px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ccl-teal"
-                title="Vault balance"
-                aria-label="Vault balance"
+                title="Account details"
+                aria-label="Account details"
               >
                 <img src="/vault.png" alt="Vault" className="w-5 h-5 md:w-7 md:h-7" />
                 <BalanceFlipper
