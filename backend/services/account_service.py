@@ -10,13 +10,14 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.models.account import Account
 from backend.models.magic_link import MagicLink
 from backend.models.player import Player
+from backend.models.refresh_token import RefreshToken
 from backend.services.auth_service import AuthService
 from backend.services.magic_link_mailer import MagicLinkMailer, MagicLinkMailerError
 from backend.services.player_service import PlayerService
@@ -125,6 +126,14 @@ class AccountService:
         player.is_guest = False
         logger.info("Created recoverable account for legacy player %s", player.player_id)
         return account
+
+    async def _revoke_refresh_tokens_for_player(self, player_id: uuid.UUID) -> None:
+        await self.db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.player_id == player_id)
+            .where(RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=datetime.now(UTC))
+        )
 
     async def _ensure_account_for_player(self, player: Player, email: str) -> Account:
         account = await self._get_account_by_email(email)
@@ -272,11 +281,13 @@ class AccountService:
         if guest_player and saved_account is None:
             saved_account = await self._ensure_account_for_player(guest_player, magic_link.email)
             magic_link.account_id = saved_account.account_id
+            await self._revoke_refresh_tokens_for_player(guest_player.player_id)
             magic_link.consumed_at = datetime.now(UTC)
-            await self.db.commit()
             guest_player.last_login_date = datetime.now(UTC)
+            await self.db.commit()
             access_token, refresh_token, expires_in = await self.auth_service.issue_tokens(
-                guest_player
+                guest_player,
+                rotate_existing=False,
             )
             return MagicLinkSessionResult(
                 status="authenticated",
@@ -294,11 +305,15 @@ class AccountService:
         if saved_player is None:
             raise MagicLinkError("account_player_missing")
 
+        if guest_player and guest_player.player_id == saved_player.player_id:
+            await self._revoke_refresh_tokens_for_player(guest_player.player_id)
+
         magic_link.consumed_at = datetime.now(UTC)
-        await self.db.commit()
         saved_player.last_login_date = datetime.now(UTC)
+        await self.db.commit()
         access_token, refresh_token, expires_in = await self.auth_service.issue_tokens(
-            saved_player
+            saved_player,
+            rotate_existing=False,
         )
         return MagicLinkSessionResult(
             status="authenticated",
@@ -348,15 +363,15 @@ class AccountService:
             player_for_session = saved_player
 
         magic_link.account_id = saved_account.account_id
+        if guest_player is not None:
+            await self._revoke_refresh_tokens_for_player(guest_player.player_id)
         magic_link.consumed_at = datetime.now(UTC)
+        player_for_session.last_login_date = datetime.now(UTC)
         await self.db.commit()
 
-        if merge_guest and guest_player is not None:
-            await self.auth_service.revoke_all_refresh_tokens(guest_player.player_id)
-
-        player_for_session.last_login_date = datetime.now(UTC)
         access_token, refresh_token, expires_in = await self.auth_service.issue_tokens(
-            player_for_session
+            player_for_session,
+            rotate_existing=False,
         )
         return MagicLinkSessionResult(
             status="authenticated",

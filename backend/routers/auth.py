@@ -1,5 +1,7 @@
 """Authentication endpoints."""
 from datetime import UTC, datetime
+import ipaddress
+from urllib.parse import urlsplit
 
 import logging
 
@@ -55,6 +57,61 @@ def _resolve_host_game_type(request: Request, game_type: GameType | None) -> Gam
         return host_game_type
 
     return game_type
+
+
+def _origin_identity(value: str | None) -> tuple[str, str, int | None] | None:
+    if not value:
+        return None
+
+    parsed = urlsplit(value.strip())
+    if parsed.scheme not in {"http", "https"}:
+        return None
+    if parsed.query or parsed.fragment:
+        return None
+    if parsed.path not in {"", "/"}:
+        return None
+
+    hostname = parsed.hostname
+    if not hostname:
+        return None
+
+    return parsed.scheme.lower(), hostname.lower(), parsed.port
+
+
+def _is_safe_local_origin_hostname(hostname: str) -> bool:
+    if hostname in {"localhost", "127.0.0.1", "::1"}:
+        return True
+
+    try:
+        parsed_ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+
+    return parsed_ip.is_private or parsed_ip.is_loopback
+
+
+def _resolve_magic_link_frontend_origin(request: Request) -> str:
+    host_scope = getattr(request.state, "host_scope", None)
+    configured_origin = getattr(host_scope, "frontend_url", None)
+    request_origin = request.headers.get("origin")
+
+    if configured_origin:
+        if request_origin and _origin_identity(request_origin) != _origin_identity(configured_origin):
+            raise HTTPException(status_code=400, detail="invalid_frontend_origin")
+        return configured_origin.rstrip("/")
+
+    if request_origin:
+        origin_identity = _origin_identity(request_origin)
+        if origin_identity is None:
+            raise HTTPException(status_code=400, detail="invalid_frontend_origin")
+
+        _, request_hostname, _ = origin_identity
+        if not _is_safe_local_origin_hostname(request_hostname):
+            raise HTTPException(status_code=400, detail="invalid_frontend_origin")
+
+        return request_origin.rstrip("/")
+
+    return str(request.base_url).rstrip("/")
 
 
 def _build_global_player_info(player: PlayerBase) -> GlobalPlayerInfo:
@@ -252,7 +309,7 @@ async def request_magic_link(
     """Request a single-use magic link for saving or restoring an account."""
 
     account_service = AccountService(db)
-    frontend_origin = request.headers.get("origin") or str(request.base_url).rstrip("/")
+    frontend_origin = _resolve_magic_link_frontend_origin(request)
     try:
         result = await account_service.request_magic_link(
             email=magic_link_request.email,

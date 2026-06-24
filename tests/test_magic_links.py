@@ -26,6 +26,16 @@ async def _capture_magic_link_send(captured: list[dict], *args, **kwargs):
     )
 
 
+class _MagicLinkSecretStub:
+    """Deterministic token source for magic-link tests without affecting refresh tokens."""
+
+    def __init__(self, token: str):
+        self._token = token
+
+    def token_urlsafe(self, _n: int) -> str:
+        return self._token
+
+
 @pytest.mark.asyncio
 async def test_magic_link_creates_account_for_guest(test_app, db_session, monkeypatch):
     """A guest can save progress to a new account through a magic link."""
@@ -33,8 +43,8 @@ async def test_magic_link_creates_account_for_guest(test_app, db_session, monkey
     token = "guest-save-token"
     sent_links: list[dict] = []
     monkeypatch.setattr(
-        "backend.services.account_service.secrets.token_urlsafe",
-        lambda _n: token,
+        "backend.services.account_service.secrets",
+        _MagicLinkSecretStub(token),
     )
     monkeypatch.setattr(
         "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
@@ -45,6 +55,7 @@ async def test_magic_link_creates_account_for_guest(test_app, db_session, monkey
         guest_response = await client.post("/player/guest")
         assert guest_response.status_code == 201
         guest_data = guest_response.json()
+        guest_refresh_token = guest_data["refresh_token"]
 
         request_response = await client.post(
             "/auth/magic-links",
@@ -78,6 +89,13 @@ async def test_magic_link_creates_account_for_guest(test_app, db_session, monkey
         assert consume_data["status"] == "authenticated"
         assert consume_data["auth"]["player"]["account_id"] is not None
         assert consume_data["auth"]["player"]["is_guest"] is False
+
+        refresh_after_upgrade = await client.post(
+            "/auth/refresh",
+            json={"refresh_token": guest_refresh_token},
+            params={"game_type": "qf"},
+        )
+        assert refresh_after_upgrade.status_code == 401
 
         account = await db_session.scalar(
             select(Account).where(Account.primary_email == "tal.saved@example.com")
@@ -113,8 +131,12 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
     token = "collision-token"
     sent_links: list[dict] = []
     monkeypatch.setattr(
-        "backend.services.account_service.secrets.token_urlsafe",
-        lambda _n: token,
+        "backend.services.account_service.secrets",
+        _MagicLinkSecretStub(token),
+    )
+    monkeypatch.setattr(
+        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
+        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
     monkeypatch.setattr(
         "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
@@ -136,6 +158,7 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         guest_response = await client.post("/player/guest")
         assert guest_response.status_code == 201
         guest_data = guest_response.json()
+        guest_refresh_token = guest_data["refresh_token"]
 
         request_response = await client.post(
             "/auth/magic-links",
@@ -168,6 +191,13 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         assert resolve_data["auth"]["player"]["player_id"] == guest_data["player_id"]
         assert resolve_data["auth"]["player"]["username"] == guest_data["username"]
 
+        refresh_after_upgrade = await client.post(
+            "/auth/refresh",
+            json={"refresh_token": guest_refresh_token},
+            params={"game_type": "qf"},
+        )
+        assert refresh_after_upgrade.status_code == 401
+
         account = await db_session.scalar(
             select(Account).where(Account.primary_email == "tal.collision@example.com")
         )
@@ -197,8 +227,12 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
     token = "collision-signin-token"
     sent_links: list[dict] = []
     monkeypatch.setattr(
-        "backend.services.account_service.secrets.token_urlsafe",
-        lambda _n: token,
+        "backend.services.account_service.secrets",
+        _MagicLinkSecretStub(token),
+    )
+    monkeypatch.setattr(
+        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
+        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
     monkeypatch.setattr(
         "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
@@ -220,6 +254,7 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
         guest_response = await client.post("/player/guest")
         assert guest_response.status_code == 201
         guest_data = guest_response.json()
+        guest_refresh_token = guest_data["refresh_token"]
 
         request_response = await client.post(
             "/auth/magic-links",
@@ -247,6 +282,14 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
         assert resolve_response.status_code == 200
         resolve_data = resolve_response.json()
         assert resolve_data["status"] == "authenticated"
+
+        refresh_after_upgrade = await client.post(
+            "/auth/refresh",
+            json={"refresh_token": guest_refresh_token},
+            params={"game_type": "qf"},
+        )
+        assert refresh_after_upgrade.status_code == 401
+
         account = await db_session.scalar(
             select(Account).where(Account.primary_email == "tal.collision.signin@example.com")
         )
@@ -268,3 +311,40 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
         )
         assert saved_player is not None
         assert saved_player.account_id == account.account_id
+
+
+@pytest.mark.asyncio
+async def test_magic_link_rejects_spoofed_frontend_origin(test_app, db_session, monkeypatch):
+    """The frontend origin used for magic links must match the validated host scope."""
+
+    token = "spoofed-origin-token"
+    sent_links: list[dict] = []
+    monkeypatch.setattr(
+        "backend.services.account_service.secrets",
+        _MagicLinkSecretStub(token),
+    )
+    monkeypatch.setattr(
+        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
+        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=test_app),
+        base_url="https://quipflip.crowdcraftlabs.com",
+    ) as client:
+        guest_response = await client.post("/qf/player/guest")
+        assert guest_response.status_code == 201
+        guest_data = guest_response.json()
+
+        request_response = await client.post(
+            "/qf/auth/magic-links",
+            json={
+                "email": "tal.spoofed@example.com",
+                "guest_player_id": guest_data["player_id"],
+            },
+            headers={"Origin": "https://evil.example"},
+        )
+
+        assert request_response.status_code == 400
+        assert request_response.json()["detail"] == "invalid_frontend_origin"
+        assert not sent_links

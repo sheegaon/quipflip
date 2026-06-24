@@ -109,6 +109,8 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
     }
 
     autoConsumeAttemptedRef.current = true;
+    pendingResolveTokenRef.current = token;
+    clearMagicLinkTokenFromUrl(token);
     void consumeMagicLink(token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -127,8 +129,9 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
     }, 1300);
   };
 
-  const clearMagicLinkTokenFromUrl = () => {
-    if (!token) {
+  const clearMagicLinkTokenFromUrl = (magicLinkToken?: string | null) => {
+    const tokenToClear = magicLinkToken ?? token;
+    if (!tokenToClear) {
       return;
     }
 
@@ -161,13 +164,15 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
         throw new Error('magic_link_auth_incomplete');
       }
 
-      clearMagicLinkTokenFromUrl();
+      clearMagicLinkTokenFromUrl(magicLinkToken);
       clearStoredGuestCredentials(guestCredentialsStorageKey);
       pendingResolveTokenRef.current = null;
       setPanelState('authenticated');
       await onAuthenticated?.(result.auth);
       scheduleAutoNavigate(continueDestination);
     } catch (err) {
+      pendingResolveTokenRef.current = null;
+      setStatusResult(null);
       setPanelState('form');
       setError(extractErrorMessage(err) || 'Unable to verify your link right now.');
     }
@@ -191,7 +196,7 @@ export const MagicLinkPanel: React.FC<MagicLinkPanelProps> = ({
         throw new Error('magic_link_auth_incomplete');
       }
 
-      clearMagicLinkTokenFromUrl();
+      clearMagicLinkTokenFromUrl(resolveToken);
       clearStoredGuestCredentials(guestCredentialsStorageKey);
       pendingResolveTokenRef.current = null;
       setPanelState('authenticated');
