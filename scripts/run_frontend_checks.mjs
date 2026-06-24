@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { loadConfigFromFile } from 'vite';
 
@@ -9,7 +10,9 @@ const failures = [];
 const requiredDedupe = ['react', 'react-dom', 'react-router', 'react-router-dom'];
 
 for (const workspace of appWorkspaces) {
-  const configPath = resolve(workspace, 'vite.config.ts');
+  const tsConfigPath = resolve(workspace, 'vite.config.ts');
+  const jsConfigPath = resolve(workspace, 'vite.config.js');
+  const configPath = existsSync(tsConfigPath) ? tsConfigPath : jsConfigPath;
   const loaded = await loadConfigFromFile(
     { command: 'build', mode: 'production' },
     configPath,
