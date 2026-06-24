@@ -11,6 +11,7 @@ from sqlalchemy import select
 from backend.models.account import Account
 from backend.models.magic_link import MagicLink
 from backend.models.player import Player
+from backend.models.qf.player_data import QFPlayerData
 
 
 API_BASE_URL = "http://test/qf"
@@ -138,10 +139,6 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
         lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
-    monkeypatch.setattr(
-        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
-        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
-    )
 
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url=API_BASE_URL) as client:
         existing_response = await client.post(
@@ -159,6 +156,17 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         assert guest_response.status_code == 201
         guest_data = guest_response.json()
         guest_refresh_token = guest_data["refresh_token"]
+
+        existing_qf_data = await db_session.scalar(
+            select(QFPlayerData).where(QFPlayerData.player_id == UUID(existing_data["player_id"]))
+        )
+        guest_qf_data = await db_session.scalar(
+            select(QFPlayerData).where(QFPlayerData.player_id == UUID(guest_data["player_id"]))
+        )
+        assert existing_qf_data is not None
+        assert guest_qf_data is not None
+        expected_wallet = existing_qf_data.wallet + guest_qf_data.wallet
+        expected_vault = existing_qf_data.vault + guest_qf_data.vault
 
         request_response = await client.post(
             "/auth/magic-links",
@@ -188,8 +196,8 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         assert resolve_response.status_code == 200
         resolve_data = resolve_response.json()
         assert resolve_data["status"] == "authenticated"
-        assert resolve_data["auth"]["player"]["player_id"] == guest_data["player_id"]
-        assert resolve_data["auth"]["player"]["username"] == guest_data["username"]
+        assert resolve_data["auth"]["player"]["player_id"] == existing_data["player_id"]
+        assert resolve_data["auth"]["player"]["username"] == existing_data["username"]
 
         refresh_after_upgrade = await client.post(
             "/auth/refresh",
@@ -206,6 +214,13 @@ async def test_magic_link_collision_prompts_for_merge(test_app, db_session, monk
         assert account.primary_player_id == UUID(existing_data["player_id"])
 
         db_session.expire_all()
+        saved_qf_data = await db_session.scalar(
+            select(QFPlayerData).where(QFPlayerData.player_id == UUID(existing_data["player_id"]))
+        )
+        assert saved_qf_data is not None
+        assert saved_qf_data.wallet == expected_wallet
+        assert saved_qf_data.vault == expected_vault
+
         merged_guest = await db_session.scalar(
             select(Player).where(Player.player_id == UUID(guest_data["player_id"]))
         )
@@ -229,10 +244,6 @@ async def test_magic_link_collision_can_sign_in_without_merging(test_app, db_ses
     monkeypatch.setattr(
         "backend.services.account_service.secrets",
         _MagicLinkSecretStub(token),
-    )
-    monkeypatch.setattr(
-        "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",
-        lambda self, **kwargs: _capture_magic_link_send(sent_links, **kwargs),
     )
     monkeypatch.setattr(
         "backend.services.magic_link_mailer.MagicLinkMailer.send_magic_link",

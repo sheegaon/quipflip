@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from collections.abc import Iterable
 import hashlib
 import logging
 import secrets
@@ -10,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import select, update
+from sqlalchemy import bindparam, inspect, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -134,6 +135,286 @@ class AccountService:
             .where(RefreshToken.revoked_at.is_(None))
             .values(revoked_at=datetime.now(UTC))
         )
+
+    @staticmethod
+    def _pick_latest_datetime(*values: datetime | None) -> datetime | None:
+        candidates = [value for value in values if value is not None]
+        return max(candidates) if candidates else None
+
+    @staticmethod
+    def _pick_earliest_datetime(*values: datetime | None) -> datetime | None:
+        candidates = [value for value in values if value is not None]
+        return min(candidates) if candidates else None
+
+    @staticmethod
+    def _pick_more_advanced_progress(current: str | None, incoming: str | None) -> str | None:
+        progress_rank = {
+            "not_started": 0,
+            "in_progress": 1,
+            "completed": 2,
+        }
+        if current is None:
+            return incoming
+        if incoming is None:
+            return current
+
+        return incoming if progress_rank.get(incoming, 0) > progress_rank.get(current, 0) else current
+
+    def _merge_player_data_rows(self, source_data: object, target_data: object) -> None:
+        if hasattr(target_data, "wallet"):
+            target_data.wallet = int(getattr(target_data, "wallet", 0) or 0) + int(getattr(source_data, "wallet", 0) or 0)
+        if hasattr(target_data, "vault"):
+            target_data.vault = int(getattr(target_data, "vault", 0) or 0) + int(getattr(source_data, "vault", 0) or 0)
+
+        if hasattr(target_data, "tutorial_completed"):
+            target_data.tutorial_completed = bool(
+                getattr(target_data, "tutorial_completed", False)
+                or getattr(source_data, "tutorial_completed", False)
+            )
+        if hasattr(target_data, "tutorial_progress"):
+            target_data.tutorial_progress = self._pick_more_advanced_progress(
+                getattr(target_data, "tutorial_progress", None),
+                getattr(source_data, "tutorial_progress", None),
+            ) or "not_started"
+        if hasattr(target_data, "tutorial_started_at"):
+            target_data.tutorial_started_at = self._pick_earliest_datetime(
+                getattr(target_data, "tutorial_started_at", None),
+                getattr(source_data, "tutorial_started_at", None),
+            )
+        if hasattr(target_data, "tutorial_completed_at"):
+            target_data.tutorial_completed_at = self._pick_latest_datetime(
+                getattr(target_data, "tutorial_completed_at", None),
+                getattr(source_data, "tutorial_completed_at", None),
+            )
+
+        if hasattr(target_data, "consecutive_incorrect_votes"):
+            target_data.consecutive_incorrect_votes = max(
+                int(getattr(target_data, "consecutive_incorrect_votes", 0) or 0),
+                int(getattr(source_data, "consecutive_incorrect_votes", 0) or 0),
+            )
+        if hasattr(target_data, "vote_lockout_until"):
+            target_data.vote_lockout_until = self._pick_latest_datetime(
+                getattr(target_data, "vote_lockout_until", None),
+                getattr(source_data, "vote_lockout_until", None),
+            )
+        if hasattr(target_data, "active_round_id") and getattr(target_data, "active_round_id", None) is None:
+            target_data.active_round_id = getattr(source_data, "active_round_id", None)
+        if hasattr(target_data, "flag_dismissal_streak"):
+            target_data.flag_dismissal_streak = max(
+                int(getattr(target_data, "flag_dismissal_streak", 0) or 0),
+                int(getattr(source_data, "flag_dismissal_streak", 0) or 0),
+            )
+        if hasattr(target_data, "free_captions_used"):
+            target_data.free_captions_used = int(
+                getattr(target_data, "free_captions_used", 0) or 0
+            ) + int(getattr(source_data, "free_captions_used", 0) or 0)
+
+        if hasattr(target_data, "created_at"):
+            target_data.created_at = self._pick_earliest_datetime(
+                getattr(target_data, "created_at", None),
+                getattr(source_data, "created_at", None),
+            )
+        if hasattr(target_data, "updated_at"):
+            target_data.updated_at = datetime.now(UTC)
+
+    async def _merge_single_row_models(
+        self,
+        models: Iterable[type[object]],
+        source_player_id: uuid.UUID,
+        target_player_id: uuid.UUID,
+    ) -> None:
+        for model in models:
+            source_result = await self.db.execute(
+                select(model).where(model.player_id == source_player_id)  # type: ignore[attr-defined]
+            )
+            source_row = source_result.scalar_one_or_none()
+            if source_row is None:
+                continue
+
+            target_result = await self.db.execute(
+                select(model).where(model.player_id == target_player_id)  # type: ignore[attr-defined]
+            )
+            target_row = target_result.scalar_one_or_none()
+            if target_row is None:
+                target_row = model(player_id=target_player_id)  # type: ignore[call-arg]
+                self.db.add(target_row)
+
+            self._merge_player_data_rows(source_row, target_row)
+            await self.db.delete(source_row)
+
+    async def _merge_daily_bonus_rows(
+        self,
+        models: Iterable[type[object]],
+        source_player_id: uuid.UUID,
+        target_player_id: uuid.UUID,
+    ) -> None:
+        for model in models:
+            source_result = await self.db.execute(
+                select(model).where(model.player_id == source_player_id)  # type: ignore[attr-defined]
+            )
+            source_rows = list(source_result.scalars().all())
+            if not source_rows:
+                continue
+
+            target_result = await self.db.execute(
+                select(model).where(model.player_id == target_player_id)  # type: ignore[attr-defined]
+            )
+            target_rows = list(target_result.scalars().all())
+            target_by_date = {row.date: row for row in target_rows}
+
+            for source_row in source_rows:
+                target_row = target_by_date.get(source_row.date)
+                if target_row is None:
+                    target_row = model(  # type: ignore[call-arg]
+                        player_id=target_player_id,
+                        date=source_row.date,
+                    )
+                    self.db.add(target_row)
+                    target_by_date[source_row.date] = target_row
+
+                target_row.amount = int(getattr(target_row, "amount", 0) or 0) + int(
+                    getattr(source_row, "amount", 0) or 0
+                )
+                if hasattr(target_row, "claimed_at"):
+                    target_row.claimed_at = self._pick_earliest_datetime(
+                        getattr(target_row, "claimed_at", None),
+                        getattr(source_row, "claimed_at", None),
+                    )
+                if hasattr(target_row, "updated_at"):
+                    target_row.updated_at = datetime.now(UTC)
+                await self.db.delete(source_row)
+
+    async def _merge_daily_state_rows(
+        self,
+        models: Iterable[type[object]],
+        source_player_id: uuid.UUID,
+        target_player_id: uuid.UUID,
+    ) -> None:
+        for model in models:
+            source_result = await self.db.execute(
+                select(model).where(model.player_id == source_player_id)  # type: ignore[attr-defined]
+            )
+            source_rows = list(source_result.scalars().all())
+            if not source_rows:
+                continue
+
+            target_result = await self.db.execute(
+                select(model).where(model.player_id == target_player_id)  # type: ignore[attr-defined]
+            )
+            target_rows = list(target_result.scalars().all())
+            target_by_date = {row.date: row for row in target_rows}
+
+            for source_row in source_rows:
+                target_row = target_by_date.get(source_row.date)
+                if target_row is None:
+                    target_row = model(  # type: ignore[call-arg]
+                        player_id=target_player_id,
+                        date=source_row.date,
+                    )
+                    self.db.add(target_row)
+                    target_by_date[source_row.date] = target_row
+
+                target_row.free_captions_used = int(
+                    getattr(target_row, "free_captions_used", 0) or 0
+                ) + int(getattr(source_row, "free_captions_used", 0) or 0)
+                if hasattr(target_row, "created_at"):
+                    target_row.created_at = self._pick_earliest_datetime(
+                        getattr(target_row, "created_at", None),
+                        getattr(source_row, "created_at", None),
+                    )
+                if hasattr(target_row, "updated_at"):
+                    target_row.updated_at = datetime.now(UTC)
+                await self.db.delete(source_row)
+
+    async def _reassign_player_foreign_keys(
+        self,
+        source_player_id: uuid.UUID,
+        target_player_id: uuid.UUID,
+    ) -> None:
+        """Move player-owned history rows from a guest to the saved account."""
+
+        skipped_tables = {
+            "accounts",
+            "magic_links",
+            "refresh_tokens",
+            "qf_daily_bonuses",
+            "mm_daily_bonuses",
+            "ir_daily_bonuses",
+            "tl_daily_bonuses",
+            "mm_player_daily_states",
+            "tl_player_daily_states",
+        }
+
+        def _sync_reassign(sync_session) -> None:
+            conn = sync_session.connection()
+            inspector = inspect(conn)
+            player_id_type = Player.__table__.c.player_id.type
+
+            for table_name in inspector.get_table_names():
+                if table_name in skipped_tables or table_name.endswith("_player_data"):
+                    continue
+
+                for fk in inspector.get_foreign_keys(table_name):
+                    if fk.get("referred_table") != "players":
+                        continue
+
+                    for column_name in fk.get("constrained_columns", []):
+                        statement = text(
+                            f'UPDATE "{table_name}" '
+                            f'SET "{column_name}" = :target_player_id '
+                            f'WHERE "{column_name}" = :source_player_id'
+                        ).bindparams(
+                            bindparam("target_player_id", type_=player_id_type),
+                            bindparam("source_player_id", type_=player_id_type),
+                        )
+                        sync_session.execute(
+                            statement,
+                            {
+                                "target_player_id": target_player_id,
+                                "source_player_id": source_player_id,
+                            },
+                        )
+
+        await self.db.run_sync(_sync_reassign)
+
+    async def _merge_guest_into_saved_player(
+        self,
+        source_player: Player,
+        target_player: Player,
+    ) -> None:
+        """Move the guest's game data onto the saved account before issuing tokens."""
+
+        if source_player.player_id == target_player.player_id:
+            return
+
+        from backend.models.ir.daily_bonus import IRDailyBonus
+        from backend.models.ir.player_data import IRPlayerData
+        from backend.models.mm.daily_bonus import MMDailyBonus
+        from backend.models.mm.player_data import MMPlayerData
+        from backend.models.mm.player_daily_state import MMPlayerDailyState
+        from backend.models.qf.daily_bonus import QFDailyBonus
+        from backend.models.qf.player_data import QFPlayerData
+        from backend.models.tl.daily_bonus import TLDailyBonus
+        from backend.models.tl.player_data import TLPlayerData
+        from backend.models.tl.player_daily_state import TLPlayerDailyState
+
+        await self._merge_single_row_models(
+            [QFPlayerData, MMPlayerData, IRPlayerData, TLPlayerData],
+            source_player.player_id,
+            target_player.player_id,
+        )
+        await self._merge_daily_bonus_rows(
+            [QFDailyBonus, MMDailyBonus, IRDailyBonus, TLDailyBonus],
+            source_player.player_id,
+            target_player.player_id,
+        )
+        await self._merge_daily_state_rows(
+            [MMPlayerDailyState, TLPlayerDailyState],
+            source_player.player_id,
+            target_player.player_id,
+        )
+        await self.db.flush()
+        await self._reassign_player_foreign_keys(source_player.player_id, target_player.player_id)
 
     async def _ensure_account_for_player(self, player: Player, email: str) -> Account:
         account = await self._get_account_by_email(email)
@@ -354,11 +635,11 @@ class AccountService:
         if merge_guest:
             if guest_player is None:
                 raise MagicLinkError("guest_player_not_found")
-            guest_player.account = saved_account
+            await self._merge_guest_into_saved_player(guest_player, saved_player)
             guest_player.account_id = saved_account.account_id
             guest_player.is_guest = False
             saved_account.updated_at = datetime.now(UTC)
-            player_for_session = guest_player
+            player_for_session = saved_player
         else:
             player_for_session = saved_player
 
