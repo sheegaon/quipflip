@@ -65,8 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tunnel-uuid", default="", help="Cloudflare tunnel UUID.")
     parser.add_argument(
         "--credentials-file",
-        default=str(Path.home() / ".cloudflared" / "crowdcraft.json"),
-        help="Absolute cloudflared credentials file path.",
+        default="",
+        help="Absolute cloudflared credentials file path (default: ~/.cloudflared/<tunnel-uuid>.json).",
     )
     parser.add_argument(
         "--cloudflared-config",
@@ -92,18 +92,22 @@ def main(argv: list[str] | None = None) -> int:
 
     _require_clean_checkout()
 
-    checkout = Path(args.checkout).expanduser().resolve()
-    python_path = Path(args.python).expanduser().resolve() if args.python else checkout / ".venv" / "bin" / "python"
-    uvicorn_path = Path(args.uvicorn).expanduser().resolve() if args.uvicorn else checkout / ".venv" / "bin" / "uvicorn"
-    cloudflared_path = Path(args.cloudflared).expanduser().resolve() if args.cloudflared else shutil.which("cloudflared")
-    runtime_root = Path(args.runtime_root).expanduser().resolve() if args.runtime_root else Path.home() / "Library" / "Application Support" / "Crowdcraft"
-    log_dir = Path(args.log_dir).expanduser().resolve() if args.log_dir else Path.home() / "Library" / "Logs" / "Crowdcraft"
+    checkout = Path(args.checkout).expanduser().absolute()
+    python_path = Path(args.python).expanduser().absolute() if args.python else checkout / ".venv" / "bin" / "python"
+    uvicorn_path = Path(args.uvicorn).expanduser().absolute() if args.uvicorn else checkout / ".venv" / "bin" / "uvicorn"
+    cloudflared_path = Path(args.cloudflared).expanduser().absolute() if args.cloudflared else shutil.which("cloudflared")
+    runtime_root = Path(args.runtime_root).expanduser().absolute() if args.runtime_root else Path.home() / "Library" / "Application Support" / "Crowdcraft"
+    log_dir = Path(args.log_dir).expanduser().absolute() if args.log_dir else Path.home() / "Library" / "Logs" / "Crowdcraft"
     database_url = f"sqlite+aiosqlite:///{runtime_root / 'crowdcraft.sqlite3'}"
     if cloudflared_path is None:
         raise RuntimeError("cloudflared not found on PATH and no --cloudflared was provided")
-    cloudflared_path = Path(cloudflared_path).resolve()
-    credentials_file = Path(args.credentials_file).expanduser().resolve()
-    cloudflared_config = Path(args.cloudflared_config).expanduser().resolve()
+    cloudflared_path = Path(cloudflared_path).expanduser().absolute()
+    credentials_file = (
+        Path(args.credentials_file).expanduser().absolute()
+        if args.credentials_file.strip()
+        else (Path.home() / ".cloudflared" / f"{args.tunnel_uuid.strip()}.json")
+    )
+    cloudflared_config = Path(args.cloudflared_config).expanduser().absolute()
     if not args.tunnel_uuid.strip():
         raise RuntimeError("--tunnel-uuid is required to render the Cloudflare tunnel config")
     if not args.release_id.strip():

@@ -387,7 +387,17 @@ def _rollback_static_release(paths: Any, release_record: dict[str, Any]) -> dict
 
 
 def _run_verify_gate() -> dict[str, Any]:
-    result = run_command([sys.executable, "scripts/verify.py", "verify"], cwd=ROOT_DIR)
+    settings = get_settings()
+    verify_env = os.environ.copy()
+    for field_name in settings.__class__.model_fields:
+        verify_env.pop(field_name.upper(), None)
+    verify_env["ENVIRONMENT"] = "development"
+
+    result = run_command(
+        [sys.executable, "scripts/verify.py", "verify"],
+        cwd=ROOT_DIR,
+        env=verify_env,
+    )
     if result.returncode != 0:
         raise RuntimeError(
             "verification failed:\n"
@@ -415,7 +425,7 @@ def _launchctl_target() -> str:
 def _run_launchctl(command: str) -> dict[str, Any]:
     args = ["launchctl", command]
     if command == "bootout":
-        args.extend([_launchctl_target(), SERVER_LAUNCHD_LABEL])
+        args.extend([_launchctl_target(), str(SERVER_LAUNCH_AGENT_PATH)])
     elif command == "bootstrap":
         args.extend([_launchctl_target(), str(SERVER_LAUNCH_AGENT_PATH)])
     else:
@@ -424,7 +434,12 @@ def _run_launchctl(command: str) -> dict[str, Any]:
     result = run_command(args, cwd=ROOT_DIR, check=False)
     if command == "bootout" and result.returncode != 0:
         diagnostics = f"{result.stdout}\n{result.stderr}".lower()
-        if "could not find service" in diagnostics or "no such process" in diagnostics:
+        if (
+            "could not find service" in diagnostics
+            or "no such process" in diagnostics
+            or "input/output error" in diagnostics
+            or "i/o error" in diagnostics
+        ):
             return {
                 **_truncated_completed_process(result),
                 "already_stopped": True,

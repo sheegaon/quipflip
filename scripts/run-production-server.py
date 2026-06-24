@@ -13,23 +13,10 @@ if str(ROOT_DIR) not in sys.path:
 
 from scripts.ops.keychain import read_generic_password
 
-
-UVICORN_CANDIDATES = (
-    ROOT_DIR / ".venv" / "bin" / "uvicorn",
-    Path(sys.executable).with_name("uvicorn"),
-)
 KEYCHAIN_SERVICE_ENV = "KEYCHAIN_SERVICE"
 SECRET_KEY_ACCOUNT_ENV = "SECRET_KEY_ACCOUNT"
 OPENAI_ACCOUNT_ENV = "OPENAI_ACCOUNT"
 GEMINI_ACCOUNT_ENV = "GEMINI_ACCOUNT"
-
-
-def _select_uvicorn_executable() -> str:
-    for candidate in UVICORN_CANDIDATES:
-        if candidate.is_file():
-            return str(candidate)
-
-    return sys.executable
 
 
 def _read_keychain_secret(service: str, account: str, *, required: bool) -> str | None:
@@ -81,9 +68,10 @@ def main() -> None:
     _load_keychain_env()
     _validate_production_settings()
 
-    uvicorn_executable = _select_uvicorn_executable()
     argv = [
-        uvicorn_executable,
+        sys.executable,
+        "-m",
+        "uvicorn",
         "backend.main:app",
         "--host",
         "127.0.0.1",
@@ -95,25 +83,7 @@ def main() -> None:
         "--forwarded-allow-ips",
         "127.0.0.1",
     ]
-
-    if Path(uvicorn_executable) == Path(sys.executable):
-        argv = [
-            uvicorn_executable,
-            "-m",
-            "uvicorn",
-            "backend.main:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8000",
-            "--workers",
-            "1",
-            "--proxy-headers",
-            "--forwarded-allow-ips",
-            "127.0.0.1",
-        ]
-
-    os.execv(uvicorn_executable, argv)
+    os.execv(sys.executable, argv)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from backend.services.ir.statistics_service import IRStatisticsService
 router = APIRouter()
 
 
-@router.get("/leaderboards/creators", response_model=list[LeaderboardEntry])
+@router.get("/creators", response_model=list[LeaderboardEntry])
 async def get_creator_leaderboard(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
@@ -38,7 +38,7 @@ async def get_creator_leaderboard(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get("/leaderboards/voters", response_model=list[LeaderboardEntry])
+@router.get("/voters", response_model=list[LeaderboardEntry])
 async def get_voter_leaderboard(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),

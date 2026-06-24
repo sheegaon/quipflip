@@ -186,7 +186,15 @@ def test_run_release_publishes_static_and_records_artifacts(tmp_path, monkeypatc
     assert backup_dir.is_dir()
     assert any(command[:4] == [release_module.sys.executable, "scripts/verify.py", "verify"] for command in commands)
     assert any(command[:3] == [release_module.sys.executable, "-m", "alembic"] for command in commands)
-    assert any(command[:3] == ["launchctl", "bootout", f"gui/{os.getuid()}"] for command in commands)
+    assert any(
+        command[:4] == [
+            "launchctl",
+            "bootout",
+            f"gui/{os.getuid()}",
+            str(release_module.SERVER_LAUNCH_AGENT_PATH),
+        ]
+        for command in commands
+    )
     assert any(command[:3] == ["launchctl", "bootstrap", f"gui/{os.getuid()}"] for command in commands)
 
     record = sqlite3.connect(db_path)
@@ -195,6 +203,48 @@ def test_run_release_publishes_static_and_records_artifacts(tmp_path, monkeypatc
     finally:
         record.close()
     assert row == ("revision-previous",)
+
+
+def test_run_verify_gate_uses_sanitized_environment(tmp_path, monkeypatch):
+    _configure_production_env(monkeypatch, tmp_path)
+    release_module.get_settings.cache_clear()
+
+    captured: dict[str, object] = {}
+
+    def fake_run_command(command, **kwargs):
+        captured["command"] = command
+        captured["env"] = kwargs.get("env")
+        return CompletedProcess(command, 0, stdout="verify ok\n", stderr="")
+
+    monkeypatch.setattr(release_module, "run_command", fake_run_command)
+
+    report = release_module._run_verify_gate()
+
+    verify_env = captured["env"]
+    assert report["returncode"] == 0
+    assert captured["command"] == [release_module.sys.executable, "scripts/verify.py", "verify"]
+    assert verify_env["ENVIRONMENT"] == "development"
+    assert "DATABASE_URL" not in verify_env
+    assert "CROWDCRAFT_RELEASE_ID" not in verify_env
+    assert "CROWDCRAFT_EXPECTED_REVISION" not in verify_env
+    assert "SECRET_KEY" not in verify_env
+
+
+def test_run_launchctl_bootout_treats_io_error_as_already_stopped(monkeypatch):
+    def fake_run_command(command, **_kwargs):
+        return CompletedProcess(
+            command,
+            1,
+            stdout="",
+            stderr="Boot-out failed: 5: Input/output error\nTry re-running the command as root for richer errors.\n",
+        )
+
+    monkeypatch.setattr(release_module, "run_command", fake_run_command)
+
+    report = release_module._run_launchctl("bootout")
+
+    assert report["already_stopped"] is True
+    assert report["returncode"] == 1
 
 
 def test_run_rollback_restores_backup_and_previous_static_release(tmp_path, monkeypatch):

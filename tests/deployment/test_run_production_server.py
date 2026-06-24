@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "run-production-server.py"
 
 
@@ -77,48 +76,7 @@ def test_production_wrapper_skips_optional_provider_secret_when_disabled(monkeyp
     monkeypatch.delenv("SECRET_KEY", raising=False)
 
 
-@pytest.mark.parametrize(
-    ("uvicorn_executable", "expected_argv"),
-    [
-        (
-            "/opt/homebrew/bin/uvicorn",
-            [
-                "/opt/homebrew/bin/uvicorn",
-                "backend.main:app",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "8000",
-                "--workers",
-                "1",
-                "--proxy-headers",
-                "--forwarded-allow-ips",
-                "127.0.0.1",
-            ],
-        ),
-        (
-            sys.executable,
-            [
-                sys.executable,
-                "-m",
-                "uvicorn",
-                "backend.main:app",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "8000",
-                "--workers",
-                "1",
-                "--proxy-headers",
-                "--forwarded-allow-ips",
-                "127.0.0.1",
-            ],
-        ),
-    ],
-)
-def test_production_wrapper_execs_uvicorn_with_expected_startup_shape(
-    monkeypatch, uvicorn_executable, expected_argv
-):
+def test_production_wrapper_execs_uvicorn_with_expected_startup_shape(monkeypatch):
     ns = _load_script_namespace()
     captured: dict[str, object] = {}
 
@@ -130,12 +88,25 @@ def test_production_wrapper_execs_uvicorn_with_expected_startup_shape(
     globals_ns = ns["main"].__globals__
     monkeypatch.setitem(globals_ns, "_load_keychain_env", lambda: None)
     monkeypatch.setitem(globals_ns, "_validate_production_settings", lambda: None)
-    monkeypatch.setitem(globals_ns, "_select_uvicorn_executable", lambda: uvicorn_executable)
     monkeypatch.setattr(ns["os"], "chdir", lambda _path: None)
     monkeypatch.setattr(ns["os"], "execv", fake_execv)
 
     with pytest.raises(RuntimeError, match="execv-called"):
         ns["main"]()
 
-    assert captured["path"] == uvicorn_executable
-    assert captured["argv"] == expected_argv
+    assert captured["path"] == sys.executable
+    assert captured["argv"] == [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "backend.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+        "--workers",
+        "1",
+        "--proxy-headers",
+        "--forwarded-allow-ips",
+        "127.0.0.1",
+    ]

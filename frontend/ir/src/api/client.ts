@@ -175,12 +175,12 @@ export const tutorialAPI = {
 // Leaderboard API
 export const leaderboardAPI = {
   getCreatorLeaderboard: async (): Promise<IRLeaderboardEntry[]> => {
-    const response = await irClient.get<IRLeaderboardEntry[]>('/leaderboard/leaderboards/creators');
+    const response = await irClient.get<IRLeaderboardEntry[]>('/leaderboard/creators');
     return response.data;
   },
 
   getVoterLeaderboard: async (): Promise<IRLeaderboardEntry[]> => {
-    const response = await irClient.get<IRLeaderboardEntry[]>('/leaderboard/leaderboards/voters');
+    const response = await irClient.get<IRLeaderboardEntry[]>('/leaderboard/voters');
     return response.data;
   },
 };
