@@ -6,6 +6,7 @@ import os
 import random
 
 import pytest
+from backend.config import get_settings
 from backend.services.tl.matching_service import TLMatchingService
 from unittest.mock import Mock
 
@@ -45,7 +46,11 @@ class TestMatchingService:
         """
         monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
         monkeypatch.setattr("backend.services.tl.matching_service.AsyncOpenAI", _FakeOpenAIClient)
-        return TLMatchingService()
+        get_settings.cache_clear()
+        try:
+            yield TLMatchingService()
+        finally:
+            get_settings.cache_clear()
 
     @pytest.fixture
     def matching_service_mock(self):
