@@ -34,7 +34,7 @@ settings = get_settings()
 
 def pytest_collection_modifyitems(items):
     """Assign exactly one tier and one owning subsystem to every test."""
-    tier_markers = {"deterministic", "sqlite_integration", "smoke", "stress", "external"}
+    tier_markers = {"deterministic", "sqlite_integration", "smoke", "stress", "external", "localhost"}
     owner_markers = {"owner_qf", "owner_mm", "owner_ir", "owner_tl", "owner_party", "owner_platform"}
 
     for item in items:
@@ -51,7 +51,6 @@ def pytest_collection_modifyitems(items):
                 item.add_marker(pytest.mark.stress)
                 item.add_marker(pytest.mark.localhost)
             elif "_localhost" in filename:
-                item.add_marker(pytest.mark.smoke)
                 item.add_marker(pytest.mark.localhost)
             else:
                 item.add_marker(pytest.mark.deterministic)

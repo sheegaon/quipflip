@@ -17,6 +17,10 @@ Sensitive configuration names include `SECRET_KEY`, any credential-bearing
 `DATABASE_URL` or `REDIS_URL`,
 `OPENAI_API_KEY`, `GEMINI_API_KEY`, and any auth/cookie secrets. Add a new
 credential name only in the same change that adds its secure runtime integration.
+For the Crowdcraft Mac deployment, use
+`python3 scripts/ops/crowdcraft_ops.py secrets keychain-store --apply` to store
+the production `SECRET_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` values in
+the login Keychain without exposing them in shell history or process arguments.
 
 Enable GitHub secret scanning and push protection on the repository. A local secret
 scan (see [dependency policy](dependency-policy.md)) is defense in depth, not a

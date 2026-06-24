@@ -390,7 +390,7 @@ Host mapping:
 ## Source references
 
 - Pixel Plagiarist: `AGENTS.md`, `docs/development/`, `docs/decisions/`,
-  `scripts/smoke.mjs`, and `scripts/restart-production-server.sh`.
+  `scripts/smoke.mjs`, and `scripts/ops/{release.py,crowdcraft_ops.py,smoke.py}`.
 - Crowdcraft runtime: `backend/main.py`, `backend/database.py`,
   `backend/utils/{lock_client,queue_client}.py`, `backend/services/{qf,mm,ir,tl}`,
   `backend/models/`, `backend/migrations/`, and `frontend/crowdcraft/src`.

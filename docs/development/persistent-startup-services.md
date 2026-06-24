@@ -99,6 +99,10 @@ The application still validates `Host`; tunnel ingress is not the only boundary.
    before changing the plan.
 3. Create application, backup, and log directories with owner-only permissions.
 4. Store runtime secrets in Keychain and install the Keychain-reading wrapper.
+   Use `python3 scripts/ops/crowdcraft_ops.py secrets keychain-store --apply`
+   to prompt for `SECRET_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` without
+   putting the values on the command line. Add `--skip-openai` or
+   `--skip-gemini` if the deployment uses only one provider.
 5. Build all four frontends and verify static deep links locally with exact Host
    headers.
 6. Create the tunnel, DNS routes, and two launchd agents.
@@ -108,7 +112,7 @@ Do not put real secret values into setup commands that will remain in shell hist
 
 ## Safe release sequence
 
-The planned `scripts/restart-production-server.sh` must:
+The planned `crowdcraft-ops deploy release --apply` orchestrator must:
 
 1. validate the LaunchAgent, Keychain item names, database path, free disk, and
    production configuration without printing secrets;

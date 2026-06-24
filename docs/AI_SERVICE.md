@@ -152,6 +152,11 @@ The AI service reads its configuration from `backend.config.Settings` (environme
 | `AI_STALE_CHECK_INTERVAL_HOURS` | Frequency of stale content checks | `6` |
 | `AI_STALE_HANDLER_ENABLED` | Feature flag for stale handler | `True` |
 
+In production, the server wrapper loads `OPENAI_API_KEY` and `GEMINI_API_KEY`
+from the macOS Keychain instead of from shell environment variables. Use
+`python3 scripts/ops/crowdcraft_ops.py secrets keychain-store --apply` to store
+those values on the target Mac.
+
 When `Settings.use_phrase_validator_api` is `True`, the service uses the remote validator via `phrase_validation_client`; otherwise it falls back to the local validator.
 
 ## API Reference

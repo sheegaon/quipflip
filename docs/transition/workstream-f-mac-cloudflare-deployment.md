@@ -578,6 +578,11 @@ for `SECRET_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY`. The signing secret is
 mandatory. Provider secrets are loaded only when that provider is enabled. There is
 no plaintext fallback in production.
 
+Use `python3 scripts/ops/crowdcraft_ops.py secrets keychain-store --apply` on the
+target Mac to populate those Keychain items safely. The helper invokes
+`/usr/bin/security add-generic-password -U ... -w` so the secret is entered at the
+Keychain prompt instead of appearing in shell history or process arguments.
+
 The wrapper executes exactly:
 
 ```text

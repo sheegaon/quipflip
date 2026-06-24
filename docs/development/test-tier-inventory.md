@@ -12,7 +12,7 @@ tiers fail collection.
 | --- | --- | --- |
 | `tests/sqlite_integration/**` | `sqlite_integration` | Platform unless explicitly marked |
 | `tests/test_stress_localhost.py` | `stress`, `localhost` | QuipFlip |
-| `tests/test_*localhost*.py` | `smoke`, `localhost` | QuipFlip |
+| `tests/test_*localhost*.py` | `localhost` | QuipFlip |
 | `tests/test_tl_similarity_debug.py` | `external` | ThinkLink |
 | Explicit `external` marker | `external` | Explicit subsystem marker |
 | `tests/party/**`, `test_*party*.py` | `deterministic` | Party |
