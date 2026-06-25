@@ -44,6 +44,7 @@ interface GameState {
 
 interface GameActions {
   startSession: (username: string, options?: { isNewPlayer?: boolean }) => void;
+  continueAsGuest: () => Promise<void>;
   dismissNewUserWelcome: () => void;
   logout: () => Promise<void>;
   refreshDashboard: (signal?: AbortSignal) => Promise<void>;
@@ -253,6 +254,35 @@ export const GameProvider: React.FC<{
 
     // Session started, authentication state will trigger dashboard load
     gameContextLogger.debug('✅ Session started, authentication state will trigger dashboard load');
+  }, [visitorId]);
+
+  const continueAsGuest = useCallback(async () => {
+    gameContextLogger.debug('🎭 GameContext continueAsGuest called');
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const guestResponse = await apiClient.mmCreateGuest();
+      apiClient.setSession(guestResponse.username);
+      setUsername(guestResponse.username);
+      setIsAuthenticated(true);
+      setSessionState(SessionState.RETURNING_USER);
+      setShowNewUserWelcome(false);
+
+      if (visitorId) {
+        associateVisitorWithPlayer(visitorId, guestResponse.username);
+      }
+
+      const playerData = await apiClient.mmGetBalance();
+      setPlayer(playerData);
+    } catch (err) {
+      gameContextLogger.error('❌ Failed to continue as guest:', err);
+      setError(getActionErrorMessage('register', err));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   }, [visitorId]);
 
   const logout = useCallback(async () => {
@@ -761,6 +791,7 @@ export const GameProvider: React.FC<{
   const actions: GameActions = React.useMemo(
     () => ({
       startSession,
+      continueAsGuest,
       dismissNewUserWelcome,
       logout,
       refreshDashboard,
@@ -781,6 +812,7 @@ export const GameProvider: React.FC<{
     }),
     [
       startSession,
+      continueAsGuest,
       dismissNewUserWelcome,
       logout,
       refreshDashboard,

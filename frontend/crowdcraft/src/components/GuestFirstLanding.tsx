@@ -57,7 +57,15 @@ const GuestFirstLanding: React.FC<GuestFirstLandingProps> = ({
           {onPrimaryAction && primaryActionLabel ? (
             <button
               type="button"
-              onClick={() => void onPrimaryAction()}
+              onClick={() => {
+                void (async () => {
+                  try {
+                    await onPrimaryAction();
+                  } catch {
+                    // The action already surfaces its own error state.
+                  }
+                })();
+              }}
               disabled={primaryActionDisabled}
               className="block w-full rounded-tile bg-ccl-orange px-4 py-3 text-center font-semibold text-white transition hover:bg-ccl-orange-deep disabled:cursor-not-allowed disabled:bg-slate-300"
             >
