@@ -125,6 +125,10 @@ def test_install_launch_agents_renders_smtp_environment(tmp_path, monkeypatch):
     assert "<string>smtp.resend.com</string>" in server_plist
     assert "<string>resend</string>" in server_plist
     assert "<string>no-reply@crowdcraftlabs.com</string>" in server_plist
+    assert "<key>SMTP_USE_SSL</key>" in server_plist
+    assert "<string>false</string>" in server_plist
+    assert "<key>SMTP_TIMEOUT_SECONDS</key>" in server_plist
+    assert "<string>10</string>" in server_plist
     assert "<key>SMTP_PASSWORD_ACCOUNT</key>" in server_plist
     assert "<string>SMTP_PASSWORD</string>" in server_plist
 
