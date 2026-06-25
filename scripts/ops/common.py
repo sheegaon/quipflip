@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -84,7 +85,10 @@ def run_command(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
     check: bool = True,
+    stream: bool = False,
 ) -> subprocess.CompletedProcess[str]:
+    if stream:
+        return _run_command_streamed(command, cwd=cwd, env=env, check=check)
     result = subprocess.run(
         command,
         cwd=str(cwd or ROOT_DIR),
@@ -100,6 +104,50 @@ def run_command(
             f"stderr:\n{result.stderr}"
         )
     return result
+
+
+def _run_command_streamed(
+    command: list[str],
+    *,
+    cwd: Path | None,
+    env: dict[str, str] | None,
+    check: bool,
+) -> subprocess.CompletedProcess[str]:
+    """Run a command, teeing its merged output to the console while capturing it.
+
+    Used for long, otherwise-silent phases (e.g. the verify gate) so progress is
+    visible live. stdout and stderr are merged so a single reader can stream them
+    without risking a pipe deadlock; the captured text is returned as ``stdout``.
+
+    The live tee is written to this process's stderr so that callers' stdout
+    stays clean for machine-readable output (e.g. the deploy CLI's JSON report).
+    """
+
+    with subprocess.Popen(
+        command,
+        cwd=str(cwd or ROOT_DIR),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+        bufsize=1,
+    ) as process:
+        assert process.stdout is not None
+        chunks: list[str] = []
+        for line in process.stdout:
+            sys.stderr.write(line)
+            sys.stderr.flush()
+            chunks.append(line)
+        returncode = process.wait()
+
+    output = "".join(chunks)
+    if check and returncode != 0:
+        raise RuntimeError(
+            f"Command failed ({returncode}): {' '.join(command)}\n"
+            f"output (stdout/stderr merged):\n{output}"
+        )
+    return subprocess.CompletedProcess(command, returncode, stdout=output, stderr="")
 
 
 @contextmanager
