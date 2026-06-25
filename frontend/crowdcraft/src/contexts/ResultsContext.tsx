@@ -576,24 +576,42 @@ export const ResultsProvider: React.FC<ResultsProviderProps> = ({ children, isAu
     }
   }, [isAuthenticated]);
 
-  const actions: ResultsActions = {
-    refreshPlayerPhrasesets,
-    refreshPhrasesetDetails,
-    refreshPhrasesetResults,
-    getStatistics,
-    markResultsViewed,
-    clearResultsCache,
-    setPendingResults,
-    cacheMemeRound,
-    cacheMemeVoteResult,
-    getCachedMemeRound,
-    getCachedMemeVoteResult,
-  };
+  const actions: ResultsActions = React.useMemo(
+    () => ({
+      refreshPlayerPhrasesets,
+      refreshPhrasesetDetails,
+      refreshPhrasesetResults,
+      getStatistics,
+      markResultsViewed,
+      clearResultsCache,
+      setPendingResults,
+      cacheMemeRound,
+      cacheMemeVoteResult,
+      getCachedMemeRound,
+      getCachedMemeVoteResult,
+    }),
+    [
+      refreshPlayerPhrasesets,
+      refreshPhrasesetDetails,
+      refreshPhrasesetResults,
+      getStatistics,
+      markResultsViewed,
+      clearResultsCache,
+      setPendingResults,
+      cacheMemeRound,
+      cacheMemeVoteResult,
+      getCachedMemeRound,
+      getCachedMemeVoteResult,
+    ],
+  );
 
-  const value: ResultsContextType = {
-    state: resultsState,
-    actions,
-  };
+  const value: ResultsContextType = React.useMemo(
+    () => ({
+      state: resultsState,
+      actions,
+    }),
+    [resultsState, actions],
+  );
 
   return <ResultsContext.Provider value={value}>{children}</ResultsContext.Provider>;
 };
