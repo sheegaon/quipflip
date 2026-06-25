@@ -10,6 +10,7 @@ interface UpgradeGuestAccountProps {
 export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ className = '' }) => {
   const { state } = useGame();
   const { state: resultsState, actions: resultsActions } = useResults();
+  const { getStatistics } = resultsActions;
   const [showPrompt, setShowPrompt] = useState(false);
   const [checkingHistory, setCheckingHistory] = useState(true);
 
@@ -34,7 +35,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
       }
 
       try {
-        const statistics = await resultsActions.getStatistics();
+        const statistics = await getStatistics();
         if (cancelled) {
           return;
         }
@@ -60,7 +61,7 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
     return () => {
       cancelled = true;
     };
-  }, [state.player?.is_guest, resultsState.statistics, resultsActions]);
+  }, [state.player?.is_guest, resultsState.statistics, getStatistics]);
 
   if (!state.player?.is_guest || checkingHistory || !showPrompt) {
     return null;
