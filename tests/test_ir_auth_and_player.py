@@ -1,11 +1,14 @@
 """Tests for IR authentication and player services."""
 import pytest
 import uuid
+from fastapi import status
+from httpx import AsyncClient, ASGITransport
 from backend.services import AuthService, GameType
 from backend.services import IRPlayerService
 from backend.utils.passwords import hash_password, verify_password
 from backend.services import UsernameService
 from backend.utils.model_registry import GameType
+from backend.config import get_settings
 
 
 async def _register_ir_player(auth_service, email: str, password: str):
@@ -50,6 +53,25 @@ async def test_ir_guest_player_creation(db_session):
     assert player.wallet == 1000
     assert player.vault == 0
     assert player.username is not None
+
+
+@pytest.mark.asyncio
+async def test_ir_guest_player_route_returns_full_auth_payload(test_app):
+    """The guest route should return the full auth payload expected by the client."""
+    async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test/ir") as client:
+        response = await client.post("/players/guest")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+
+        assert "player" in data
+        assert data["player"]["player_id"] == data["player_id"]
+        assert data["player"]["username"] == data["username"]
+        assert data["player"]["email"] == data["email"]
+        assert data["player"]["is_guest"] is True
+        assert data["wallet"] == 1000
+        assert data["vault"] == 0
+        assert data["password"] == get_settings().guest_password
 
 
 @pytest.mark.asyncio

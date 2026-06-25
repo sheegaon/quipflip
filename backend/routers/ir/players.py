@@ -180,22 +180,24 @@ async def create_guest_player(
             raise HTTPException(status_code=500, detail="guest_email_generation_failed") from exc
         raise
 
-    player_data = await fetch_game_player_data(db, GameType.IR, player.player_id)
-
-    wallet = player_data.wallet if player_data else settings.ir_initial_balance
-    vault = player_data.vault if player_data else 0
-
     access_token, refresh_token, expires_in = await auth_service.issue_tokens(player)
     set_access_token_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token, expires_days=settings.refresh_token_exp_days)
 
-    return CreateGuestResponse(
+    auth_response = await _build_auth_response(
+        player=player,
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=expires_in,
-        token_type="bearer",
-        player_id=player.player_id,
-        username=player.username,
+        db=db,
+    )
+
+    snapshot_model = auth_response.game_data
+    wallet = snapshot_model.wallet if snapshot_model else settings.ir_initial_balance
+    vault = snapshot_model.vault if snapshot_model else 0
+
+    return CreateGuestResponse(
+        **auth_response.model_dump(),
         wallet=wallet,
         vault=vault,
         email=player.email,
