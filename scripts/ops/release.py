@@ -397,6 +397,7 @@ def _run_verify_gate() -> dict[str, Any]:
         [sys.executable, "scripts/verify.py", "verify"],
         cwd=ROOT_DIR,
         env=verify_env,
+        stream=True,
     )
     if result.returncode != 0:
         raise RuntimeError(
