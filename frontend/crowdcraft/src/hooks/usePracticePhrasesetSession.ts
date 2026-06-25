@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client.ts';
+import { extractErrorMessage } from '../api/BaseApiClient.ts';
 import type { QFPracticePhraseset } from '../api/types.ts';
 
 interface UsePracticePhrasesetSessionResult {
@@ -58,7 +59,7 @@ export const usePracticePhrasesetSession = (): UsePracticePhrasesetSessionResult
       } catch (err) {
         if (!controller.signal.aborted) {
           console.error('Failed to fetch practice phraseset:', err);
-          setError('Unable to load practice round. Please try again.');
+          setError(extractErrorMessage(err) || 'Unable to load practice round. Please try again.');
         }
       } finally {
         if (!controller.signal.aborted) {

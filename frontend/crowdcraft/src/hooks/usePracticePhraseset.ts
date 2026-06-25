@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client.ts';
+import { extractErrorMessage } from '../api/BaseApiClient.ts';
 import type { QFPracticePhraseset } from '../api/types.ts';
 
 interface UsePracticePhrasesetResult {
@@ -30,7 +31,7 @@ export const usePracticePhraseset = (): UsePracticePhrasesetResult => {
         // Only update state if the component is still mounted and the error wasn't from abort
         if (!controller.signal.aborted) {
           console.error('Failed to fetch practice phraseset:', err);
-          setError('Unable to load practice round. Please try again.');
+          setError(extractErrorMessage(err) || 'Unable to load practice round. Please try again.');
         }
       } finally {
         // Only update state if the component is still mounted
