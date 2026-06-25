@@ -18,7 +18,7 @@ import {
   ReactNode,
   FC,
 } from 'react';
-import { resolveGameApiUrl, resolveWebSocketUrl } from '@crowdcraft/api/origin.ts';
+import { resolveApiRoot, resolveWebSocketUrl } from '@crowdcraft/api/origin.ts';
 import { useIRGame } from './IRGameContext';
 
 export interface NotificationMessage {
@@ -62,28 +62,27 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       wsAttempted = true;
 
       try {
-        // Step 1: Construct the same-origin IR API URL unless explicitly overridden.
+        // Step 1: Fetch short-lived WebSocket token from the shared auth route.
         const configuredApiUrl = import.meta.env.VITE_API_URL;
-        const baseUrl = resolveGameApiUrl(
-          'ir',
-          configuredApiUrl,
-          window.location.origin,
-        );
-
-        // Step 2: Fetch short-lived WebSocket token via REST API
-        // Construct URL by appending to base (no leading slash to preserve path)
-        const tokenUrl = `${baseUrl}/auth/ws-token`;
-        const tokenResponse = await fetch(tokenUrl, {
-          credentials: 'include', // Include HttpOnly cookies
+        const rootApiBaseUrl = resolveApiRoot(configuredApiUrl, window.location.origin);
+        const tokenResponse = await fetch(`${rootApiBaseUrl}/auth/ws-token`, {
+          credentials: 'include',
         });
 
         if (!tokenResponse.ok) {
-          throw new Error('Failed to get WebSocket token');
+          console.debug('WebSocket token request failed silently:', tokenResponse.status);
+          return;
         }
 
-        const { token } = await tokenResponse.json();
+        const tokenPayload = (await tokenResponse.json()) as { token?: string };
+        const token = tokenPayload.token;
 
-        // Step 3: Construct WebSocket URL preserving the same origin and path.
+        if (!token) {
+          console.debug('WebSocket token response missing token; skipping connection');
+          return;
+        }
+
+        // Step 2: Construct WebSocket URL preserving the same origin and path.
         const wsUrl = resolveWebSocketUrl(
           '/ir/notifications/ws',
           configuredApiUrl,

@@ -22,7 +22,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const AppRoutes: React.FC = () => {
-  const { sessionState } = useIRGame();
+  const { sessionState, isAuthenticated } = useIRGame();
 
   // Show loading screen while initializing session
   const isInitializing = sessionState === 'checking';
@@ -37,7 +37,16 @@ const AppRoutes: React.FC = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route
+        path="/"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Landing />
+          )
+        }
+      />
       <Route path="/auth/magic-link" element={<MagicLink />} />
 
       <Route

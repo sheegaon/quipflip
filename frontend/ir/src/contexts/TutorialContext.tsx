@@ -22,6 +22,15 @@ const isAbortError = (error: unknown): boolean => {
   return maybeError.name === 'AbortError' || maybeError.code === 'ERR_CANCELED';
 };
 
+const isNotFoundError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as { response?: { status?: number } };
+  return maybeError.response?.status === 404;
+};
+
 const getActionErrorMessage = (action: string, error: unknown) =>
   getErrorMessage(error, `Failed to ${action.replace(/-/g, ' ')}`);
 
@@ -135,6 +144,14 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           tutorialLogger.debug('Tutorial status request aborted');
           return;
         }
+
+        if (isNotFoundError(err)) {
+          tutorialLogger.debug('Tutorial status endpoint unavailable; treating tutorial as inactive');
+          setStatus(null);
+          setError(null);
+          return;
+        }
+
         const message = getActionErrorMessage('load-tutorial-status', err);
         tutorialLogger.error('Failed to load tutorial status', err);
         setError(message);
@@ -161,6 +178,12 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setStatus(response.tutorial_status);
         setError(null);
       } catch (err: unknown) {
+        if (isNotFoundError(err)) {
+          tutorialLogger.debug('Tutorial progress endpoint unavailable; skipping update');
+          setError(null);
+          return;
+        }
+
         const message = getActionErrorMessage('update-tutorial-progress', err);
         tutorialLogger.error('Failed to update tutorial progress', err);
         setError(message);
@@ -220,6 +243,12 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setStatus(data);
       setError(null);
     } catch (err: unknown) {
+      if (isNotFoundError(err)) {
+        tutorialLogger.debug('Tutorial reset endpoint unavailable; skipping reset');
+        setError(null);
+        return;
+      }
+
       const message = getActionErrorMessage('reset-tutorial', err);
       tutorialLogger.error('Failed to reset tutorial', err);
       setError(message);

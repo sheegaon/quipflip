@@ -76,7 +76,7 @@ const GuestFirstLanding: React.FC<GuestFirstLandingProps> = ({
           <Link
             to={signInPath}
             className={`block w-full rounded-tile px-4 py-3 text-center font-semibold transition ${onPrimaryAction
-              ? 'border-2 border-slate-300 bg-white text-slate-900 hover:border-slate-500 hover:bg-slate-50'
+              ? 'border-2 border-ccl-navy/25 bg-ccl-cream text-ccl-navy shadow-sm hover:border-ccl-navy/40 hover:bg-ccl-orange/10'
               : 'bg-slate-900 text-white hover:bg-slate-700'} ${buttonClassName}`}
           >
             {signInLabel}
