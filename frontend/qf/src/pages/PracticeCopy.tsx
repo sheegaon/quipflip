@@ -26,7 +26,7 @@ const PracticeCopy: React.FC = () => {
   }
 
   if (error || !phraseset) {
-    const isNoPhrasesets = error?.includes('No phrasesets available');
+    const isNoPhrasesets = /no phrase\s*sets.*available/i.test(error || '');
     return (
       <div className="min-h-screen bg-gradient-to-br from-ccl-turquoise to-ccl-teal flex items-center justify-center p-4">
         <div className="tile-card p-8 text-center max-w-md">
