@@ -118,6 +118,9 @@ def _run_command_streamed(
     Used for long, otherwise-silent phases (e.g. the verify gate) so progress is
     visible live. stdout and stderr are merged so a single reader can stream them
     without risking a pipe deadlock; the captured text is returned as ``stdout``.
+
+    The live tee is written to this process's stderr so that callers' stdout
+    stays clean for machine-readable output (e.g. the deploy CLI's JSON report).
     """
 
     with subprocess.Popen(
@@ -127,13 +130,14 @@ def _run_command_streamed(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        errors="replace",
         bufsize=1,
     ) as process:
         assert process.stdout is not None
         chunks: list[str] = []
         for line in process.stdout:
-            sys.stdout.write(line)
-            sys.stdout.flush()
+            sys.stderr.write(line)
+            sys.stderr.flush()
             chunks.append(line)
         returncode = process.wait()
 
@@ -141,8 +145,7 @@ def _run_command_streamed(
     if check and returncode != 0:
         raise RuntimeError(
             f"Command failed ({returncode}): {' '.join(command)}\n"
-            f"stdout:\n{output}\n"
-            f"stderr:\n"
+            f"output (stdout/stderr merged):\n{output}"
         )
     return subprocess.CompletedProcess(command, returncode, stdout=output, stderr="")
 
