@@ -397,12 +397,13 @@ def _run_verify_gate() -> dict[str, Any]:
         [sys.executable, "scripts/verify.py", "verify"],
         cwd=ROOT_DIR,
         env=verify_env,
+        stream=True,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(
             "verification failed:\n"
-            f"stdout:\n{result.stdout}\n"
-            f"stderr:\n{result.stderr}"
+            f"output (stdout/stderr merged):\n{result.stdout}"
         )
     return _truncated_completed_process(result)
 
