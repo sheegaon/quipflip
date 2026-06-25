@@ -69,6 +69,66 @@ def test_install_launch_agents_renders_templates(tmp_path, monkeypatch):
     assert tunnel_config_path.stat().st_mode & 0o777 == 0o600
 
 
+def test_install_launch_agents_renders_smtp_environment(tmp_path, monkeypatch):
+    ns = runpy.run_path(str(SCRIPT_PATH))
+
+    ns["main"].__globals__["_require_clean_checkout"] = lambda: None
+    monkeypatch.setattr(ns["shutil"], "which", lambda _name: None)
+
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    (checkout / ".venv" / "bin").mkdir(parents=True)
+    (checkout / ".venv" / "bin" / "python").write_text("#!/bin/sh\n", encoding="utf-8")
+    (checkout / ".venv" / "bin" / "uvicorn").write_text("#!/bin/sh\n", encoding="utf-8")
+    (checkout / "scripts").mkdir()
+    (checkout / "scripts" / "run-production-server.py").write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+
+    cloudflared = tmp_path / "cloudflared-bin"
+    cloudflared.write_text("#!/bin/sh\n", encoding="utf-8")
+
+    dest_dir = tmp_path / "LaunchAgents"
+    exit_code = ns["main"](
+        [
+            "--checkout",
+            str(checkout),
+            "--python",
+            str(checkout / ".venv" / "bin" / "python"),
+            "--uvicorn",
+            str(checkout / ".venv" / "bin" / "uvicorn"),
+            "--cloudflared",
+            str(cloudflared),
+            "--tunnel-uuid",
+            "tunnel-uuid-123",
+            "--release-id",
+            "release-123",
+            "--expected-revision",
+            "revision-123",
+            "--cloudflared-config",
+            str(tmp_path / "cloudflared" / "crowdcraft.yml"),
+            "--runtime-root",
+            str(tmp_path / "runtime"),
+            "--log-dir",
+            str(tmp_path / "logs"),
+            "--dest",
+            str(dest_dir),
+            "--smtp-host",
+            "smtp.resend.com",
+            "--smtp-username",
+            "resend",
+        ]
+    )
+
+    assert exit_code == 0
+    server_plist = (dest_dir / "com.crowdcraft.server.plist").read_text(encoding="utf-8")
+    assert "${" not in server_plist
+    assert "<key>SMTP_HOST</key>" in server_plist
+    assert "<string>smtp.resend.com</string>" in server_plist
+    assert "<string>resend</string>" in server_plist
+    assert "<string>no-reply@crowdcraftlabs.com</string>" in server_plist
+    assert "<key>SMTP_PASSWORD_ACCOUNT</key>" in server_plist
+    assert "<string>SMTP_PASSWORD</string>" in server_plist
+
+
 def test_install_launch_agents_points_server_plist_at_wrapper(tmp_path, monkeypatch):
     ns = runpy.run_path(str(SCRIPT_PATH))
 

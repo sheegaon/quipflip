@@ -29,6 +29,7 @@ from scripts.ops.keychain import (
     DEFAULT_KEYCHAIN_SERVICE,
     DEFAULT_OPENAI_ACCOUNT,
     DEFAULT_SECRET_ACCOUNT,
+    DEFAULT_SMTP_PASSWORD_ACCOUNT,
     load_production_secret_environment,
     store_production_secrets,
 )
@@ -112,8 +113,11 @@ def _handle_secrets_keychain_store(args: argparse.Namespace) -> int:
         secret_account=args.secret_account,
         openai_account=args.openai_account,
         gemini_account=args.gemini_account,
+        smtp_password_account=args.smtp_password_account,
+        include_secret_key=not args.skip_secret,
         include_openai=not args.skip_openai,
         include_gemini=not args.skip_gemini,
+        include_smtp=args.with_smtp,
         apply=args.apply,
     )
     print(dump_json(report), end="")
@@ -222,8 +226,11 @@ def build_parser() -> argparse.ArgumentParser:
     keychain_store.add_argument("--secret-account", default=DEFAULT_SECRET_ACCOUNT, help="Keychain account for SECRET_KEY.")
     keychain_store.add_argument("--openai-account", default=DEFAULT_OPENAI_ACCOUNT, help="Keychain account for OPENAI_API_KEY.")
     keychain_store.add_argument("--gemini-account", default=DEFAULT_GEMINI_ACCOUNT, help="Keychain account for GEMINI_API_KEY.")
+    keychain_store.add_argument("--smtp-password-account", default=DEFAULT_SMTP_PASSWORD_ACCOUNT, help="Keychain account for SMTP_PASSWORD.")
+    keychain_store.add_argument("--skip-secret", action="store_true", help="Skip storing SECRET_KEY (e.g. when adding only SMTP to a live deployment).")
     keychain_store.add_argument("--skip-openai", action="store_true", help="Skip storing OPENAI_API_KEY.")
     keychain_store.add_argument("--skip-gemini", action="store_true", help="Skip storing GEMINI_API_KEY.")
+    keychain_store.add_argument("--with-smtp", action="store_true", help="Also store SMTP_PASSWORD (magic-link email delivery).")
     keychain_store.add_argument("--apply", action="store_true", help="Actually store the secrets instead of printing the plan.")
     keychain_store.set_defaults(handler=_handle_secrets_keychain_store)
 

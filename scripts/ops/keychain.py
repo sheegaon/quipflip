@@ -12,6 +12,7 @@ DEFAULT_KEYCHAIN_SERVICE = "com.crowdcraft.production"
 DEFAULT_SECRET_ACCOUNT = "SECRET_KEY"
 DEFAULT_OPENAI_ACCOUNT = "OPENAI_API_KEY"
 DEFAULT_GEMINI_ACCOUNT = "GEMINI_API_KEY"
+DEFAULT_SMTP_PASSWORD_ACCOUNT = "SMTP_PASSWORD"
 
 
 def _build_add_password_command(service: str, account: str) -> list[str]:
@@ -119,6 +120,14 @@ def load_production_secret_environment(environment: Mapping[str, str]) -> dict[s
         if provider_secret:
             secrets["GEMINI_API_KEY"] = provider_secret
 
+    # SMTP password (magic-link delivery). Optional: only loaded when an SMTP
+    # host is configured, so deployments without email stay unaffected.
+    if environment.get("SMTP_HOST", "").strip():
+        smtp_account = environment.get("SMTP_PASSWORD_ACCOUNT", "").strip() or DEFAULT_SMTP_PASSWORD_ACCOUNT
+        smtp_password = read_generic_password(service, smtp_account, required=False)
+        if smtp_password:
+            secrets["SMTP_PASSWORD"] = smtp_password
+
     return {name: value for name, value in secrets.items() if value}
 
 
@@ -128,17 +137,26 @@ def store_production_secrets(
     secret_account: str = DEFAULT_SECRET_ACCOUNT,
     openai_account: str = DEFAULT_OPENAI_ACCOUNT,
     gemini_account: str = DEFAULT_GEMINI_ACCOUNT,
+    smtp_password_account: str = DEFAULT_SMTP_PASSWORD_ACCOUNT,
+    include_secret_key: bool = True,
     include_openai: bool = True,
     include_gemini: bool = True,
+    include_smtp: bool = False,
     apply: bool = False,
 ) -> dict[str, Any]:
     """Plan or store the production signing and provider secrets."""
 
-    accounts = [secret_account]
+    accounts = []
+    if include_secret_key:
+        accounts.append(secret_account)
     if include_openai:
         accounts.append(openai_account)
     if include_gemini:
         accounts.append(gemini_account)
+    if include_smtp:
+        accounts.append(smtp_password_account)
+    if not accounts:
+        raise ValueError("No secrets selected to store")
 
     items = [store_generic_password(service, account, apply=apply) for account in accounts]
     return {

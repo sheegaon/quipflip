@@ -121,12 +121,102 @@ def test_crowdcraft_ops_secrets_command_routes_to_keychain(monkeypatch, capsys):
         "secret_account": keychain.DEFAULT_SECRET_ACCOUNT,
         "openai_account": keychain.DEFAULT_OPENAI_ACCOUNT,
         "gemini_account": keychain.DEFAULT_GEMINI_ACCOUNT,
+        "smtp_password_account": keychain.DEFAULT_SMTP_PASSWORD_ACCOUNT,
+        "include_secret_key": True,
         "include_openai": True,
         "include_gemini": False,
+        "include_smtp": False,
         "apply": True,
     }
     stdout = capsys.readouterr().out
     assert json.loads(stdout) == {"applied": True, "items": []}
+
+
+def test_keychain_store_includes_smtp_password_when_requested(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_store_production_secrets(**kwargs):
+        captured.update(kwargs)
+        return {"applied": kwargs["apply"], "items": []}
+
+    monkeypatch.setattr(crowdcraft_ops, "store_production_secrets", fake_store_production_secrets)
+
+    exit_code = crowdcraft_ops.main(
+        [
+            "secrets",
+            "keychain-store",
+            "--with-smtp",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["include_smtp"] is True
+    assert captured["smtp_password_account"] == keychain.DEFAULT_SMTP_PASSWORD_ACCOUNT
+
+
+def test_keychain_store_plan_appends_smtp_account_with_include_smtp():
+    report = keychain.store_production_secrets(include_smtp=True, apply=False)
+
+    assert [item["account"] for item in report["items"]] == [
+        keychain.DEFAULT_SECRET_ACCOUNT,
+        keychain.DEFAULT_OPENAI_ACCOUNT,
+        keychain.DEFAULT_GEMINI_ACCOUNT,
+        keychain.DEFAULT_SMTP_PASSWORD_ACCOUNT,
+    ]
+
+
+def test_keychain_store_can_target_only_smtp_password():
+    report = keychain.store_production_secrets(
+        include_secret_key=False,
+        include_openai=False,
+        include_gemini=False,
+        include_smtp=True,
+        apply=False,
+    )
+
+    assert [item["account"] for item in report["items"]] == [
+        keychain.DEFAULT_SMTP_PASSWORD_ACCOUNT,
+    ]
+
+
+def test_load_production_secret_environment_reads_smtp_password_when_host_set(monkeypatch):
+    def fake_read(service: str, account: str, *, required: bool):
+        return {
+            keychain.DEFAULT_SECRET_ACCOUNT: "secret-value",
+            keychain.DEFAULT_OPENAI_ACCOUNT: "openai-value",
+            keychain.DEFAULT_SMTP_PASSWORD_ACCOUNT: "re_smtp_key",
+        }.get(account)
+
+    monkeypatch.setattr(keychain, "read_generic_password", fake_read)
+
+    environment = keychain.load_production_secret_environment(
+        {
+            "KEYCHAIN_SERVICE": keychain.DEFAULT_KEYCHAIN_SERVICE,
+            "AI_PROVIDER": "openai",
+            "SMTP_HOST": "smtp.resend.com",
+        }
+    )
+
+    assert environment["SMTP_PASSWORD"] == "re_smtp_key"
+
+
+def test_load_production_secret_environment_skips_smtp_password_without_host(monkeypatch):
+    def fake_read(service: str, account: str, *, required: bool):
+        return {
+            keychain.DEFAULT_SECRET_ACCOUNT: "secret-value",
+            keychain.DEFAULT_SMTP_PASSWORD_ACCOUNT: "re_smtp_key",
+        }.get(account)
+
+    monkeypatch.setattr(keychain, "read_generic_password", fake_read)
+
+    environment = keychain.load_production_secret_environment(
+        {
+            "KEYCHAIN_SERVICE": keychain.DEFAULT_KEYCHAIN_SERVICE,
+            "AI_PROVIDER": "none",
+        }
+    )
+
+    assert "SMTP_PASSWORD" not in environment
 
 
 def test_deploy_release_loads_launch_agent_environment(monkeypatch, capsys):
