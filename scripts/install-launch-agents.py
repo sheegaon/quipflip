@@ -97,6 +97,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--smtp-from-name", default="Crowdcraft", help="From display name for outgoing email.")
     parser.add_argument("--smtp-use-tls", default="true", help="Use STARTTLS (true/false).")
+    parser.add_argument("--smtp-use-ssl", default="false", help="Use implicit SSL (true/false).")
+    parser.add_argument("--smtp-timeout-seconds", default="10", help="SMTP connection timeout in seconds.")
     parser.add_argument(
         "--smtp-password-account",
         default="SMTP_PASSWORD",
@@ -165,6 +167,8 @@ def main(argv: list[str] | None = None) -> int:
         "SMTP_FROM_ADDRESS": args.smtp_from_address.strip(),
         "SMTP_FROM_NAME": args.smtp_from_name.strip(),
         "SMTP_USE_TLS": args.smtp_use_tls.strip(),
+        "SMTP_USE_SSL": args.smtp_use_ssl.strip(),
+        "SMTP_TIMEOUT_SECONDS": args.smtp_timeout_seconds.strip(),
         "SMTP_PASSWORD_ACCOUNT": args.smtp_password_account.strip(),
     }
 

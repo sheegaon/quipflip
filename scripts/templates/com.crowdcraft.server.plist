@@ -63,6 +63,10 @@
     <string>${SMTP_FROM_NAME}</string>
     <key>SMTP_USE_TLS</key>
     <string>${SMTP_USE_TLS}</string>
+    <key>SMTP_USE_SSL</key>
+    <string>${SMTP_USE_SSL}</string>
+    <key>SMTP_TIMEOUT_SECONDS</key>
+    <string>${SMTP_TIMEOUT_SECONDS}</string>
     <key>SMTP_PASSWORD_ACCOUNT</key>
     <string>${SMTP_PASSWORD_ACCOUNT}</string>
     <key>PYTHONUNBUFFERED</key>
