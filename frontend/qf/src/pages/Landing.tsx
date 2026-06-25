@@ -7,8 +7,9 @@ export const Landing: React.FC = () => {
       logoSrc="/landing_logo.png"
       logoAlt="Quipflip"
       title="Write a quip. Fake a quip. Guess the original."
-      subtitle="New visitors start as guests automatically. Returning players can restore their account with email."
+      subtitle="New visitors start as guests automatically. Returning players can sign in with email and password."
       signInPath="/auth/magic-link"
+      signInHint="Guest progress lives on this device until you save it. Returning players can sign in with their saved account."
       className="bg-gradient-to-br from-ccl-orange to-ccl-orange-deep"
     />
   );

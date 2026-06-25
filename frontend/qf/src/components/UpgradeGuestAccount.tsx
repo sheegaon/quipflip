@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useResults } from '@crowdcraft';
 import { useGame } from '../contexts/GameContext';
-import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
+import CredentialAccountPanel from './CredentialAccountPanel';
 
 interface UpgradeGuestAccountProps {
   className?: string;
@@ -69,12 +69,11 @@ export const UpgradeGuestAccount: React.FC<UpgradeGuestAccountProps> = ({ classN
 
   return (
     <div className={className}>
-      <MagicLinkPanel
-        mode="save"
+      <CredentialAccountPanel
+        mode="upgrade"
         title="Keep your stats"
         description="Save your name, wins, awards, and history across devices."
         ctaLabel="Save my account"
-        guestPlayerId={state.player.player_id}
       />
     </div>
   );
