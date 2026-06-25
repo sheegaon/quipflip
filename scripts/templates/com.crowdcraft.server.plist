@@ -51,6 +51,20 @@
     <string>${OPENAI_ACCOUNT}</string>
     <key>GEMINI_ACCOUNT</key>
     <string>${GEMINI_ACCOUNT}</string>
+    <key>SMTP_HOST</key>
+    <string>${SMTP_HOST}</string>
+    <key>SMTP_PORT</key>
+    <string>${SMTP_PORT}</string>
+    <key>SMTP_USERNAME</key>
+    <string>${SMTP_USERNAME}</string>
+    <key>SMTP_FROM_ADDRESS</key>
+    <string>${SMTP_FROM_ADDRESS}</string>
+    <key>SMTP_FROM_NAME</key>
+    <string>${SMTP_FROM_NAME}</string>
+    <key>SMTP_USE_TLS</key>
+    <string>${SMTP_USE_TLS}</string>
+    <key>SMTP_PASSWORD_ACCOUNT</key>
+    <string>${SMTP_PASSWORD_ACCOUNT}</string>
     <key>PYTHONUNBUFFERED</key>
     <string>1</string>
   </dict>

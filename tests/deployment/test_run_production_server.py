@@ -76,6 +76,61 @@ def test_production_wrapper_skips_optional_provider_secret_when_disabled(monkeyp
     monkeypatch.delenv("SECRET_KEY", raising=False)
 
 
+def test_production_wrapper_loads_smtp_password_when_host_configured(monkeypatch):
+    ns = _load_script_namespace()
+
+    calls: list[tuple[str, str, bool]] = []
+
+    def fake_read_keychain_secret(service: str, account: str, *, required: bool):
+        calls.append((service, account, required))
+        if account == "SECRET_KEY":
+            return "secret-value"
+        if account == "SMTP_PASSWORD":
+            return "re_smtp_key"
+        return None
+
+    monkeypatch.setenv(ns["KEYCHAIN_SERVICE_ENV"], "com.crowdcraft.production")
+    monkeypatch.setenv(ns["SECRET_KEY_ACCOUNT_ENV"], "SECRET_KEY")
+    monkeypatch.setenv("AI_PROVIDER", "none")
+    monkeypatch.setenv("SMTP_HOST", "smtp.resend.com")
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    ns["_load_keychain_env"].__globals__["_read_keychain_secret"] = fake_read_keychain_secret
+
+    ns["_load_keychain_env"]()
+
+    assert os.environ["SMTP_PASSWORD"] == "re_smtp_key"
+    assert ("com.crowdcraft.production", "SMTP_PASSWORD", False) in calls
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+
+
+def test_production_wrapper_skips_smtp_password_without_host(monkeypatch):
+    ns = _load_script_namespace()
+
+    calls: list[tuple[str, str, bool]] = []
+
+    def fake_read_keychain_secret(service: str, account: str, *, required: bool):
+        calls.append((service, account, required))
+        if account == "SECRET_KEY":
+            return "secret-value"
+        return "re_smtp_key"
+
+    monkeypatch.setenv(ns["KEYCHAIN_SERVICE_ENV"], "com.crowdcraft.production")
+    monkeypatch.setenv(ns["SECRET_KEY_ACCOUNT_ENV"], "SECRET_KEY")
+    monkeypatch.setenv("AI_PROVIDER", "none")
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    ns["_load_keychain_env"].__globals__["_read_keychain_secret"] = fake_read_keychain_secret
+
+    ns["_load_keychain_env"]()
+
+    assert "SMTP_PASSWORD" not in os.environ
+    assert all(account != "SMTP_PASSWORD" for _service, account, _required in calls)
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+
+
 def test_production_wrapper_execs_uvicorn_with_expected_startup_shape(monkeypatch):
     ns = _load_script_namespace()
     captured: dict[str, object] = {}

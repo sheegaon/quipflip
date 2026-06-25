@@ -83,6 +83,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--secret-key-account", default="SECRET_KEY", help="Keychain account for SECRET_KEY.")
     parser.add_argument("--openai-account", default="OPENAI_API_KEY", help="Keychain account for OPENAI_API_KEY.")
     parser.add_argument("--gemini-account", default="GEMINI_API_KEY", help="Keychain account for GEMINI_API_KEY.")
+    parser.add_argument(
+        "--smtp-host",
+        default="",
+        help="SMTP host for magic-link email (e.g. smtp.resend.com). Empty disables email sending.",
+    )
+    parser.add_argument("--smtp-port", default="587", help="SMTP port (default: 587 STARTTLS).")
+    parser.add_argument("--smtp-username", default="", help="SMTP username (Resend: the literal 'resend').")
+    parser.add_argument(
+        "--smtp-from-address",
+        default="no-reply@crowdcraftlabs.com",
+        help="From address for outgoing email.",
+    )
+    parser.add_argument("--smtp-from-name", default="Crowdcraft", help="From display name for outgoing email.")
+    parser.add_argument("--smtp-use-tls", default="true", help="Use STARTTLS (true/false).")
+    parser.add_argument(
+        "--smtp-password-account",
+        default="SMTP_PASSWORD",
+        help="Keychain account for SMTP_PASSWORD (the Resend API key).",
+    )
     return parser
 
 
@@ -140,6 +159,13 @@ def main(argv: list[str] | None = None) -> int:
         "SECRET_KEY_ACCOUNT": args.secret_key_account,
         "OPENAI_ACCOUNT": args.openai_account,
         "GEMINI_ACCOUNT": args.gemini_account,
+        "SMTP_HOST": args.smtp_host.strip(),
+        "SMTP_PORT": args.smtp_port.strip(),
+        "SMTP_USERNAME": args.smtp_username.strip(),
+        "SMTP_FROM_ADDRESS": args.smtp_from_address.strip(),
+        "SMTP_FROM_NAME": args.smtp_from_name.strip(),
+        "SMTP_USE_TLS": args.smtp_use_tls.strip(),
+        "SMTP_PASSWORD_ACCOUNT": args.smtp_password_account.strip(),
     }
 
     dest_dir = Path(args.dest).expanduser().resolve()

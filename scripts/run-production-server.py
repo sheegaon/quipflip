@@ -17,6 +17,7 @@ KEYCHAIN_SERVICE_ENV = "KEYCHAIN_SERVICE"
 SECRET_KEY_ACCOUNT_ENV = "SECRET_KEY_ACCOUNT"
 OPENAI_ACCOUNT_ENV = "OPENAI_ACCOUNT"
 GEMINI_ACCOUNT_ENV = "GEMINI_ACCOUNT"
+SMTP_PASSWORD_ACCOUNT_ENV = "SMTP_PASSWORD_ACCOUNT"
 
 
 def _read_keychain_secret(service: str, account: str, *, required: bool) -> str | None:
@@ -49,6 +50,15 @@ def _load_keychain_env() -> None:
         if gemini_api_key:
             env["GEMINI_API_KEY"] = gemini_api_key
             del gemini_api_key
+
+    # SMTP password for magic-link delivery. Only consulted when an SMTP host is
+    # configured, so email-less deployments are unaffected.
+    if env.get("SMTP_HOST", "").strip():
+        smtp_account = env.get(SMTP_PASSWORD_ACCOUNT_ENV, "").strip() or "SMTP_PASSWORD"
+        smtp_password = _read_keychain_secret(service, smtp_account, required=False)
+        if smtp_password:
+            env["SMTP_PASSWORD"] = smtp_password
+            del smtp_password
 
 
 def _validate_production_settings() -> None:

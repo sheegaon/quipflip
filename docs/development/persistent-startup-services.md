@@ -102,7 +102,12 @@ The application still validates `Host`; tunnel ingress is not the only boundary.
    Use `python3 scripts/ops/crowdcraft_ops.py secrets keychain-store --apply`
    to prompt for `SECRET_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` without
    putting the values on the command line. Add `--skip-openai` or
-   `--skip-gemini` if the deployment uses only one provider.
+   `--skip-gemini` if the deployment uses only one provider. Add `--with-smtp`
+   to also store `SMTP_PASSWORD` (the transactional-email API key used for
+   magic-link delivery); the non-secret SMTP host/port/username/from address are
+   rendered into the server LaunchAgent by `install-launch-agents.py` via the
+   `--smtp-*` flags, and the wrapper only reads `SMTP_PASSWORD` from Keychain when
+   `SMTP_HOST` is set, so email-less deployments are unaffected.
 5. Build all four frontends and verify static deep links locally with exact Host
    headers.
 6. Create the tunnel, DNS routes, and two launchd agents.
