@@ -10,11 +10,11 @@ import EarningsChart from '@crowdcraft/components/statistics/EarningsChart.tsx';
 import SpendingChart from '@crowdcraft/components/statistics/SpendingChart.tsx';
 import FrequencyChart from '@crowdcraft/components/statistics/FrequencyChart.tsx';
 import HistoricalTrendsChart from '@crowdcraft/components/statistics/HistoricalTrendsChart.tsx';
-import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import { statisticsLogger } from '@crowdcraft/utils/logger.ts';
 import { hasCompletedSurvey } from '@crowdcraft/utils/betaSurvey.ts';
 import type { QFBetaSurveyStatusResponse } from '@crowdcraft/api/types.ts';
 import { APP_VERSION } from '../version';
+import CredentialAccountPanel from '../components/CredentialAccountPanel';
 
 const Statistics: React.FC = () => {
   const navigate = useNavigate();
@@ -317,12 +317,11 @@ const Statistics: React.FC = () => {
         {/* Guest Save Card */}
         {player?.is_guest && totalRoundsPlayed > 0 && (
           <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ccl-orange">
-            <MagicLinkPanel
-              mode="save"
+            <CredentialAccountPanel
+              mode="upgrade"
               title="Keep your stats"
               description="Save your display name, wins, awards, and history across devices."
               ctaLabel="Save my account"
-              guestPlayerId={player.player_id}
               currentSummary={`${totalRoundsPlayed} completed rounds`}
             />
           </div>

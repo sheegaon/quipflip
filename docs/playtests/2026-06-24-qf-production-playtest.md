@@ -25,6 +25,12 @@ Tester: Codex
 - The Impostor round itself could be opened and submitted, but the page displayed a reconnect banner and the AI hints request failed with a temporary server-busy message.
 - Those failures appeared after the same burst of repeated statistics errors, so they are likely secondary effects of the request storm and guest rate limiting rather than isolated gameplay bugs.
 
+### 3. Guest account save and returning-account restore are broken in production
+
+- `POST /auth/magic-links` returned `503 {"detail":"magic_link_email_failed"}` from the production host.
+- Installed production runtime configuration had no SMTP settings loaded, so the frontend's magic-link-based account flow could never succeed.
+- QuipFlip already ships direct email/password login and guest-upgrade APIs, so the production frontend should not depend on SMTP for the primary guest-first account path.
+
 ## Deployment blocker observed during redeploy attempt
 
 - `scripts/restart-production-server.sh` could not complete because the frontend verification step ran without installed workspace dependencies.

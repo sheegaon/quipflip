@@ -8,6 +8,10 @@ interface GuestFirstLandingProps {
   subtitle: string;
   signInPath: string;
   signInLabel?: string;
+  primaryActionLabel?: string;
+  primaryActionLoadingLabel?: string;
+  onPrimaryAction?: () => void | Promise<void>;
+  primaryActionDisabled?: boolean;
   className?: string;
   cardClassName?: string;
   buttonClassName?: string;
@@ -21,6 +25,10 @@ const GuestFirstLanding: React.FC<GuestFirstLandingProps> = ({
   subtitle,
   signInPath,
   signInLabel = 'Played before? Sign in',
+  primaryActionLabel,
+  primaryActionLoadingLabel = 'Continuing...',
+  onPrimaryAction,
+  primaryActionDisabled = false,
   className = '',
   cardClassName = '',
   buttonClassName = '',
@@ -45,12 +53,27 @@ const GuestFirstLanding: React.FC<GuestFirstLandingProps> = ({
           <p className="text-sm text-slate-700">{signInHint}</p>
         </div>
 
-        <Link
-          to={signInPath}
-          className={`block w-full rounded-tile bg-slate-900 px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-700 ${buttonClassName}`}
-        >
-          {signInLabel}
-        </Link>
+        <div className="space-y-3">
+          {onPrimaryAction && primaryActionLabel ? (
+            <button
+              type="button"
+              onClick={() => void onPrimaryAction()}
+              disabled={primaryActionDisabled}
+              className="block w-full rounded-tile bg-ccl-orange px-4 py-3 text-center font-semibold text-white transition hover:bg-ccl-orange-deep disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {primaryActionDisabled ? primaryActionLoadingLabel : primaryActionLabel}
+            </button>
+          ) : null}
+
+          <Link
+            to={signInPath}
+            className={`block w-full rounded-tile px-4 py-3 text-center font-semibold transition ${onPrimaryAction
+              ? 'border-2 border-slate-300 bg-white text-slate-900 hover:border-slate-500 hover:bg-slate-50'
+              : 'bg-slate-900 text-white hover:bg-slate-700'} ${buttonClassName}`}
+          >
+            {signInLabel}
+          </Link>
+        </div>
       </div>
     </div>
   );

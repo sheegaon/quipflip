@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import MagicLinkPanel from '@crowdcraft/components/MagicLinkPanel.tsx';
 import { Header } from '../components/Header';
+import CredentialAccountPanel from '../components/CredentialAccountPanel';
 import apiClient, { extractErrorMessage } from '@crowdcraft/api/client.ts';
 import { settingsLogger } from '@crowdcraft/utils/logger.ts';
 import { formatDateInUserZone, formatDateTimeInUserZone } from '@crowdcraft/utils/datetime.ts';
@@ -345,12 +345,11 @@ const Settings: React.FC = () => {
 
         {player.is_guest && (
           <div className="tile-card p-6 mb-6 bg-gradient-to-br from-orange-50 to-cyan-50 border-2 border-ccl-orange">
-            <MagicLinkPanel
-              mode="save"
+            <CredentialAccountPanel
+              mode="upgrade"
               title="Keep your stats"
               description="Save your display name, wins, awards, and history across devices."
               ctaLabel="Save my account"
-              guestPlayerId={player.player_id}
             />
           </div>
         )}
